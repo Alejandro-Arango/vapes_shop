@@ -1,0 +1,35 @@
+# Entorno virtual
+.venv/
+venv/
+
+# Variables de entorno y credenciales
+.env
+
+# Archivos de Python/bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Base de datos local
+db.sqlite3
+*.sqlite3
+
+# Archivos estáticos generados / build
+/staticfiles/
+/static/
+
+# Node / dependencias front
+node_modules/
+
+# Configs de editores / sistema
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
+
+# Cache y directorios de pruebas
+.pytest_cache/
+htmlcov/
+coverage.xml
