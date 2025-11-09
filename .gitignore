@@ -1,0 +1,26 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temp files
+*.tmp
+*.log
+/tmp/
+
+# PHP
+vendor/
+composer.lock
+
+# Database
+*.sql.backup
+
+# Environment files
+.env
+.env.local

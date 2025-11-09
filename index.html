@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vapes Shop - Tienda Online de Vapes</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="container">
+                <div class="logo">
+                    <h1>🌬️ Vapes Shop</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="#home">Inicio</a></li>
+                    <li><a href="#products">Productos</a></li>
+                    <li><a href="#about">Acerca de</a></li>
+                    <li><a href="#contact">Contacto</a></li>
+                </ul>
+                <div class="cart-icon">
+                    <span id="cart-count">0</span>
+                    <button id="cart-btn">🛒 Carrito</button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="home" class="hero">
+            <div class="container">
+                <h2>Bienvenidos a Vapes Shop</h2>
+                <p>La mejor selección de vapes y accesorios</p>
+                <a href="#products" class="btn-primary">Ver Productos</a>
+            </div>
+        </section>
+
+        <section id="products" class="products-section">
+            <div class="container">
+                <h2>Nuestros Productos</h2>
+                <div class="filter-bar">
+                    <select id="category-filter">
+                        <option value="all">Todas las Categorías</option>
+                        <option value="vapes">Vapes</option>
+                        <option value="liquidos">Líquidos</option>
+                        <option value="accesorios">Accesorios</option>
+                    </select>
+                    <input type="search" id="search-box" placeholder="Buscar productos...">
+                </div>
+                <div id="products-grid" class="products-grid">
+                    <!-- Products will be loaded dynamically -->
+                    <div class="loading">Cargando productos...</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="about-section">
+            <div class="container">
+                <h2>Acerca de Nosotros</h2>
+                <p>Somos una tienda especializada en vapes de alta calidad. Ofrecemos una amplia gama de productos para todos los gustos y necesidades.</p>
+            </div>
+        </section>
+
+        <section id="contact" class="contact-section">
+            <div class="container">
+                <h2>Contacto</h2>
+                <div class="contact-info">
+                    <p>📧 Email: info@vapesshop.com</p>
+                    <p>📱 Teléfono: +34 123 456 789</p>
+                    <p>📍 Dirección: Calle Principal 123, Madrid</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Shopping Cart Modal -->
+    <div id="cart-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Carrito de Compras</h2>
+            <div id="cart-items"></div>
+            <div class="cart-total">
+                <h3>Total: €<span id="total-price">0.00</span></h3>
+            </div>
+            <button id="checkout-btn" class="btn-primary">Finalizar Compra</button>
+        </div>
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="product-detail"></div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Vapes Shop. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
