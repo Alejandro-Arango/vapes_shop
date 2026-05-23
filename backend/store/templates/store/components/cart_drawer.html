@@ -1,0 +1,32 @@
+<!--
+Nombre: cart_drawer.html
+Descripcion: Componente lateral que muestra los productos agregados al carrito, feedback, total y accion de pago.
+-->
+
+<aside id="cart-drawer" class="cart-drawer" aria-hidden="true">
+    <header>
+        <h3>Tu carrito</h3>
+
+        <button id="cart-close" aria-label="Cerrar carrito">
+            &times;
+        </button>
+    </header>
+
+    <div id="cart-items" class="cart-items">
+        <!-- Contenido generado dinamicamente desde app.js -->
+    </div>
+
+    <div id="cart-feedback" class="cart-feedback" style="display: none;"></div>
+
+    <footer class="cart-footer">
+        <div class="cart-total">
+            Total: <strong id="cart-total">$0.00</strong>
+        </div>
+
+        <div class="cart-actions">
+            <button id="checkout-btn" class="btn">
+                Pagar
+            </button>
+        </div>
+    </footer>
+</aside>

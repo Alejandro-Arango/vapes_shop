@@ -1,0 +1,1273 @@
+/*
+ * Archivo: style.css
+ * Descripcion: Define la apariencia visual principal del sitio, incluyendo layout, productos, carrito, modales, pedidos, notificaciones y responsive.
+ * Dependencias: Google Fonts, Font Awesome, estructura HTML del proyecto y clases generadas desde app.js.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap");
+
+/*
+ * Nombre: Variables globales
+ * Descripcion: Centraliza colores, sombras y medidas reutilizables del sitio.
+ */
+:root {
+    --accent: #ff5a2c;
+    --bg-dark: #1b1726;
+    --card-dark: #2a223a;
+    --muted-dark: #e0e0e0;
+    --bg-light: #fdfdfd;
+    --card-light: #ffffff;
+    --muted-light: #666;
+    --success: #25d366;
+    --glass: rgba(255, 255, 255, 0.06);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --max-width: 1200px;
+}
+
+/*
+ * Nombre: Reset base
+ * Descripcion: Limpia estilos por defecto y define comportamiento general del documento.
+ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    text-decoration: none;
+    list-style: none;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: "Poppins", sans-serif;
+    transition: background-color 0.4s ease, color 0.4s ease;
+    background: var(--bg-dark);
+    color: #fff;
+}
+
+.container {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/*
+ * Nombre: Modos de color
+ * Descripcion: Define estilos base para modo oscuro y modo claro.
+ */
+body.dark-mode {
+    background-color: var(--bg-dark);
+    color: #fff;
+}
+
+body.dark-mode .card {
+    background: var(--card-dark);
+    color: #fff;
+}
+
+body.light-mode {
+    background-color: var(--bg-light);
+    color: #222;
+}
+
+body.light-mode .card {
+    background: var(--card-light);
+    color: #222;
+}
+
+.muted {
+    color: var(--muted-dark);
+}
+
+body.light-mode .muted {
+    color: var(--muted-light);
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
+
+/*
+ * Nombre: Header y navegacion
+ * Descripcion: Estiliza el encabezado, menu principal, logo, navegacion y controles superiores.
+ */
+.header {
+    background-image: url("../img/banner.3.avif");
+    background-position: center;
+    background-size: cover;
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding-bottom: 40px;
+}
+
+.menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    z-index: 30;
+}
+
+.logo {
+    color: var(--accent);
+    font-size: 25px;
+    font-weight: 800;
+    text-transform: uppercase;
+    transition: transform 0.3s ease;
+}
+
+.logo:hover {
+    transform: scale(1.05);
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.navbar ul {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.navbar ul li a {
+    color: var(--accent);
+    font-weight: 600;
+    padding: 8px 10px;
+    transition: color 0.25s ease, transform 0.25s ease;
+}
+
+.navbar ul li a:hover {
+    color: #fff;
+    transform: scale(1.05);
+}
+
+.menu-label {
+    display: none;
+    cursor: pointer;
+    width: 30px;
+    height: 25px;
+    position: relative;
+}
+
+.hamburger,
+.hamburger::before,
+.hamburger::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--accent);
+    transition: 0.3s;
+    border-radius: 3px;
+}
+
+.hamburger {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.hamburger::before {
+    top: -8px;
+}
+
+.hamburger::after {
+    top: 8px;
+}
+
+#menu {
+    display: none;
+}
+
+#menu:checked + .menu-label .hamburger {
+    transform: rotate(45deg);
+}
+
+#menu:checked + .menu-label .hamburger::before {
+    transform: rotate(90deg);
+    top: 0;
+}
+
+#menu:checked + .menu-label .hamburger::after {
+    opacity: 0;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/*
+ * Nombre: Botones generales
+ * Descripcion: Define apariencia reutilizable para botones principales, botones pequeños, carrito y cambio de tema.
+ */
+.btn {
+    display: inline-block;
+    padding: 10px 22px;
+    border-radius: 25px;
+    font-size: 15px;
+    border: 2px solid var(--accent);
+    color: #fff;
+    background: transparent;
+    cursor: pointer;
+    transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.btn:hover {
+    background: var(--accent);
+    transform: scale(1.03);
+}
+
+.btn.small {
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 16px;
+}
+
+.btn.btn-outline {
+    background: transparent;
+    border: 1px solid currentColor;
+}
+
+.theme-toggle {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--accent);
+    cursor: pointer;
+}
+
+.cart-btn {
+    position: relative;
+    background: none;
+    border: 2px solid rgba(255, 255, 255, 0.06);
+    color: inherit;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.cart-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/*
+ * Nombre: Hero
+ * Descripcion: Define la seccion principal de bienvenida con texto, acciones, badges e imagen.
+ */
+.header-content {
+    text-align: center;
+    color: #fff;
+    padding: 0 20px;
+    animation: fadeIn 1s ease forwards;
+    z-index: 5;
+    position: relative;
+}
+
+.header-txt h1 {
+    font-size: 48px;
+    margin-bottom: 14px;
+    line-height: 1.05;
+}
+
+.header-txt span {
+    color: var(--accent);
+}
+
+.header-txt p {
+    font-size: 18px;
+    margin-bottom: 20px;
+    opacity: 0.95;
+}
+
+.buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.header-content.hero {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 2rem;
+    align-items: center;
+    padding: 3.5rem 0;
+}
+
+.hero-text h1 {
+    line-height: 1.1;
+    margin-bottom: 1rem;
+}
+
+.hero-text p {
+    max-width: 55ch;
+    margin-bottom: 1.5rem;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+
+.hero-badges {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.hero-badges .badge {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    opacity: 0.95;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.hero-media {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.hero-media img {
+    width: 100%;
+    max-width: 380px;
+    border-radius: 18px;
+    object-fit: cover;
+    aspect-ratio: 4 / 5;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/*
+ * Nombre: Secciones generales
+ * Descripcion: Define espacios, titulos y secciones informativas del sitio.
+ */
+section,
+main {
+    padding: 60px 20px;
+}
+
+h2 {
+    font-size: 32px;
+    margin-bottom: 18px;
+    color: #fff;
+}
+
+.about {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+    color: var(--muted-dark);
+}
+
+body.light-mode .about {
+    color: #333;
+}
+
+/*
+ * Nombre: Carrusel y populares
+ * Descripcion: Estiliza el carrusel de destacados y la seccion de productos populares.
+ */
+.carousel {
+    text-align: center;
+}
+
+.carousel-slide {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.carousel-slide.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.carousel-slide img {
+    width: 250px;
+    border-radius: 18px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.carousel-buttons {
+    margin-top: 18px;
+}
+
+.carousel-buttons button {
+    background: var(--accent);
+    border: none;
+    padding: 10px 12px;
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+}
+
+.popular-content {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.popular-content img {
+    width: 150px;
+    border-radius: 12px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/*
+ * Nombre: Productos
+ * Descripcion: Define grilla, tarjetas, imagenes, precios y etiquetas de stock del catalogo.
+ */
+.product-content {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.product-card {
+    background: var(--card-dark);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow);
+}
+
+.product-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+}
+
+.product-info {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+
+.product-info h3 {
+    font-size: 18px;
+    margin-bottom: 6px;
+}
+
+.product-info .muted {
+    font-size: 13px;
+}
+
+.price {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.price p {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--accent);
+}
+
+body.light-mode .price p {
+    color: var(--accent);
+}
+
+.price button {
+    margin-left: 6px;
+}
+
+.stock-label {
+    margin-top: 6px;
+    font-size: 14px;
+    opacity: 0.85;
+}
+
+.stock-low {
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+.stock-empty {
+    color: #f87171;
+    font-weight: 700;
+}
+
+/*
+ * Nombre: Contacto
+ * Descripcion: Define formulario de contacto y boton flotante externo.
+ */
+.contact-content {
+    background: var(--card-dark);
+    padding: 36px;
+    border-radius: 16px;
+    text-align: center;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+body.light-mode .contact-content {
+    background: var(--card-light);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+form {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+input {
+    padding: 12px 16px;
+    border: none;
+    border-radius: 25px;
+    outline: none;
+}
+
+input[type="email"] {
+    flex: 1;
+    min-width: 250px;
+}
+
+input:focus {
+    box-shadow: 0 0 8px rgba(255, 90, 44, 0.18);
+    transform: translateY(-1px);
+}
+
+.whatsapp-float {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--success);
+    color: #fff;
+    border-radius: 50%;
+    padding: 14px;
+    font-size: 20px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    z-index: 1000;
+    transition: transform 0.18s ease;
+}
+
+.whatsapp-float:hover {
+    transform: scale(1.08);
+}
+
+/*
+ * Nombre: Carrito lateral
+ * Descripcion: Estiliza el drawer del carrito, items, cantidades, total y feedback.
+ */
+.cart-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 360px;
+    max-width: 90vw;
+    background: linear-gradient(180deg, var(--card-dark), rgba(0, 0, 0, 0.65));
+    transform: translateX(110%);
+    transition: transform 0.28s ease;
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.45);
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    color: #fff;
+    padding: 18px;
+}
+
+.cart-drawer.open {
+    transform: translateX(0);
+}
+
+.cart-drawer header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.cart-drawer header h3 {
+    margin: 0;
+}
+
+#cart-close {
+    background: none;
+    border: none;
+    font-size: 26px;
+    color: #fff;
+    cursor: pointer;
+}
+
+.cart-items {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 6px;
+}
+
+.cart-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 8px;
+    border-radius: 10px;
+}
+
+.cart-item img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.cart-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cart-item-info h4 {
+    font-size: 16px;
+    line-height: 1.2;
+    margin-bottom: 4px;
+}
+
+.cart-item-info p {
+    margin: 2px 0;
+    font-size: 14px;
+}
+
+.cart-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.cart-item-actions .btn.small {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cart-item-actions .remove-item {
+    width: auto !important;
+    padding: 0 12px !important;
+    border-radius: 999px !important;
+    font-size: 14px !important;
+}
+
+.cart-qty {
+    min-width: 20px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.increase-item:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.cart-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 12px;
+    margin-top: 12px;
+}
+
+.cart-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.cart-feedback {
+    margin: 10px 0 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    display: none;
+}
+
+.cart-feedback.success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.cart-feedback.error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+#checkout-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/*
+ * Nombre: Modales
+ * Descripcion: Define estructura base de modales, autenticacion y pedidos.
+ */
+.modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 9999;
+}
+
+.modal.open {
+    display: flex;
+}
+
+.modal-content {
+    width: min(760px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow: hidden;
+    border-radius: 16px;
+    background: #2b2340;
+    padding: 18px;
+    position: relative;
+    box-shadow: var(--shadow);
+}
+
+.modal-close {
+    position: absolute;
+    right: 12px;
+    top: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #fff;
+    cursor: pointer;
+}
+
+body.light-mode .modal-content {
+    background: var(--card-light);
+    color: #222;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.auth-form input {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: none;
+}
+
+.auth-feedback,
+.orders-feedback {
+    margin: 10px 0 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    display: none;
+}
+
+.auth-feedback.success,
+.orders-feedback.success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.auth-feedback.error,
+.orders-feedback.error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.orders-body {
+    margin-top: 14px;
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.orders-confirm {
+    margin: 10px 0 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255, 193, 7, 0.12);
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    display: none;
+}
+
+.orders-confirm p {
+    margin-bottom: 10px;
+}
+
+.orders-confirm-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.order-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.order-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.order-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.order-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    font-size: 15px;
+}
+
+/*
+ * Nombre: Estados de pedido
+ * Descripcion: Define badges visuales para cada estado de una orden.
+ */
+.order-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: 8px;
+    text-transform: capitalize;
+    letter-spacing: 0.02em;
+}
+
+.status-pendiente {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.45);
+}
+
+.status-pagado {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.45);
+}
+
+.status-enviado {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.45);
+}
+
+.status-entregado {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.45);
+}
+
+.status-cancelado {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+/*
+ * Nombre: Toasts
+ * Descripcion: Define notificaciones flotantes generadas desde JavaScript.
+ */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    min-width: 240px;
+    max-width: 360px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    animation: toastIn 0.25s ease;
+}
+
+.toast.success {
+    background: rgba(34, 197, 94, 0.95);
+    color: #ffffff;
+}
+
+.toast.error {
+    background: rgba(239, 68, 68, 0.95);
+    color: #ffffff;
+}
+
+.toast.info {
+    background: rgba(59, 130, 246, 0.95);
+    color: #ffffff;
+}
+
+/*
+ * Nombre: Skeleton loading y estados vacios
+ * Descripcion: Define placeholders de carga y mensajes visuales cuando no hay datos.
+ */
+.skeleton-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 20px;
+    padding: 18px;
+    animation: skeletonPulse 1.2s infinite ease-in-out;
+}
+
+.skeleton-image {
+    width: 100%;
+    height: 180px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    margin-bottom: 16px;
+}
+
+.skeleton-line {
+    height: 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    margin-bottom: 12px;
+}
+
+.skeleton-line.short {
+    width: 40%;
+}
+
+.skeleton-line.medium {
+    width: 70%;
+}
+
+.empty-cart,
+.empty-orders,
+.empty-products {
+    text-align: center;
+}
+
+.empty-cart,
+.empty-orders {
+    padding: 36px 20px;
+}
+
+.empty-products {
+    padding: 60px 20px;
+}
+
+.empty-cart-icon,
+.empty-orders-icon {
+    font-size: 48px;
+    margin-bottom: 14px;
+}
+
+.empty-products-icon {
+    font-size: 52px;
+    margin-bottom: 16px;
+}
+
+.empty-cart h3,
+.empty-orders h3 {
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.empty-products h3 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.empty-cart p,
+.empty-orders p {
+    opacity: 0.75;
+    margin-bottom: 18px;
+}
+
+.empty-products p {
+    opacity: 0.75;
+    margin-bottom: 20px;
+}
+
+.empty-cart-btn,
+.empty-orders-btn {
+    min-width: 180px;
+}
+
+.retry-products-btn {
+    min-width: 220px;
+}
+
+/*
+ * Nombre: Animaciones
+ * Descripcion: Define transiciones visuales usadas por hero, toasts y skeletons.
+ */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes skeletonPulse {
+    0% {
+        opacity: 0.65;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.65;
+    }
+}
+
+/*
+ * Nombre: Accesibilidad
+ * Descripcion: Mejora la visibilidad del foco en enlaces, botones e inputs.
+ */
+a:focus,
+button:focus,
+input:focus {
+    outline: 3px solid rgba(255, 90, 44, 0.16);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/*
+ * Nombre: Responsive
+ * Descripcion: Ajusta productos, hero, navegacion, carrito y toasts para pantallas pequeñas.
+ */
+@media (max-width: 1000px) {
+    .product-content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .header-txt h1 {
+        font-size: 40px;
+    }
+}
+
+@media (max-width: 900px) {
+    .header-content.hero {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .hero-text p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .hero-actions {
+        justify-content: center;
+    }
+
+    .hero-badges {
+        justify-content: center;
+    }
+
+    .hero-media img {
+        max-width: 320px;
+    }
+}
+
+@media (max-width: 700px) {
+    .menu-label {
+        display: block;
+        z-index: 40;
+    }
+
+    .navbar {
+        position: fixed;
+        inset: 70px 0 auto 0;
+        background: rgba(0, 0, 0, 0.6);
+        flex-direction: column;
+        padding: 12px 20px;
+        display: none;
+    }
+
+    #menu:checked ~ .navbar {
+        display: flex;
+    }
+
+    .navbar ul {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .product-content {
+        grid-template-columns: 1fr;
+    }
+
+    .header-txt h1 {
+        font-size: 28px;
+    }
+
+    .menu {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .cart-item {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .cart-item img {
+        width: 48px;
+        height: 48px;
+    }
+
+    .cart-item-info h4 {
+        font-size: 15px;
+    }
+
+    .cart-item-info p {
+        font-size: 13px;
+    }
+
+    .cart-item-actions {
+        margin-top: 6px;
+        gap: 6px;
+    }
+
+    .cart-item-actions .btn.small {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+    }
+
+    .cart-item-actions .remove-item {
+        padding: 0 10px !important;
+        font-size: 12px !important;
+        height: 30px;
+    }
+
+    .cart-qty {
+        min-width: 16px;
+        font-size: 14px;
+    }
+
+    .toast-container {
+        right: 10px;
+        left: 10px;
+        top: 10px;
+    }
+
+    .toast {
+        min-width: auto;
+        max-width: 100%;
+        font-size: 13px;
+    }
+}

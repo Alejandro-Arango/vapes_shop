@@ -1,0 +1,40 @@
+<!--
+Nombre: orders_modal.html
+Descripcion: Componente modal que muestra el historial de pedidos, mensajes de feedback y confirmacion de cancelacion.
+-->
+
+<div id="orders-modal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+        <button id="orders-close" class="modal-close" aria-label="Cerrar">
+            &times;
+        </button>
+
+        <h2>Mis pedidos</h2>
+
+        <p class="muted" style="margin-top: 6px;">
+            Aquí verás tus compras realizadas.
+        </p>
+
+        <div id="orders-feedback" class="orders-feedback" style="display: none;"></div>
+
+        <div id="orders-confirm" class="orders-confirm" style="display: none;">
+            <p id="orders-confirm-text">
+                ¿Seguro que quieres cancelar este pedido?
+            </p>
+
+            <div class="orders-confirm-actions">
+                <button id="orders-confirm-yes" class="btn small">
+                    Sí, cancelar
+                </button>
+
+                <button id="orders-confirm-no" class="btn small">
+                    No, volver
+                </button>
+            </div>
+        </div>
+
+        <div id="orders-body" class="orders-body">
+            <p class="muted">Cargando pedidos...</p>
+        </div>
+    </div>
+</div>

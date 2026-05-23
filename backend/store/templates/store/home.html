@@ -1,0 +1,137 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}VapeShop - Tienda{% endblock %}
+
+{% block content %}
+
+<!--
+Nombre: home.html
+Descripcion: Plantilla principal que contiene secciones informativas, carrusel, productos dinamicos y contacto.
+-->
+
+<section id="informacion" class="about container" data-aos="fade-up">
+    <h2>Quiénes somos</h2>
+
+    <p>
+        Mi nombre es <strong>Alejandro Arango</strong>, tengo 20 años y soy un
+        joven emprendedor apasionado por el desarrollo de experiencias digitales
+        modernas, funcionales y fáciles de usar.
+    </p>
+</section>
+
+<section class="carousel container" data-aos="fade-up">
+    <h2>Explora nuestros productos</h2>
+
+    <div class="carousel-container">
+        <div class="carousel-slide active">
+            <img
+                src="{% static 'store/img/STLTH.webp' %}"
+                alt="Producto destacado STLTH"
+            />
+
+            <p>Producto destacado</p>
+        </div>
+
+        <div class="carousel-slide">
+            <img
+                src="{% static 'store/img/Pri-var.webp' %}"
+                alt="Producto destacado Prime Variant"
+            />
+
+            <p>Producto destacado</p>
+        </div>
+
+        <div class="carousel-slide">
+            <img
+                src="{% static 'store/img/savage.webp' %}"
+                alt="Producto destacado Savage Edition"
+            />
+
+            <p>Producto destacado</p>
+        </div>
+    </div>
+
+    <div class="carousel-buttons">
+        <button class="prev" aria-label="Producto anterior">
+            &#10094;
+        </button>
+
+        <button class="next" aria-label="Producto siguiente">
+            &#10095;
+        </button>
+    </div>
+</section>
+
+<section class="popular container" data-aos="fade-up">
+    <h2>Productos populares</h2>
+
+    <div class="popular-content">
+        <img
+            src="{% static 'store/img/STLTH.webp' %}"
+            alt="Producto popular STLTH"
+        />
+
+        <img
+            src="{% static 'store/img/Pri-var.webp' %}"
+            alt="Producto popular Prime Variant"
+        />
+
+        <img
+            src="{% static 'store/img/savage.webp' %}"
+            alt="Producto popular Savage Edition"
+        />
+    </div>
+</section>
+
+<main id="productos" class="product container" data-aos="fade-up">
+    <h2>Nuestros productos</h2>
+
+    <div id="product-list" class="product-content">
+        <p class="muted">Cargando productos...</p>
+    </div>
+</main>
+
+<section id="contacto" class="contact container" data-aos="fade-up">
+    <div class="contact-content">
+        <h3>Ponte en contacto con nuestro equipo</h3>
+
+        <form id="contact-form">
+            <input
+                type="email"
+                id="contact-email"
+                placeholder="Escribe tu correo"
+                required
+            />
+
+            <input
+                type="submit"
+                class="btn"
+                value="Enviar"
+            />
+        </form>
+
+        <div class="whatsapp-contact">
+            <a
+                href="https://wa.me/573016604375"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                <i class="fab fa-whatsapp"></i>
+                Escríbenos por WhatsApp
+            </a>
+        </div>
+    </div>
+</section>
+
+<a
+    href="https://wa.me/573016604375"
+    class="whatsapp-float"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Abrir contacto por WhatsApp"
+>
+    <i class="fab fa-whatsapp"></i>
+</a>
+
+{% endblock %}

@@ -1,0 +1,76 @@
+<!--
+Nombre: auth_modal.html
+Descripcion: Componente modal que permite iniciar sesion, registrar usuarios y mostrar mensajes de autenticacion.
+-->
+
+<div id="auth-modal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+        <button id="auth-close" class="modal-close" aria-label="Cerrar">
+            &times;
+        </button>
+
+        <div id="auth-feedback" class="auth-feedback" style="display: none;"></div>
+
+        <div id="auth-forms">
+            <form id="login-form" class="auth-form">
+                <h3>Iniciar sesión</h3>
+
+                <input
+                    id="login-email"
+                    type="email"
+                    placeholder="Correo"
+                    required
+                />
+
+                <input
+                    id="login-password"
+                    type="password"
+                    placeholder="Contraseña"
+                    required
+                />
+
+                <button class="btn" type="submit">
+                    Entrar
+                </button>
+
+                <p>
+                    ¿No tienes cuenta?
+                    <a href="#" id="show-register">Regístrate</a>
+                </p>
+            </form>
+
+            <form id="register-form" class="auth-form" style="display: none;">
+                <h3>Crear cuenta</h3>
+
+                <input
+                    id="reg-name"
+                    type="text"
+                    placeholder="Nombre"
+                />
+
+                <input
+                    id="reg-email"
+                    type="email"
+                    placeholder="Correo"
+                    required
+                />
+
+                <input
+                    id="reg-password"
+                    type="password"
+                    placeholder="Contraseña"
+                    required
+                />
+
+                <button class="btn" type="submit">
+                    Crear
+                </button>
+
+                <p>
+                    ¿Ya tienes cuenta?
+                    <a href="#" id="show-login">Inicia sesión</a>
+                </p>
+            </form>
+        </div>
+    </div>
+</div>

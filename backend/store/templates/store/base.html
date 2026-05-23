@@ -1,0 +1,113 @@
+{% load static %}
+
+<!--
+Nombre: base.html
+Descripcion: Plantilla base que carga estilos, componentes globales, scripts principales y bloques reutilizables del frontend.
+-->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token }}">
+
+    <title>{% block title %}VapeShop{% endblock %}</title>
+
+    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=10">
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/aos@2.3.4/dist/aos.css"
+    >
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="dark-mode">
+
+    {% include 'store/components/header.html' %}
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    {% include 'store/components/footer.html' %}
+
+    {% include 'store/components/cart_drawer.html' %}
+    {% include 'store/components/auth_modal.html' %}
+    {% include 'store/components/orders_modal.html' %}
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+
+    <script>
+        /*
+         * Nombre: Inicializacion de AOS
+         * Descripcion: Activa las animaciones visuales al hacer scroll.
+         */
+        AOS.init({
+            duration: 1200,
+            once: true,
+            offset: 100,
+        });
+
+        const slides = document.querySelectorAll(".carousel-slide");
+        const prevBtn = document.querySelector(".prev");
+        const nextBtn = document.querySelector(".next");
+        let index = 0;
+
+        /*
+         * Nombre: showSlide
+         * Descripcion: Muestra una diapositiva especifica del carrusel.
+         */
+        function showSlide(n) {
+            if (!slides.length) return;
+
+            slides.forEach((slide) => slide.classList.remove("active"));
+            slides[n].classList.add("active");
+        }
+
+        prevBtn?.addEventListener("click", () => {
+            index = index > 0 ? index - 1 : slides.length - 1;
+            showSlide(index);
+        });
+
+        nextBtn?.addEventListener("click", () => {
+            index = index < slides.length - 1 ? index + 1 : 0;
+            showSlide(index);
+        });
+
+        if (slides.length) {
+            setInterval(() => {
+                index = index < slides.length - 1 ? index + 1 : 0;
+                showSlide(index);
+            }, 5000);
+
+            showSlide(index);
+        }
+
+        const themeToggle = document.getElementById("theme-toggle");
+        const body = document.body;
+
+        themeToggle?.addEventListener("click", () => {
+            body.classList.toggle("light-mode");
+            body.classList.toggle("dark-mode");
+
+            themeToggle.innerHTML = body.classList.contains("light-mode")
+                ? '<i class="fas fa-sun"></i>'
+                : '<i class="fas fa-moon"></i>';
+        });
+    </script>
+
+    <script src="{% static 'store/js/app.js' %}"></script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

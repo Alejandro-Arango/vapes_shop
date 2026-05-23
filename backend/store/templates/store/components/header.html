@@ -1,0 +1,90 @@
+{% load static %}
+
+<!--
+Nombre: header.html
+Descripcion: Componente superior que contiene navegación, controles de usuario, carrito, cambio de tema y sección principal de bienvenida.
+-->
+
+<header class="header">
+    <div class="menu container">
+        <a href="#" class="logo">VapeShop</a>
+
+        <input type="checkbox" id="menu" />
+
+        <label for="menu" class="menu-label">
+            <span class="hamburger"></span>
+        </label>
+
+        <nav class="navbar">
+            <ul>
+                <li><a href="#inicio">Inicio</a></li>
+                <li><a href="#productos">Productos</a></li>
+                <li><a href="#contacto">Contacto</a></li>
+            </ul>
+        </nav>
+
+        <div class="header-controls">
+            <button id="open-auth" class="btn small">
+                Iniciar
+            </button>
+
+            <button id="logout-btn" class="btn small" style="display: none;">
+                Cerrar
+            </button>
+
+            <button id="my-orders-btn" class="btn small" style="display: none;">
+                Mis pedidos
+            </button>
+
+            <button id="cart-toggle" class="cart-btn" aria-label="Abrir carrito">
+                <i class="fas fa-shopping-cart"></i>
+                <span id="cart-count" class="cart-count">0</span>
+            </button>
+
+            <button id="theme-toggle" class="theme-toggle" aria-label="Cambiar tema">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="header-content container hero" data-aos="fade-up">
+        <div class="hero-text">
+            <h1>Vapea tu <span>estilo</span>, vive tu experiencia</h1>
+
+            <p>
+                Los mejores vapes y sabores, con tecnología de última generación.
+                Compra fácil, rápido y seguro.
+            </p>
+
+            <div class="hero-actions">
+                <a href="#productos" class="btn">Ver productos</a>
+                <a href="#informacion" class="btn btn-outline">Conocer más</a>
+            </div>
+
+            <div class="hero-badges">
+                <span class="badge">
+                    <i class="fas fa-truck"></i>
+                    Envíos rápidos
+                </span>
+
+                <span class="badge">
+                    <i class="fas fa-shield-alt"></i>
+                    Compra segura
+                </span>
+
+                <span class="badge">
+                    <i class="fab fa-whatsapp"></i>
+                    Soporte WhatsApp
+                </span>
+            </div>
+        </div>
+
+        <div class="hero-media">
+            <img
+                src="{% static 'store/img/placeholder.png' %}"
+                alt="VapeShop productos"
+                loading="lazy"
+            />
+        </div>
+    </div>
+</header>
