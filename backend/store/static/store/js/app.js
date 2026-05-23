@@ -538,6 +538,8 @@ function renderMyOrders(data) {
 //  PRODUCTOS
 // =============================================================================
 
+let catalogProducts = [];
+
 /*
  * Nombre: fetchProducts
  * Descripcion: Obtiene el listado de productos desde el backend.
@@ -558,6 +560,11 @@ async function fetchProducts() {
 
 function renderProductsSkeleton(count = 6) {
     const container = document.getElementById("product-list");
+    const resultsInfo = document.getElementById("catalog-results-info");
+
+    if (resultsInfo) {
+        resultsInfo.textContent = "Cargando productos...";
+    }
 
     if (!container) return;
 
@@ -578,25 +585,44 @@ function renderProductsSkeleton(count = 6) {
  * Nombre: renderProducts
  * Descripcion: Renderiza productos, estados de stock y botones para agregar al carrito.
  */
-function renderProducts(products) {
+function renderProducts(products, options = {}) {
     const container = document.getElementById("product-list");
+    const isFiltered = options.isFiltered || false;
 
     if (!container) return;
 
     if (!products.length) {
-        container.innerHTML = `
-            <div class="empty-products">
-                <div class="empty-products-icon">Sin productos</div>
+        const emptyTitle = isFiltered
+            ? "No se encontraron productos"
+            : "No hay productos disponibles";
 
-                <h3>No hay productos disponibles</h3>
+        const emptyText = isFiltered
+            ? "Ajusta la busqueda o cambia los filtros para ver mas resultados."
+            : "Intenta nuevamente mas tarde.";
 
-                <p>
-                    Intenta nuevamente mas tarde.
-                </p>
-
+        const emptyAction = isFiltered
+            ? `
+                <button class="btn clear-catalog-filters">
+                    Limpiar filtros
+                </button>
+            `
+            : `
                 <button class="btn retry-products-btn">
                     Recargar productos
                 </button>
+            `;
+
+        container.innerHTML = `
+            <div class="empty-products">
+                <div class="empty-products-icon">Sin resultados</div>
+
+                <h3>${emptyTitle}</h3>
+
+                <p>
+                    ${emptyText}
+                </p>
+
+                ${emptyAction}
             </div>
         `;
 
@@ -605,9 +631,16 @@ function renderProducts(products) {
             ?.addEventListener("click", async () => {
                 renderProductsSkeleton();
 
-                const products = await fetchProducts();
+                catalogProducts = await fetchProducts();
 
-                renderProducts(products);
+                applyCatalogFilters();
+            });
+
+        document
+            .querySelector(".clear-catalog-filters")
+            ?.addEventListener("click", () => {
+                resetCatalogControls();
+                applyCatalogFilters();
             });
 
         return;
@@ -663,10 +696,131 @@ function renderProducts(products) {
     });
 }
 
-async function refreshProductsUI() {
-    const products = await fetchProducts();
+/*
+ * Nombre: getFilteredCatalogProducts
+ * Descripcion: Aplica busqueda, disponibilidad y ordenamiento sobre el catalogo cargado.
+ */
+function getFilteredCatalogProducts() {
+    const searchInput = document.getElementById("product-search");
+    const stockFilter = document.getElementById("product-stock-filter");
+    const sortSelect = document.getElementById("product-sort");
 
-    renderProducts(products);
+    const searchValue = (searchInput?.value || "").toLowerCase().trim();
+    const stockValue = stockFilter?.value || "all";
+    const sortValue = sortSelect?.value || "default";
+
+    let products = [...catalogProducts];
+
+    if (searchValue) {
+        products = products.filter((product) => {
+            const name = String(product.name || "").toLowerCase();
+            const description = String(product.description || "").toLowerCase();
+
+            return name.includes(searchValue) || description.includes(searchValue);
+        });
+    }
+
+    if (stockValue === "available") {
+        products = products.filter((product) => Number(product.stock || 0) > 0);
+    }
+
+    if (stockValue === "low") {
+        products = products.filter((product) => {
+            const stock = Number(product.stock || 0);
+
+            return stock > 0 && stock <= 3;
+        });
+    }
+
+    if (stockValue === "empty") {
+        products = products.filter((product) => Number(product.stock || 0) === 0);
+    }
+
+    if (sortValue === "price-asc") {
+        products.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+    }
+
+    if (sortValue === "price-desc") {
+        products.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+    }
+
+    if (sortValue === "stock-desc") {
+        products.sort((a, b) => Number(b.stock || 0) - Number(a.stock || 0));
+    }
+
+    if (sortValue === "name-asc") {
+        products.sort((a, b) =>
+            String(a.name || "").localeCompare(String(b.name || ""))
+        );
+    }
+
+    return products;
+}
+
+function updateCatalogResultsInfo(filteredCount, totalCount) {
+    const resultsInfo = document.getElementById("catalog-results-info");
+
+    if (!resultsInfo) return;
+
+    if (!totalCount) {
+        resultsInfo.textContent = "No hay productos cargados.";
+        return;
+    }
+
+    if (filteredCount === totalCount) {
+        resultsInfo.textContent = `Mostrando ${totalCount} producto(s).`;
+        return;
+    }
+
+    resultsInfo.textContent = `Mostrando ${filteredCount} de ${totalCount} producto(s).`;
+}
+
+function resetCatalogControls() {
+    const searchInput = document.getElementById("product-search");
+    const stockFilter = document.getElementById("product-stock-filter");
+    const sortSelect = document.getElementById("product-sort");
+
+    if (searchInput) searchInput.value = "";
+    if (stockFilter) stockFilter.value = "all";
+    if (sortSelect) sortSelect.value = "default";
+}
+
+function applyCatalogFilters() {
+    const filteredProducts = getFilteredCatalogProducts();
+
+    updateCatalogResultsInfo(filteredProducts.length, catalogProducts.length);
+
+    renderProducts(filteredProducts, {
+        isFiltered: filteredProducts.length !== catalogProducts.length,
+    });
+}
+
+/*
+ * Nombre: initCatalogControls
+ * Descripcion: Conecta los controles del catalogo con el filtrado dinamico de productos.
+ */
+function initCatalogControls() {
+    const searchInput = document.getElementById("product-search");
+    const stockFilter = document.getElementById("product-stock-filter");
+    const sortSelect = document.getElementById("product-sort");
+
+    searchInput?.addEventListener("input", () => {
+        applyCatalogFilters();
+    });
+
+    stockFilter?.addEventListener("change", () => {
+        applyCatalogFilters();
+    });
+
+    sortSelect?.addEventListener("change", () => {
+        applyCatalogFilters();
+    });
+}
+
+async function refreshProductsUI() {
+    catalogProducts = await fetchProducts();
+
+    applyCatalogFilters();
 }
 
 // =============================================================================
@@ -940,11 +1094,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     renderProductsSkeleton();
 
-    const products = await fetchProducts();
+    catalogProducts = await fetchProducts();
 
-    renderProducts(products);
+    initCatalogControls();
 
-    await updateCartUI();
+    applyCatalogFilters();
+
+await updateCartUI();
 
     const cartToggle = document.getElementById("cart-toggle");
     const cartDrawer = document.getElementById("cart-drawer");
