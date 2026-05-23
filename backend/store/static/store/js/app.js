@@ -582,6 +582,98 @@ function renderProductsSkeleton(count = 6) {
 }
 
 /*
+ * Nombre: renderProductDetail
+ * Descripcion: Renderiza la informacion ampliada de un producto dentro del modal de detalle.
+ */
+function renderProductDetail(product) {
+    const body = document.getElementById("product-detail-body");
+
+    if (!body || !product) return;
+
+    const stock = Number(product.stock || 0);
+
+    let stockLabel = "";
+
+    if (stock === 0) {
+        stockLabel = `<p class="stock-label stock-empty">Sin stock</p>`;
+    } else if (stock <= 3) {
+        stockLabel = `<p class="stock-label stock-low">Ultimas unidades (${stock})</p>`;
+    } else {
+        stockLabel = `<p class="muted stock-label">Stock disponible: ${stock}</p>`;
+    }
+
+    const addButton = stock > 0
+        ? `<button class="btn product-detail-add" data-id="${product.id}">Agregar al carrito</button>`
+        : `<button class="btn product-detail-add" disabled>Sin stock</button>`;
+
+    body.innerHTML = `
+        <div class="product-detail-grid">
+            <div class="product-detail-image">
+                <img
+                    src="${escapeHtml(product.image) || "/static/store/img/placeholder.png"}"
+                    alt="${escapeHtml(product.name)}"
+                />
+            </div>
+
+            <div class="product-detail-info">
+                <span class="product-detail-tag">Detalle del producto</span>
+
+                <h2>${escapeHtml(product.name)}</h2>
+
+                <p class="muted product-detail-description">
+                    ${escapeHtml(product.description || "Sin descripcion disponible.")}
+                </p>
+
+                ${stockLabel}
+
+                <div class="product-detail-price">
+                    $${Number(product.price || 0).toFixed(2)}
+                </div>
+
+                <div class="product-detail-actions">
+                    ${addButton}
+
+                    <button class="btn btn-outline product-detail-close-secondary">
+                        Seguir viendo
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document
+        .querySelector(".product-detail-add")
+        ?.addEventListener("click", async () => {
+            await addToCart(Number(product.id), 1);
+        });
+
+    document
+        .querySelector(".product-detail-close-secondary")
+        ?.addEventListener("click", () => {
+            const modal = document.getElementById("product-detail-modal");
+            const focusTarget = document.querySelector(`.product-card[data-id="${product.id}"]`);
+
+            closeModalSafely(modal, focusTarget);
+        });
+}
+
+/*
+ * Nombre: openProductDetail
+ * Descripcion: Abre el modal de detalle con la informacion del producto seleccionado.
+ */
+function openProductDetail(productId) {
+    const modal = document.getElementById("product-detail-modal");
+    const product = catalogProducts.find((item) => Number(item.id) === Number(productId));
+
+    if (!modal || !product) return;
+
+    renderProductDetail(product);
+
+    modal.setAttribute("aria-hidden", "false");
+    modal.classList.add("open");
+}
+
+/*
  * Nombre: renderProducts
  * Descripcion: Renderiza productos, estados de stock y botones para agregar al carrito.
  */
@@ -665,7 +757,7 @@ function renderProducts(products, options = {}) {
                 : `<button class="btn add-to-cart" disabled>Sin stock</button>`;
 
             return `
-                <article class="product-card" data-id="${product.id}">
+                <article class="product-card product-card-clickable" data-id="${product.id}" tabindex="0">
                     <img
                         src="${escapeHtml(product.image) || "/static/store/img/placeholder.png"}"
                         alt="${escapeHtml(product.name)}"
@@ -689,11 +781,27 @@ function renderProducts(products, options = {}) {
         })
         .join("");
 
-    document.querySelectorAll(".add-to-cart").forEach((btn) => {
-        btn.addEventListener("click", () => {
-            addToCart(Number(btn.dataset.id), 1);
-        });
+    document.querySelectorAll(".product-card-clickable").forEach((card) => {
+    card.addEventListener("click", (event) => {
+        if (event.target.closest(".add-to-cart")) return;
+
+        openProductDetail(Number(card.dataset.id));
     });
+
+    card.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+
+        openProductDetail(Number(card.dataset.id));
+    });
+});
+
+document.querySelectorAll(".add-to-cart").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+
+        addToCart(Number(btn.dataset.id), 1);
+    });
+});
 }
 
 /*
@@ -1137,6 +1245,12 @@ await updateCartUI();
     cartClose?.addEventListener("click", () => {
         closeModalSafely(cartDrawer, cartToggle);
     });
+    const productDetailModal = document.getElementById("product-detail-modal");
+const productDetailClose = document.getElementById("product-detail-close");
+
+productDetailClose?.addEventListener("click", () => {
+    closeModalSafely(productDetailModal);
+});
 
     const authModal = document.getElementById("auth-modal");
     const btnOpenAuth = document.getElementById("open-auth");

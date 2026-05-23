@@ -14,7 +14,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
 
     <title>{% block title %}VapeShop{% endblock %}</title>
 
-    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=12">
+    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=13">
 
     <link
         rel="stylesheet"
@@ -42,6 +42,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
     {% include 'store/components/cart_drawer.html' %}
     {% include 'store/components/auth_modal.html' %}
     {% include 'store/components/orders_modal.html' %}
+    {% include 'store/components/product_detail_modal.html' %}
 
     <div id="toast-container" class="toast-container"></div>
 

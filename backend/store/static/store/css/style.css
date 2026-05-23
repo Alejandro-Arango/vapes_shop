@@ -1451,3 +1451,242 @@ body.light-mode .quick-filter.active {
     border-color: var(--accent);
     color: #fff;
 }
+
+/*
+ * Nombre: Modal de detalle de producto
+ * Descripcion: Define la presentacion visual del modal ampliado para productos del catalogo.
+ */
+.product-card-clickable {
+    cursor: pointer;
+}
+
+.product-card-clickable:focus {
+    outline: 3px solid rgba(255, 90, 44, 0.18);
+    outline-offset: 4px;
+}
+
+.product-detail-content {
+    width: min(920px, 100%);
+    padding: 24px;
+}
+
+.product-detail-body {
+    padding-top: 10px;
+}
+
+.product-detail-grid {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: 28px;
+    align-items: center;
+}
+
+.product-detail-image {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 18px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.product-detail-image img {
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+    border-radius: 14px;
+}
+
+.product-detail-info {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.product-detail-tag {
+    display: inline-flex;
+    width: fit-content;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 90, 44, 0.14);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.product-detail-info h2 {
+    margin-bottom: 0;
+    font-size: 34px;
+}
+
+.product-detail-description {
+    line-height: 1.6;
+}
+
+.product-detail-price {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.product-detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+body.light-mode .product-detail-image {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 800px) {
+    .product-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .product-detail-content {
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
+    }
+
+    .product-detail-info h2 {
+        font-size: 26px;
+    }
+}
+
+/*
+ * Nombre: Compatibilidad de modo claro
+ * Descripcion: Ajusta tarjetas, modales, botones, productos y textos para mantener contraste correcto en modo claro.
+ */
+body.light-mode h2,
+body.light-mode h3,
+body.light-mode strong {
+    color: #222;
+}
+
+body.light-mode .header h1,
+body.light-mode .header h2,
+body.light-mode .header h3,
+body.light-mode .header p,
+body.light-mode .header strong {
+    color: #fff;
+}
+
+body.light-mode .product-card {
+    background: var(--card-light);
+    color: #222;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .product-card:hover {
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.14);
+}
+
+body.light-mode .product-info h3 {
+    color: #222;
+}
+
+body.light-mode .product-info .muted {
+    color: var(--muted-light);
+}
+
+body.light-mode .modal-content {
+    background: #ffffff;
+    color: #222;
+}
+
+body.light-mode .modal-content h2,
+body.light-mode .modal-content h3,
+body.light-mode .modal-content strong {
+    color: #222;
+}
+
+body.light-mode .modal-close {
+    color: #222;
+}
+
+body.light-mode .btn {
+    color: var(--accent);
+    background: transparent;
+    border-color: var(--accent);
+}
+
+body.light-mode .btn:hover {
+    color: #fff;
+    background: var(--accent);
+}
+
+body.light-mode .btn:disabled {
+    color: #999;
+    border-color: #ddd;
+    background: #f2f2f2;
+}
+
+body.light-mode .product-detail-content {
+    background: #ffffff;
+}
+
+body.light-mode .product-detail-tag {
+    background: rgba(255, 90, 44, 0.12);
+    color: var(--accent);
+}
+
+body.light-mode .product-detail-description {
+    color: var(--muted-light);
+}
+
+body.light-mode .product-detail-price {
+    color: var(--accent);
+}
+
+body.light-mode .product-detail-image {
+    background: #f7f7f7;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .catalog-results-info {
+    color: var(--muted-light);
+}
+
+body.light-mode .empty-products,
+body.light-mode .empty-cart,
+body.light-mode .empty-orders {
+    color: #222;
+}
+
+body.light-mode .empty-products p,
+body.light-mode .empty-cart p,
+body.light-mode .empty-orders p {
+    color: var(--muted-light);
+}
+
+body.light-mode .order-card {
+    background: #ffffff;
+    color: #222;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .order-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .cart-drawer {
+    background: linear-gradient(180deg, #ffffff, #f4f4f4);
+    color: #222;
+}
+
+body.light-mode .cart-drawer header h3 {
+    color: #222;
+}
+
+body.light-mode #cart-close {
+    color: #222;
+}
+
+body.light-mode .cart-item {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+body.light-mode .cart-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
