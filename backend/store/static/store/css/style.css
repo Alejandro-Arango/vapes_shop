@@ -1398,3 +1398,56 @@ body.light-mode .catalog-search input::placeholder {
         flex-direction: column;
     }
 }
+
+/*
+ * Nombre: Filtros rapidos del catalogo
+ * Descripcion: Define botones visuales para filtrar productos por disponibilidad.
+ */
+.catalog-quick-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 18px;
+}
+
+.quick-filter {
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted-dark);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.quick-filter:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.quick-filter.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+body.light-mode .quick-filter {
+    background: #fff;
+    color: var(--muted-light);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .quick-filter:hover {
+    color: #222;
+    border-color: var(--accent);
+}
+
+body.light-mode .quick-filter.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}

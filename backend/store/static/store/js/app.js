@@ -783,6 +783,14 @@ function resetCatalogControls() {
     if (searchInput) searchInput.value = "";
     if (stockFilter) stockFilter.value = "all";
     if (sortSelect) sortSelect.value = "default";
+
+    setActiveQuickFilter("all");
+}
+
+function setActiveQuickFilter(filterValue) {
+    document.querySelectorAll(".quick-filter").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.filter === filterValue);
+    });
 }
 
 function applyCatalogFilters() {
@@ -809,14 +817,27 @@ function initCatalogControls() {
     });
 
     stockFilter?.addEventListener("change", () => {
+        setActiveQuickFilter(stockFilter.value);
         applyCatalogFilters();
     });
 
     sortSelect?.addEventListener("change", () => {
         applyCatalogFilters();
     });
-}
 
+    document.querySelectorAll(".quick-filter").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const filterValue = btn.dataset.filter || "all";
+
+            if (stockFilter) {
+                stockFilter.value = filterValue;
+            }
+
+            setActiveQuickFilter(filterValue);
+            applyCatalogFilters();
+        });
+    });
+}
 async function refreshProductsUI() {
     catalogProducts = await fetchProducts();
 
