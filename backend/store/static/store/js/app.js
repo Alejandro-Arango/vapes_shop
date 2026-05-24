@@ -199,6 +199,32 @@ function clearOrdersFeedback() {
     feedback.style.display = "none";
 }
 
+/*
+ * Nombre: showCheckoutSuccess
+ * Descripcion: Muestra el modal de resumen cuando una compra se completa correctamente.
+ */
+function showCheckoutSuccess(data) {
+    const modal = document.getElementById("checkout-success-modal");
+    const orderEl = document.getElementById("checkout-success-order");
+    const totalEl = document.getElementById("checkout-success-total");
+
+    if (!modal) return;
+
+    const orderId = data?.order_id || "---";
+    const total = Number(data?.total_pagado || 0);
+
+    if (orderEl) {
+        orderEl.textContent = `#${orderId}`;
+    }
+
+    if (totalEl) {
+        totalEl.textContent = `$${total.toFixed(2)}`;
+    }
+
+    modal.setAttribute("aria-hidden", "false");
+    modal.classList.add("open");
+}
+
 // =============================================================================
 //  CONFIRMACION DE CANCELACION DE ORDEN
 // =============================================================================
@@ -1452,6 +1478,31 @@ productDetailClose?.addEventListener("click", () => {
     const ordersModal = document.getElementById("orders-modal");
     const ordersClose = document.getElementById("orders-close");
 
+    const checkoutSuccessModal = document.getElementById("checkout-success-modal");
+const checkoutSuccessClose = document.getElementById("checkout-success-close");
+const checkoutSuccessOrders = document.getElementById("checkout-success-orders");
+const checkoutSuccessContinue = document.getElementById("checkout-success-continue");
+
+checkoutSuccessClose?.addEventListener("click", () => {
+    closeModalSafely(checkoutSuccessModal, cartToggle);
+});
+
+checkoutSuccessContinue?.addEventListener("click", () => {
+    closeModalSafely(checkoutSuccessModal, cartToggle);
+
+    document
+        .getElementById("productos")
+        ?.scrollIntoView({
+            behavior: "smooth",
+        });
+});
+
+checkoutSuccessOrders?.addEventListener("click", () => {
+    closeModalSafely(checkoutSuccessModal, myOrdersBtn);
+
+    myOrdersBtn?.click();
+});
+
     myOrdersBtn?.addEventListener("click", async () => {
         ordersModal?.setAttribute("aria-hidden", "false");
         ordersModal?.classList.add("open");
@@ -1579,19 +1630,16 @@ productDetailClose?.addEventListener("click", () => {
 
             const okData = await res.json();
 
-            showCartFeedback(
-                okData?.message || "Compra realizada con exito",
-                "success"
-            );
-
-            showToast("Compra realizada con exito.", "success");
-
             localStorage.removeItem("cart");
 
             await updateCartUI();
             await refreshProductsUI();
 
             closeModalSafely(cartDrawer, cartToggle);
+
+            showCheckoutSuccess(okData);
+
+        howToast("Compra realizada con exito.", "success");
         } catch {
             showCartFeedback("Error en el pago. Intenta nuevamente.", "error");
         } finally {

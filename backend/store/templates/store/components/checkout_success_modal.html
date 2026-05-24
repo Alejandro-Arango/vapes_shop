@@ -1,0 +1,46 @@
+<!--
+Nombre: checkout_success_modal.html
+Descripcion: Componente modal que muestra el resumen visual de una compra realizada correctamente.
+-->
+
+<div id="checkout-success-modal" class="modal" aria-hidden="true">
+    <div class="modal-content checkout-success-content">
+        <button id="checkout-success-close" class="modal-close" aria-label="Cerrar resumen de compra">
+            &times;
+        </button>
+
+        <div class="checkout-success-body">
+            <div class="checkout-success-icon">
+                ✓
+            </div>
+
+            <h2>Compra realizada con éxito</h2>
+
+            <p class="muted">
+                Tu pedido fue creado correctamente. Puedes revisar el historial o seguir explorando productos.
+            </p>
+
+            <div class="checkout-success-summary">
+                <div>
+                    <span>Pedido</span>
+                    <strong id="checkout-success-order">#---</strong>
+                </div>
+
+                <div>
+                    <span>Total pagado</span>
+                    <strong id="checkout-success-total">$0.00</strong>
+                </div>
+            </div>
+
+            <div class="checkout-success-actions">
+                <button id="checkout-success-orders" class="btn" type="button">
+                    Ver mis pedidos
+                </button>
+
+                <button id="checkout-success-continue" class="btn btn-outline" type="button">
+                    Seguir comprando
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
