@@ -116,3 +116,17 @@ def api_cart_decrease(request):
         "ok": True,
         "cart": cart,
     })
+
+@api_view(["POST"])
+def api_cart_clear(request):
+    """
+    Nombre: api_cart_clear
+    Descripcion: Elimina todos los productos almacenados en el carrito de la sesion.
+    """
+    request.session["cart"] = {}
+    request.session.modified = True
+
+    return Response({
+        "ok": True,
+        "message": "Carrito vaciado correctamente",
+    })

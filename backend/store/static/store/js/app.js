@@ -22,6 +22,7 @@ const api = {
     cartRemove: "/api/cart/remove/",
     checkout: "/api/orders/checkout/",
     myOrders: "/api/orders/my/",
+    cartClear: "/api/cart/clear/",
 
     cancelOrder: (orderId) => `/api/orders/cancel/${orderId}/`,
 };
@@ -1070,6 +1071,45 @@ async function removeFromCart(productId) {
 }
 
 /*
+ * Nombre: clearCart
+ * Descripcion: Vacia completamente el carrito usando primero el backend y luego localStorage como respaldo.
+ */
+/*
+ * Nombre: clearCart
+ * Descripcion: Vacia completamente el carrito usando el endpoint del backend y actualiza la interfaz.
+ */
+async function clearCart() {
+    if (!api.cartClear) {
+        console.error("No existe api.cartClear en el objeto api.");
+        showCartFeedback("No se pudo vaciar el carrito. Falta configurar la ruta.", "error");
+        return;
+    }
+
+    try {
+        const res = await fetch(api.cartClear, {
+            method: "POST",
+            headers: csrfHeaders(),
+            credentials: "include",
+        });
+
+        if (!res.ok) {
+            console.error("clearCart fallo:", res.status, await res.text());
+            showCartFeedback("No se pudo vaciar el carrito.", "error");
+            return;
+        }
+
+        localStorage.removeItem("cart");
+
+        await updateCartUI();
+
+        showCartFeedback("Carrito vaciado correctamente.", "success");
+        showToast("Carrito vaciado correctamente.", "success");
+    } catch (err) {
+        console.warn("clearCart error de red:", err);
+        showCartFeedback("Error de red al vaciar el carrito.", "error");
+    }
+}
+/*
  * Nombre: updateCartUI
  * Descripcion: Actualiza productos, cantidades, botones, contador y total del carrito.
  */
@@ -1144,45 +1184,63 @@ async function updateCartUI() {
         return;
     }
 
-    itemsEl.innerHTML = items
-        .map((item) => {
-            const isMaxStock = Number(item.quantity) >= Number(item.product.stock || 0);
+itemsEl.innerHTML = items
+    .map((item) => {
+        const price = Number(item.product.price || 0);
+        const quantity = Number(item.quantity || 0);
+        const stock = Number(item.product.stock || 0);
+        const subtotal = price * quantity;
+        const isMaxStock = quantity >= stock;
 
-            return `
-                <div class="cart-item" data-id="${item.product.id}">
-                    <img
-                        src="${escapeHtml(item.product.image || "/static/store/img/placeholder.png")}"
-                        alt="${escapeHtml(item.product.name)}"
-                    />
+        const stockMessage = isMaxStock && stock > 0
+            ? `<p class="cart-stock-limit">Stock máximo alcanzado</p>`
+            : "";
 
-                    <div class="cart-item-info">
-                        <strong>${escapeHtml(item.product.name)}</strong>
-                        <small>$${Number(item.product.price).toFixed(2)} x ${item.quantity}</small>
-                    </div>
+        return `
+            <div class="cart-item" data-id="${item.product.id}">
+                <img
+                    src="${escapeHtml(item.product.image || "/static/store/img/placeholder.png")}"
+                    alt="${escapeHtml(item.product.name)}"
+                />
 
-                    <div class="cart-item-actions">
-                        <button class="btn small decrease-item" data-id="${item.product.id}">
-                            -
-                        </button>
+                <div class="cart-item-info">
+                    <strong>${escapeHtml(item.product.name)}</strong>
 
-                        <span class="cart-qty">${item.quantity}</span>
+                    <small>
+                        $${price.toFixed(2)} x ${quantity}
+                    </small>
 
-                        <button
-                            class="btn small increase-item"
-                            data-id="${item.product.id}"
-                            ${isMaxStock ? "disabled" : ""}
-                        >
-                            +
-                        </button>
+                    <span class="cart-line-subtotal">
+                        Subtotal: $${subtotal.toFixed(2)}
+                    </span>
 
-                        <button class="btn small remove-item" data-id="${item.product.id}">
-                            Eliminar
-                        </button>
-                    </div>
+                    ${stockMessage}
                 </div>
-            `;
-        })
-        .join("");
+
+                <div class="cart-item-actions">
+                    <button class="btn small decrease-item" data-id="${item.product.id}">
+                        -
+                    </button>
+
+                    <span class="cart-qty">${quantity}</span>
+
+                    <button
+                        class="btn small increase-item"
+                        data-id="${item.product.id}"
+                        ${isMaxStock ? "disabled" : ""}
+                        title="${isMaxStock ? "Stock máximo alcanzado" : "Agregar una unidad"}"
+                    >
+                        +
+                    </button>
+
+                    <button class="btn small remove-item" data-id="${item.product.id}">
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+        `;
+    })
+    .join("");
 
     document.querySelectorAll(".remove-item").forEach((btn) => {
         btn.addEventListener("click", () => removeFromCart(Number(btn.dataset.id)));
@@ -1245,6 +1303,24 @@ await updateCartUI();
     cartClose?.addEventListener("click", () => {
         closeModalSafely(cartDrawer, cartToggle);
     });
+
+    const continueShoppingBtn = document.getElementById("continue-shopping-btn");
+const clearCartBtn = document.getElementById("clear-cart-btn");
+
+continueShoppingBtn?.addEventListener("click", () => {
+    closeModalSafely(cartDrawer, cartToggle);
+
+    document
+        .getElementById("productos")
+        ?.scrollIntoView({
+            behavior: "smooth",
+        });
+});
+
+clearCartBtn?.addEventListener("click", async () => {
+    await clearCart();
+});
+
     const productDetailModal = document.getElementById("product-detail-modal");
 const productDetailClose = document.getElementById("product-detail-close");
 
