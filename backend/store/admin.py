@@ -79,14 +79,15 @@ class OrderAdmin(admin.ModelAdmin):
     """
 
     list_display = (
-        "id",
-        "get_user",
-        "customer",
-        "date_ordered",
-        "status",
-        "completed",
-        "get_total_order",
-    )
+    "id",
+    "get_user",
+    "customer",
+    "shipping_city",
+    "date_ordered",
+    "status",
+    "completed",
+    "get_total_order",
+)
 
     list_filter = (
         "status",
@@ -95,16 +96,45 @@ class OrderAdmin(admin.ModelAdmin):
     )
 
     search_fields = (
-        "customer__user__username",
-        "customer__user__email",
-        "customer__email",
-        "customer__first_name",
-        "customer__last_name",
-    )
+    "customer__user__username",
+    "customer__user__email",
+    "customer__email",
+    "customer__first_name",
+    "customer__last_name",
+    "shipping_name",
+    "shipping_phone",
+    "shipping_address",
+    "shipping_city",
+)
 
     ordering = ("-date_ordered",)
 
     inlines = [OrderItemInline]
+
+    fieldsets = (
+    (
+        "Informacion general",
+        {
+            "fields": (
+                "customer",
+                "status",
+                "completed",
+            )
+        },
+    ),
+    (
+        "Datos de envio",
+        {
+            "fields": (
+                "shipping_name",
+                "shipping_phone",
+                "shipping_address",
+                "shipping_city",
+                "shipping_notes",
+            )
+        },
+    ),
+)
 
     def get_user(self, obj):
         return obj.customer.user.username if obj.customer and obj.customer.user else "-"

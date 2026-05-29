@@ -78,9 +78,14 @@ class Order(models.Model):
         default="pendiente"
     )
 
+    shipping_name = models.CharField(max_length=150, blank=True, null=True)
+    shipping_phone = models.CharField(max_length=30, blank=True, null=True)
+    shipping_address = models.CharField(max_length=200, blank=True, null=True)
+    shipping_city = models.CharField(max_length=100, blank=True, null=True)
+    shipping_notes = models.TextField(blank=True, null=True)
+
     def __str__(self):
         return f"Orden #{self.id} - {self.customer}"
-
 
 class OrderItem(models.Model):
     """

@@ -18,6 +18,70 @@ Descripcion: Componente lateral que muestra los productos agregados al carrito, 
 
     <div id="cart-feedback" class="cart-feedback" style="display: none;"></div>
 
+    <section class="shipping-form">
+    <h4>Datos de envío</h4>
+
+    <p class="muted">
+        Completa la información necesaria para procesar tu pedido.
+    </p>
+
+    <div class="shipping-grid">
+        <div class="shipping-field">
+            <label for="shipping-name">Nombre completo</label>
+
+            <input
+                id="shipping-name"
+                type="text"
+                placeholder="Nombre completo"
+                autocomplete="name"
+            />
+        </div>
+
+        <div class="shipping-field">
+            <label for="shipping-phone">Teléfono</label>
+
+            <input
+                id="shipping-phone"
+                type="tel"
+                placeholder="Número de contacto"
+                autocomplete="tel"
+            />
+        </div>
+
+        <div class="shipping-field">
+            <label for="shipping-address">Dirección</label>
+
+            <input
+                id="shipping-address"
+                type="text"
+                placeholder="Dirección de entrega"
+                autocomplete="street-address"
+            />
+        </div>
+
+        <div class="shipping-field">
+            <label for="shipping-city">Ciudad</label>
+
+            <input
+                id="shipping-city"
+                type="text"
+                placeholder="Ciudad"
+                autocomplete="address-level2"
+            />
+        </div>
+
+        <div class="shipping-field shipping-field-full">
+            <label for="shipping-notes">Notas del pedido</label>
+
+            <textarea
+                id="shipping-notes"
+                placeholder="Indicaciones adicionales"
+                rows="3"
+            ></textarea>
+        </div>
+    </div>
+</section>
+
     <footer class="cart-footer">
         <div class="cart-total">
             Total: <strong id="cart-total">$0.00</strong>

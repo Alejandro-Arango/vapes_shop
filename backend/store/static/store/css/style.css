@@ -2004,3 +2004,157 @@ body.light-mode .checkout-success-summary strong {
         width: 100%;
     }
 }
+
+/*
+ * Nombre: Formulario de datos de envio
+ * Descripcion: Define la presentacion visual de los campos de envio dentro del carrito.
+ */
+.shipping-form {
+    margin: 14px 0;
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.shipping-form h4 {
+    margin-bottom: 6px;
+    font-size: 16px;
+}
+
+.shipping-form .muted {
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.shipping-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.shipping-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.shipping-field label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted-dark);
+}
+
+.shipping-field input,
+.shipping-field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+}
+
+.shipping-field textarea {
+    resize: vertical;
+    min-height: 76px;
+}
+
+.shipping-field input::placeholder,
+.shipping-field textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.shipping-field input:focus,
+.shipping-field textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255, 90, 44, 0.14);
+}
+
+body.light-mode .shipping-form {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .shipping-form h4 {
+    color: #222;
+}
+
+body.light-mode .shipping-field label {
+    color: var(--muted-light);
+}
+
+body.light-mode .shipping-field input,
+body.light-mode .shipping-field textarea {
+    background: #fff;
+    color: #222;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .shipping-field input::placeholder,
+body.light-mode .shipping-field textarea::placeholder {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * Nombre: Datos de envio en pedidos
+ * Descripcion: Define el diseño visual de la informacion de envio dentro del historial de pedidos.
+ */
+.order-shipping {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.order-shipping h4 {
+    margin-bottom: 10px;
+    font-size: 15px;
+    color: #fff;
+}
+
+.order-shipping-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 14px;
+}
+
+.order-shipping-grid p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--muted-dark);
+}
+
+.order-shipping-grid strong {
+    color: #fff;
+}
+
+.order-shipping-notes {
+    grid-column: 1 / -1;
+}
+
+body.light-mode .order-shipping {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .order-shipping h4,
+body.light-mode .order-shipping-grid strong {
+    color: #222;
+}
+
+body.light-mode .order-shipping-grid p {
+    color: var(--muted-light);
+}
+
+@media (max-width: 560px) {
+    .order-shipping-grid {
+        grid-template-columns: 1fr;
+    }
+}

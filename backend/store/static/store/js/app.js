@@ -438,6 +438,64 @@ async function cancelOrder(orderId) {
 }
 
 /*
+ * Nombre: renderShippingInfo
+ * Descripcion: Genera el bloque visual con los datos de envio asociados a una orden.
+ */
+function renderShippingInfo(order) {
+    const shipping = order.shipping || {};
+
+    const hasShippingData =
+        shipping.name ||
+        shipping.phone ||
+        shipping.address ||
+        shipping.city ||
+        shipping.notes;
+
+    if (!hasShippingData) {
+        return "";
+    }
+
+    return `
+        <div class="order-shipping">
+            <h4>Datos de envío</h4>
+
+            <div class="order-shipping-grid">
+                <p>
+                    <strong>Nombre:</strong>
+                    ${escapeHtml(shipping.name || "No registrado")}
+                </p>
+
+                <p>
+                    <strong>Teléfono:</strong>
+                    ${escapeHtml(shipping.phone || "No registrado")}
+                </p>
+
+                <p>
+                    <strong>Dirección:</strong>
+                    ${escapeHtml(shipping.address || "No registrada")}
+                </p>
+
+                <p>
+                    <strong>Ciudad:</strong>
+                    ${escapeHtml(shipping.city || "No registrada")}
+                </p>
+
+                ${
+                    shipping.notes
+                        ? `
+                            <p class="order-shipping-notes">
+                                <strong>Notas:</strong>
+                                ${escapeHtml(shipping.notes)}
+                            </p>
+                        `
+                        : ""
+                }
+            </div>
+        </div>
+    `;
+}
+
+/*
  * Nombre: renderMyOrders
  * Descripcion: Renderiza el historial de pedidos, estados, productos, totales y acciones disponibles.
  */
@@ -540,6 +598,8 @@ function renderMyOrders(data) {
                     <div class="order-items">
                         ${itemsHtml}
                     </div>
+
+                    ${renderShippingInfo(order)}
 
                     <div class="order-total" style="margin-top: 10px;">
                         <span>Total</span>
@@ -1126,8 +1186,9 @@ async function clearCart() {
 
         localStorage.removeItem("cart");
 
-        await updateCartUI();
+        clearShippingForm();
 
+    await updateCartUI();
         showCartFeedback("Carrito vaciado correctamente.", "success");
         showToast("Carrito vaciado correctamente.", "success");
     } catch (err) {
@@ -1575,76 +1636,151 @@ checkoutSuccessOrders?.addEventListener("click", () => {
         }
     });
 
-    const checkoutBtn = document.getElementById("checkout-btn");
+})
 
-    checkoutBtn?.addEventListener("click", async () => {
-        const originalText = checkoutBtn.textContent;
+/*
+ * Nombre: getShippingFormData
+ * Descripcion: Obtiene y valida los datos de envio escritos por el usuario en el carrito.
+ */
+function getShippingFormData() {
+    const shippingName = document.getElementById("shipping-name")?.value.trim() || "";
+    const shippingPhone = document.getElementById("shipping-phone")?.value.trim() || "";
+    const shippingAddress = document.getElementById("shipping-address")?.value.trim() || "";
+    const shippingCity = document.getElementById("shipping-city")?.value.trim() || "";
+    const shippingNotes = document.getElementById("shipping-notes")?.value.trim() || "";
 
-        const serverCart = await getServerCart();
-        const localCart = getLocalCart();
+    if (!shippingName || !shippingPhone || !shippingAddress || !shippingCity) {
+        showCartFeedback("Completa nombre, telefono, direccion y ciudad.", "error");
+        showToast("Faltan datos de envio.", "error");
 
-        const hasServerItems =
-            serverCart &&
-            Array.isArray(serverCart.items) &&
-            serverCart.items.length > 0;
+        return null;
+    }
 
-        const hasLocalItems =
-            localCart &&
-            Object.keys(localCart).length > 0;
+    return {
+        shippingName,
+        shippingPhone,
+        shippingAddress,
+        shippingCity,
+        shippingNotes,
+    };
+}
 
-        if (!hasServerItems && !hasLocalItems) {
-            showCartFeedback("Tu carrito esta vacio.", "error");
+/*
+ * Nombre: clearShippingForm
+ * Descripcion: Limpia los campos del formulario de datos de envio del carrito.
+ */
+function clearShippingForm() {
+    const shippingName = document.getElementById("shipping-name");
+    const shippingPhone = document.getElementById("shipping-phone");
+    const shippingAddress = document.getElementById("shipping-address");
+    const shippingCity = document.getElementById("shipping-city");
+    const shippingNotes = document.getElementById("shipping-notes");
+
+    if (shippingName) shippingName.value = "";
+    if (shippingPhone) shippingPhone.value = "";
+    if (shippingAddress) shippingAddress.value = "";
+    if (shippingCity) shippingCity.value = "";
+    if (shippingNotes) shippingNotes.value = "";
+}
+
+const checkoutBtn = document.getElementById("checkout-btn");
+
+checkoutBtn?.addEventListener("click", async () => {
+    const originalText = checkoutBtn.textContent;
+
+    const serverCart = await getServerCart();
+    const localCart = getLocalCart();
+
+    const hasServerItems =
+        serverCart &&
+        Array.isArray(serverCart.items) &&
+        serverCart.items.length > 0;
+
+    const hasLocalItems =
+        localCart &&
+        Object.keys(localCart).length > 0;
+
+    if (!hasServerItems && !hasLocalItems) {
+        showCartFeedback("Tu carrito esta vacio.", "error");
+        return;
+    }
+
+    const shippingData = getShippingFormData();
+
+    if (!shippingData) {
+        return;
+    }
+
+    checkoutBtn.disabled = true;
+    checkoutBtn.textContent = "Procesando...";
+
+    let okData = null;
+
+    try {
+        const res = await fetch(api.checkout, {
+            method: "POST",
+            headers: csrfHeaders(),
+            credentials: "include",
+            body: JSON.stringify(shippingData),
+        });
+
+        if (!res.ok) {
+            let msg = "Error en el pago. Intenta nuevamente.";
+
+            try {
+                const data = await res.json();
+
+                msg = data?.error || data?.detail || data?.message || msg;
+            } catch {
+                // Se conserva el mensaje por defecto.
+            }
+
+            if (res.status === 401 || res.status === 403) {
+                msg = "Inicia sesion para pagar";
+                btnOpenAuth?.click();
+            }
+
+            showCartFeedback(msg, "error");
             return;
         }
 
-        try {
-            checkoutBtn.disabled = true;
-            checkoutBtn.textContent = "Procesando...";
+        okData = await res.json();
+    } catch (err) {
+        console.warn("checkout error:", err);
+        showCartFeedback("No se pudo conectar con el servidor.", "error");
+        return;
+    } finally {
+        checkoutBtn.disabled = false;
+        checkoutBtn.textContent = originalText;
+    }
 
-            const res = await fetch(api.checkout, {
-                method: "POST",
-                headers: csrfHeaders(),
-                credentials: "include",
-            });
+    localStorage.removeItem("cart");
 
-            if (!res.ok) {
-                let msg = "Error en el pago. Intenta nuevamente.";
+    clearShippingForm();
 
-                try {
-                    const data = await res.json();
+    try {
+        await updateCartUI();
+    } catch (err) {
+        console.warn("Error actualizando carrito despues del checkout:", err);
+    }
 
-                    msg = data?.error || data?.detail || data?.message || msg;
-                } catch {
-                    // Se conserva el mensaje por defecto.
-                }
+    try {
+        await refreshProductsUI();
+    } catch (err) {
+        console.warn("Error actualizando productos despues del checkout:", err);
+    }
 
-                if (res.status === 401 || res.status === 403) {
-                    msg = "Inicia sesion para pagar";
-                    btnOpenAuth?.click();
-                }
+    try {
+        closeModalSafely(cartDrawer, cartToggle);
+    } catch (err) {
+        console.warn("Error cerrando carrito despues del checkout:", err);
+    }
 
-                showCartFeedback(msg, "error");
+    if (typeof showCheckoutSuccess === "function") {
+        showCheckoutSuccess(okData);
+    } else {
+        showCartFeedback("Compra realizada con exito.", "success");
+    }
 
-                return;
-            }
-
-            const okData = await res.json();
-
-            localStorage.removeItem("cart");
-
-            await updateCartUI();
-            await refreshProductsUI();
-
-            closeModalSafely(cartDrawer, cartToggle);
-
-            showCheckoutSuccess(okData);
-
-        howToast("Compra realizada con exito.", "success");
-        } catch {
-            showCartFeedback("Error en el pago. Intenta nuevamente.", "error");
-        } finally {
-            checkoutBtn.disabled = false;
-            checkoutBtn.textContent = originalText;
-        }
-    });
+    showToast("Compra realizada con exito.", "success");
 });
