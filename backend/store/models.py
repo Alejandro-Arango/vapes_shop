@@ -68,6 +68,7 @@ class Order(models.Model):
         ("enviado", "Enviado"),
         ("entregado", "Entregado"),
     ]
+    CANCELLABLE_STATUSES = {"pendiente", "pagado"}
 
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     date_ordered = models.DateTimeField(auto_now_add=True)
@@ -86,6 +87,48 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Orden #{self.id} - {self.customer}"
+
+    def can_be_cancelled(self):
+        """
+        Nombre: can_be_cancelled
+        Descripcion: Indica si la orden puede cancelarse sin romper el flujo de compra.
+        Retorna: True si el estado permite cancelacion, false en caso contrario.
+        """
+        return self.status in self.CANCELLABLE_STATUSES
+
+    def should_restore_stock_on_cancel(self):
+        """
+        Nombre: should_restore_stock_on_cancel
+        Descripcion: Indica si al cancelar se debe devolver inventario descontado.
+        Retorna: True si la orden ya afecto inventario, false en caso contrario.
+        """
+        return self.completed or self.status == "pagado"
+
+    def restore_items_stock(self):
+        """
+        Nombre: restore_items_stock
+        Descripcion: Devuelve al inventario las unidades asociadas a los items de la orden.
+        """
+        items = list(self.orderitem_set.all())
+        product_ids = [item.product_id for item in items]
+
+        locked_products = Product.objects.select_for_update().filter(
+            id__in=product_ids
+        )
+        product_map = {
+            product.id: product
+            for product in locked_products
+        }
+
+        for item in items:
+            product = product_map.get(item.product_id)
+
+            if not product:
+                continue
+
+            product.stock += item.quantity
+            product.save(update_fields=["stock"])
+
 
 class OrderItem(models.Model):
     """

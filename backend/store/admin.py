@@ -5,6 +5,7 @@ Dependencias: Django admin y modelos Customer, Product, Order y OrderItem
 """
 
 from django.contrib import admin
+from django.db import transaction
 
 from .models import Customer, Product, Order, OrderItem
 
@@ -241,14 +242,32 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar ordenes seleccionadas como canceladas")
     def mark_as_cancelled(self, request, queryset):
-        updated = queryset.update(
-            status="cancelado",
-            completed=False
-        )
+        updated = 0
+        skipped = 0
+
+        with transaction.atomic():
+            orders = (
+                queryset
+                .select_for_update()
+                .prefetch_related("orderitem_set__product")
+            )
+
+            for order in orders:
+                if not order.can_be_cancelled():
+                    skipped += 1
+                    continue
+
+                if order.should_restore_stock_on_cancel():
+                    order.restore_items_stock()
+
+                order.status = "cancelado"
+                order.completed = False
+                order.save(update_fields=["status", "completed"])
+                updated += 1
 
         self.message_user(
             request,
-            f"{updated} orden(es) marcadas como canceladas."
+            f"{updated} orden(es) canceladas. {skipped} omitida(s) por estado no cancelable."
         )
 
 @admin.register(OrderItem)

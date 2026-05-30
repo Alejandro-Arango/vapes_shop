@@ -4,8 +4,6 @@
  * Dependencias: Django templates, endpoints REST del backend, localStorage, DOM API, Fetch API, style.css
  */
 
-console.log("APP CARGADO - CHECKOUT FASE 7 CORREGIDO");
-
 // =============================================================================
 //  ENDPOINTS DE LA API
 // =============================================================================
@@ -858,7 +856,7 @@ function renderProductDetail(product) {
         <div class="product-detail-grid">
             <div class="product-detail-image">
                 <img
-                    src="${escapeHtml(product.image) || "/static/store/img/placeholder.png"}"
+                    src="${escapeHtml(product.image) || "/static/store/img/STLTH.webp"}"
                     alt="${escapeHtml(product.name)}"
                 />
             </div>
@@ -1007,7 +1005,7 @@ function renderProducts(products, options = {}) {
             return `
                 <article class="product-card product-card-clickable" data-id="${product.id}" tabindex="0">
                     <img
-                        src="${escapeHtml(product.image) || "/static/store/img/placeholder.png"}"
+                        src="${escapeHtml(product.image) || "/static/store/img/STLTH.webp"}"
                         alt="${escapeHtml(product.name)}"
                     />
 
@@ -1386,7 +1384,7 @@ async function updateCartUI() {
                     id,
                     name: "Producto",
                     price: 0,
-                    image: "/static/store/img/placeholder.png",
+                    image: "/static/store/img/STLTH.webp",
                 };
 
                 return { product, quantity: local[id] };
@@ -1449,7 +1447,7 @@ async function updateCartUI() {
             return `
                 <div class="cart-item" data-id="${item.product.id}">
                     <img
-                        src="${escapeHtml(item.product.image || "/static/store/img/placeholder.png")}"
+                        src="${escapeHtml(item.product.image || "/static/store/img/STLTH.webp")}"
                         alt="${escapeHtml(item.product.name)}"
                     />
 

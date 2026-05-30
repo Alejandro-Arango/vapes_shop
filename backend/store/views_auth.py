@@ -85,7 +85,11 @@ def login_view(request):
     Nombre: login_view
     Descripcion: Inicia sesion usando nombre de usuario o correo electronico.
     """
-    email_or_username = request.data.get("email") or request.data.get("username")
+    email_or_username = (
+        request.data.get("email")
+        or request.data.get("username")
+        or ""
+    ).strip()
     password = request.data.get("password")
 
     if not email_or_username or not password:
@@ -102,7 +106,12 @@ def login_view(request):
 
     if user is None:
         try:
-            user_obj = User.objects.get(email=email_or_username)
+            user_obj = User.objects.filter(
+                email__iexact=email_or_username
+            ).first()
+
+            if user_obj is None:
+                raise User.DoesNotExist
 
             user = authenticate(
                 request,

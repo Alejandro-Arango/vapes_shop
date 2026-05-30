@@ -7,6 +7,8 @@ Dependencias: os, pathlib, Django, WhiteNoise, Django REST Framework y aplicacio
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -15,14 +17,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # CONFIGURACION GENERAL
 # =============================================================================
 
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    'django-insecure-+j0#xw2)7mu_=oc0k*xr50e3a%kq2)@a!z$-*p*#sg6*0$k%ze'
+DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
 )
 
-DEBUG = True
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
-ALLOWED_HOSTS = []
+if not SECRET_KEY and DEBUG:
+    SECRET_KEY = 'django-insecure-+j0#xw2)7mu_=oc0k*xr50e3a%kq2)@a!z$-*p*#sg6*0$k%ze'
+
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY debe estar configurada cuando DJANGO_DEBUG=False."
+    )
+
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+]
+
+if not DEBUG and not ALLOWED_HOSTS:
+    raise ImproperlyConfigured(
+        "DJANGO_ALLOWED_HOSTS debe estar configurado cuando DJANGO_DEBUG=False."
+    )
 
 
 # =============================================================================

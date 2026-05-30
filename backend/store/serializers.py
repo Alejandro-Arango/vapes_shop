@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 
 from rest_framework import serializers
 
-from .models import Product
+from .models import Customer, Product
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -33,6 +33,38 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("username", "email", "password")
+
+    def validate_username(self, value):
+        """
+        Nombre: validate_username
+        Descripcion: Normaliza el nombre de usuario antes de crear la cuenta.
+        Retorna: Nombre de usuario sin espacios externos.
+        """
+        username = value.strip()
+
+        if not username:
+            raise serializers.ValidationError("El nombre de usuario es obligatorio.")
+
+        return username
+
+    def validate_email(self, value):
+        """
+        Nombre: validate_email
+        Descripcion: Valida que el correo no exista en usuarios ni clientes.
+        Retorna: Correo normalizado en minusculas.
+        """
+        email = value.strip().lower()
+
+        if not email:
+            raise serializers.ValidationError("El correo es obligatorio.")
+
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError("Este correo ya esta registrado.")
+
+        if Customer.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError("Este correo ya esta asociado a un cliente.")
+
+        return email
 
     def create(self, validated_data):
         """

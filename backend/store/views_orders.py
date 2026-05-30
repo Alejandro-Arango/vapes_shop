@@ -333,29 +333,34 @@ def cancel_order(request, order_id):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    try:
-        order = (
-            Order.objects
-            .prefetch_related("orderitem_set__product")
-            .get(id=order_id, customer=customer)
-        )
-    except Order.DoesNotExist:
-        return Response(
-            {"error": "Orden no encontrada"},
-            status=status.HTTP_404_NOT_FOUND
-        )
-
-    if order.status == "cancelado":
-        return Response(
-            {"error": "La orden ya esta cancelada"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
     with transaction.atomic():
-        for item in order.orderitem_set.all():
-            product = item.product
-            product.stock += item.quantity
-            product.save(update_fields=["stock"])
+        try:
+            order = (
+                Order.objects
+                .select_for_update()
+                .prefetch_related("orderitem_set__product")
+                .get(id=order_id, customer=customer)
+            )
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Orden no encontrada"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if order.status == "cancelado":
+            return Response(
+                {"error": "La orden ya esta cancelada"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not order.can_be_cancelled():
+            return Response(
+                {"error": "Solo puedes cancelar pedidos pendientes o pagados"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if order.should_restore_stock_on_cancel():
+            order.restore_items_stock()
 
         order.status = "cancelado"
         order.completed = False
