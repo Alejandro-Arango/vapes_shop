@@ -1,6 +1,6 @@
 <!--
 Nombre: cart_drawer.html
-Descripcion: Componente lateral que muestra los productos agregados al carrito, feedback, total y accion de pago.
+Descripcion: Componente lateral que muestra el carrito, datos de envio, confirmacion del pedido y acciones de checkout.
 -->
 
 <aside id="cart-drawer" class="cart-drawer" aria-hidden="true">
@@ -12,75 +12,115 @@ Descripcion: Componente lateral que muestra los productos agregados al carrito, 
         </button>
     </header>
 
-    <div id="cart-items" class="cart-items">
-        <!-- Contenido generado dinamicamente desde app.js -->
+    <div class="checkout-steps" aria-label="Pasos del checkout">
+        <button class="checkout-step-indicator active" type="button" data-step="cart">
+            1. Resumen
+        </button>
+
+        <button class="checkout-step-indicator" type="button" data-step="shipping">
+            2. Envío
+        </button>
+
+        <button class="checkout-step-indicator" type="button" data-step="confirm">
+            3. Confirmar
+        </button>
     </div>
 
     <div id="cart-feedback" class="cart-feedback" style="display: none;"></div>
 
-    <section class="shipping-form">
-    <h4>Datos de envío</h4>
+    <section id="checkout-step-cart" class="checkout-step-panel active">
+        <div class="checkout-step-title">
+            <h4>Resumen del carrito</h4>
 
-    <p class="muted">
-        Completa la información necesaria para procesar tu pedido.
-    </p>
-
-    <div class="shipping-grid">
-        <div class="shipping-field">
-            <label for="shipping-name">Nombre completo</label>
-
-            <input
-                id="shipping-name"
-                type="text"
-                placeholder="Nombre completo"
-                autocomplete="name"
-            />
+            <p class="muted">
+                Revisa los productos antes de continuar.
+            </p>
         </div>
 
-        <div class="shipping-field">
-            <label for="shipping-phone">Teléfono</label>
-
-            <input
-                id="shipping-phone"
-                type="tel"
-                placeholder="Número de contacto"
-                autocomplete="tel"
-            />
+        <div id="cart-items" class="cart-items">
+            <!-- Contenido generado dinamicamente desde app.js -->
         </div>
+    </section>
 
-        <div class="shipping-field">
-            <label for="shipping-address">Dirección</label>
+    <section id="checkout-step-shipping" class="checkout-step-panel">
+        <section class="shipping-form">
+            <h4>Datos de envío</h4>
 
-            <input
-                id="shipping-address"
-                type="text"
-                placeholder="Dirección de entrega"
-                autocomplete="street-address"
-            />
+            <p class="muted">
+                Completa la información necesaria para procesar tu pedido.
+            </p>
+
+            <div class="shipping-grid">
+                <div class="shipping-field">
+                    <label for="shipping-name">Nombre completo</label>
+
+                    <input
+                        id="shipping-name"
+                        type="text"
+                        placeholder="Nombre completo"
+                        autocomplete="name"
+                    />
+                </div>
+
+                <div class="shipping-field">
+                    <label for="shipping-phone">Teléfono</label>
+
+                    <input
+                        id="shipping-phone"
+                        type="tel"
+                        placeholder="Número de contacto"
+                        autocomplete="tel"
+                    />
+                </div>
+
+                <div class="shipping-field">
+                    <label for="shipping-address">Dirección</label>
+
+                    <input
+                        id="shipping-address"
+                        type="text"
+                        placeholder="Dirección de entrega"
+                        autocomplete="street-address"
+                    />
+                </div>
+
+                <div class="shipping-field">
+                    <label for="shipping-city">Ciudad</label>
+
+                    <input
+                        id="shipping-city"
+                        type="text"
+                        placeholder="Ciudad"
+                        autocomplete="address-level2"
+                    />
+                </div>
+
+                <div class="shipping-field shipping-field-full">
+                    <label for="shipping-notes">Notas del pedido</label>
+
+                    <textarea
+                        id="shipping-notes"
+                        placeholder="Indicaciones adicionales"
+                        rows="3"
+                    ></textarea>
+                </div>
+            </div>
+        </section>
+    </section>
+
+    <section id="checkout-step-confirm" class="checkout-step-panel">
+        <div class="checkout-confirm-box">
+            <h4>Confirmación del pedido</h4>
+
+            <p class="muted">
+                Verifica que los productos y los datos de envío sean correctos antes de pagar.
+            </p>
+
+            <div id="checkout-confirm-summary" class="checkout-confirm-summary">
+                <p class="muted">El resumen se generará automáticamente.</p>
+            </div>
         </div>
-
-        <div class="shipping-field">
-            <label for="shipping-city">Ciudad</label>
-
-            <input
-                id="shipping-city"
-                type="text"
-                placeholder="Ciudad"
-                autocomplete="address-level2"
-            />
-        </div>
-
-        <div class="shipping-field shipping-field-full">
-            <label for="shipping-notes">Notas del pedido</label>
-
-            <textarea
-                id="shipping-notes"
-                placeholder="Indicaciones adicionales"
-                rows="3"
-            ></textarea>
-        </div>
-    </div>
-</section>
+    </section>
 
     <footer class="cart-footer">
         <div class="cart-total">
@@ -88,17 +128,25 @@ Descripcion: Componente lateral que muestra los productos agregados al carrito, 
         </div>
 
         <div class="cart-actions">
-    <button id="continue-shopping-btn" class="btn btn-outline" type="button">
-        Seguir comprando
-    </button>
+            <button id="continue-shopping-btn" class="btn btn-outline" type="button">
+                Seguir comprando
+            </button>
 
-    <button id="clear-cart-btn" class="btn btn-outline" type="button">
-        Vaciar carrito
-    </button>
+            <button id="clear-cart-btn" class="btn btn-outline" type="button">
+                Vaciar carrito
+            </button>
 
-    <button id="checkout-btn" class="btn" type="button">
-        Pagar
-    </button>
-    </div>
+            <button id="checkout-prev-btn" class="btn btn-outline" type="button" style="display: none;">
+                Volver
+            </button>
+
+            <button id="checkout-next-btn" class="btn" type="button">
+                Continuar
+            </button>
+
+            <button id="checkout-btn" class="btn" type="button" style="display: none;">
+                Confirmar pedido
+            </button>
+        </div>
     </footer>
 </aside>

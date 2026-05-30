@@ -2158,3 +2158,151 @@ body.light-mode .order-shipping-grid p {
         grid-template-columns: 1fr;
     }
 }
+
+/*
+ * Nombre: Checkout por pasos
+ * Descripcion: Organiza visualmente los pasos de resumen, envio y confirmacion dentro del carrito.
+ */
+.checkout-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 10px 0 14px;
+}
+
+.checkout-step-indicator {
+    padding: 8px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted-dark);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.checkout-step-indicator.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.checkout-step-panel {
+    display: none;
+}
+
+.checkout-step-panel.active {
+    display: block;
+}
+
+.checkout-step-title {
+    margin-bottom: 12px;
+}
+
+.checkout-step-title h4,
+.checkout-confirm-box h4 {
+    margin-bottom: 6px;
+    font-size: 16px;
+}
+
+.checkout-confirm-box {
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.checkout-confirm-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.checkout-confirm-section {
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.checkout-confirm-section h5 {
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #fff;
+}
+
+.checkout-confirm-section p {
+    margin: 6px 0;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.checkout-confirm-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.checkout-confirm-item:last-child {
+    border-bottom: none;
+}
+
+.checkout-confirm-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 90, 44, 0.12);
+    border: 1px solid rgba(255, 90, 44, 0.25);
+}
+
+.checkout-confirm-total strong {
+    color: var(--accent);
+}
+
+.cart-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding-top: 12px;
+    background: inherit;
+}
+
+body.light-mode .checkout-step-indicator {
+    background: #fff;
+    color: var(--muted-light);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .checkout-step-indicator.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+body.light-mode .checkout-confirm-box,
+body.light-mode .checkout-confirm-section {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .checkout-confirm-section h5 {
+    color: #222;
+}
+
+body.light-mode .checkout-confirm-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 430px) {
+    .checkout-step-indicator {
+        font-size: 11px;
+        padding: 7px 4px;
+    }
+}

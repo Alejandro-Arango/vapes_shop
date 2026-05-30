@@ -4,7 +4,7 @@
  * Dependencias: Django templates, endpoints REST del backend, localStorage, DOM API, Fetch API, style.css
  */
 
-console.log("APP CARGADO");
+console.log("APP CARGADO - CHECKOUT FASE 7 CORREGIDO");
 
 // =============================================================================
 //  ENDPOINTS DE LA API
@@ -20,9 +20,9 @@ const api = {
     cartAdd: "/api/cart/add/",
     cartDecrease: "/api/cart/decrease/",
     cartRemove: "/api/cart/remove/",
+    cartClear: "/api/cart/clear/",
     checkout: "/api/orders/checkout/",
     myOrders: "/api/orders/my/",
-    cartClear: "/api/cart/clear/",
 
     cancelOrder: (orderId) => `/api/orders/cancel/${orderId}/`,
 };
@@ -389,6 +389,9 @@ async function logoutUser() {
     clearOrdersFeedback();
     hideOrderCancelConfirm();
 
+    clearShippingForm();
+    resetCheckoutSummary();
+
     await updateCartUI();
     await refreshProductsUI();
 }
@@ -480,16 +483,15 @@ function renderShippingInfo(order) {
                     ${escapeHtml(shipping.city || "No registrada")}
                 </p>
 
-                ${
-                    shipping.notes
-                        ? `
+                ${shipping.notes
+            ? `
                             <p class="order-shipping-notes">
                                 <strong>Notas:</strong>
                                 ${escapeHtml(shipping.notes)}
                             </p>
                         `
-                        : ""
-                }
+            : ""
+        }
             </div>
         </div>
     `;
@@ -869,26 +871,26 @@ function renderProducts(products, options = {}) {
         .join("");
 
     document.querySelectorAll(".product-card-clickable").forEach((card) => {
-    card.addEventListener("click", (event) => {
-        if (event.target.closest(".add-to-cart")) return;
+        card.addEventListener("click", (event) => {
+            if (event.target.closest(".add-to-cart")) return;
 
-        openProductDetail(Number(card.dataset.id));
+            openProductDetail(Number(card.dataset.id));
+        });
+
+        card.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+
+            openProductDetail(Number(card.dataset.id));
+        });
     });
 
-    card.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter") return;
+    document.querySelectorAll(".add-to-cart").forEach((btn) => {
+        btn.addEventListener("click", (event) => {
+            event.stopPropagation();
 
-        openProductDetail(Number(card.dataset.id));
+            addToCart(Number(btn.dataset.id), 1);
+        });
     });
-});
-
-document.querySelectorAll(".add-to-cart").forEach((btn) => {
-    btn.addEventListener("click", (event) => {
-        event.stopPropagation();
-
-        addToCart(Number(btn.dataset.id), 1);
-    });
-});
 }
 
 /*
@@ -1033,6 +1035,7 @@ function initCatalogControls() {
         });
     });
 }
+
 async function refreshProductsUI() {
     catalogProducts = await fetchProducts();
 
@@ -1158,10 +1161,6 @@ async function removeFromCart(productId) {
 
 /*
  * Nombre: clearCart
- * Descripcion: Vacia completamente el carrito usando primero el backend y luego localStorage como respaldo.
- */
-/*
- * Nombre: clearCart
  * Descripcion: Vacia completamente el carrito usando el endpoint del backend y actualiza la interfaz.
  */
 async function clearCart() {
@@ -1187,8 +1186,10 @@ async function clearCart() {
         localStorage.removeItem("cart");
 
         clearShippingForm();
+        resetCheckoutSummary();
 
-    await updateCartUI();
+        await updateCartUI();
+
         showCartFeedback("Carrito vaciado correctamente.", "success");
         showToast("Carrito vaciado correctamente.", "success");
     } catch (err) {
@@ -1196,6 +1197,7 @@ async function clearCart() {
         showCartFeedback("Error de red al vaciar el carrito.", "error");
     }
 }
+
 /*
  * Nombre: updateCartUI
  * Descripcion: Actualiza productos, cantidades, botones, contador y total del carrito.
@@ -1268,77 +1270,85 @@ async function updateCartUI() {
         countEl.textContent = "0";
         totalEl.textContent = "$0.00";
 
+        resetCheckoutSummary();
+
         return;
     }
 
-itemsEl.innerHTML = items
-    .map((item) => {
-        const price = Number(item.product.price || 0);
-        const quantity = Number(item.quantity || 0);
-        const stock = Number(item.product.stock || 0);
-        const subtotal = price * quantity;
-        const isMaxStock = quantity >= stock;
+    itemsEl.innerHTML = items
+        .map((item) => {
+            const price = Number(item.product.price || 0);
+            const quantity = Number(item.quantity || 0);
+            const stock = Number(item.product.stock || 0);
+            const subtotal = price * quantity;
+            const isMaxStock = quantity >= stock;
 
-        const stockMessage = isMaxStock && stock > 0
-            ? `<p class="cart-stock-limit">Stock máximo alcanzado</p>`
-            : "";
+            const stockMessage = isMaxStock && stock > 0
+                ? `<p class="cart-stock-limit">Stock máximo alcanzado</p>`
+                : "";
 
-        return `
-            <div class="cart-item" data-id="${item.product.id}">
-                <img
-                    src="${escapeHtml(item.product.image || "/static/store/img/placeholder.png")}"
-                    alt="${escapeHtml(item.product.name)}"
-                />
+            return `
+                <div class="cart-item" data-id="${item.product.id}">
+                    <img
+                        src="${escapeHtml(item.product.image || "/static/store/img/placeholder.png")}"
+                        alt="${escapeHtml(item.product.name)}"
+                    />
 
-                <div class="cart-item-info">
-                    <strong>${escapeHtml(item.product.name)}</strong>
+                    <div class="cart-item-info">
+                        <strong>${escapeHtml(item.product.name)}</strong>
 
-                    <small>
-                        $${price.toFixed(2)} x ${quantity}
-                    </small>
+                        <small>
+                            $${price.toFixed(2)} x ${quantity}
+                        </small>
 
-                    <span class="cart-line-subtotal">
-                        Subtotal: $${subtotal.toFixed(2)}
-                    </span>
+                        <span class="cart-line-subtotal">
+                            Subtotal: $${subtotal.toFixed(2)}
+                        </span>
 
-                    ${stockMessage}
+                        ${stockMessage}
+                    </div>
+
+                    <div class="cart-item-actions">
+                        <button class="btn small decrease-item" data-id="${item.product.id}">
+                            -
+                        </button>
+
+                        <span class="cart-qty">${quantity}</span>
+
+                        <button
+                            class="btn small increase-item"
+                            data-id="${item.product.id}"
+                            ${isMaxStock ? "disabled" : ""}
+                            title="${isMaxStock ? "Stock máximo alcanzado" : "Agregar una unidad"}"
+                        >
+                            +
+                        </button>
+
+                        <button class="btn small remove-item" data-id="${item.product.id}">
+                            Eliminar
+                        </button>
+                    </div>
                 </div>
-
-                <div class="cart-item-actions">
-                    <button class="btn small decrease-item" data-id="${item.product.id}">
-                        -
-                    </button>
-
-                    <span class="cart-qty">${quantity}</span>
-
-                    <button
-                        class="btn small increase-item"
-                        data-id="${item.product.id}"
-                        ${isMaxStock ? "disabled" : ""}
-                        title="${isMaxStock ? "Stock máximo alcanzado" : "Agregar una unidad"}"
-                    >
-                        +
-                    </button>
-
-                    <button class="btn small remove-item" data-id="${item.product.id}">
-                        Eliminar
-                    </button>
-                </div>
-            </div>
-        `;
-    })
-    .join("");
+            `;
+        })
+        .join("");
 
     document.querySelectorAll(".remove-item").forEach((btn) => {
-        btn.addEventListener("click", () => removeFromCart(Number(btn.dataset.id)));
+        btn.addEventListener("click", async () => {
+            await removeFromCart(Number(btn.dataset.id));
+        });
     });
 
     document.querySelectorAll(".increase-item").forEach((btn) => {
-        btn.addEventListener("click", () => addToCart(Number(btn.dataset.id), 1));
+        btn.addEventListener("click", async () => {
+            await addToCart(Number(btn.dataset.id), 1);
+        });
     });
 
     document.querySelectorAll(".decrease-item").forEach((btn) => {
-        btn.addEventListener("click", () => decreaseCartItem(Number(btn.dataset.id)));
+        btn.addEventListener("click", async () => {
+            await decreaseCartItem(Number(btn.dataset.id));
+        });
     });
 
     const total = items.reduce(
@@ -1353,6 +1363,71 @@ itemsEl.innerHTML = items
 
     countEl.textContent = String(count);
     totalEl.textContent = `$${total.toFixed(2)}`;
+}
+
+// =============================================================================
+//  FORMULARIO DE ENVIO Y RESUMEN DE CHECKOUT
+// =============================================================================
+
+/*
+ * Nombre: getShippingFormData
+ * Descripcion: Obtiene y valida los datos de envio escritos por el usuario en el carrito.
+ */
+function getShippingFormData() {
+    const shippingName = document.getElementById("shipping-name")?.value.trim() || "";
+    const shippingPhone = document.getElementById("shipping-phone")?.value.trim() || "";
+    const shippingAddress = document.getElementById("shipping-address")?.value.trim() || "";
+    const shippingCity = document.getElementById("shipping-city")?.value.trim() || "";
+    const shippingNotes = document.getElementById("shipping-notes")?.value.trim() || "";
+
+    if (!shippingName || !shippingPhone || !shippingAddress || !shippingCity) {
+        showCartFeedback("Completa nombre, telefono, direccion y ciudad.", "error");
+        showToast("Faltan datos de envio.", "error");
+
+        return null;
+    }
+
+    return {
+        shippingName,
+        shippingPhone,
+        shippingAddress,
+        shippingCity,
+        shippingNotes,
+    };
+}
+
+/*
+ * Nombre: clearShippingForm
+ * Descripcion: Limpia los campos del formulario de datos de envio del carrito.
+ */
+function clearShippingForm() {
+    const shippingName = document.getElementById("shipping-name");
+    const shippingPhone = document.getElementById("shipping-phone");
+    const shippingAddress = document.getElementById("shipping-address");
+    const shippingCity = document.getElementById("shipping-city");
+    const shippingNotes = document.getElementById("shipping-notes");
+
+    if (shippingName) shippingName.value = "";
+    if (shippingPhone) shippingPhone.value = "";
+    if (shippingAddress) shippingAddress.value = "";
+    if (shippingCity) shippingCity.value = "";
+    if (shippingNotes) shippingNotes.value = "";
+}
+
+/*
+ * Nombre: resetCheckoutSummary
+ * Descripcion: Limpia el resumen visual del paso de confirmacion del checkout.
+ */
+function resetCheckoutSummary() {
+    const summary = document.getElementById("checkout-confirm-summary");
+
+    if (!summary) return;
+
+    summary.innerHTML = `
+        <p class="muted">
+            El resumen se generará automáticamente.
+        </p>
+    `;
 }
 
 // =============================================================================
@@ -1374,14 +1449,186 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     applyCatalogFilters();
 
-await updateCartUI();
+    await updateCartUI();
 
     const cartToggle = document.getElementById("cart-toggle");
     const cartDrawer = document.getElementById("cart-drawer");
     const cartClose = document.getElementById("cart-close");
 
+    const continueShoppingBtn = document.getElementById("continue-shopping-btn");
+    const clearCartBtn = document.getElementById("clear-cart-btn");
+    const checkoutBtn = document.getElementById("checkout-btn");
+    const checkoutPrevBtn = document.getElementById("checkout-prev-btn");
+    const checkoutNextBtn = document.getElementById("checkout-next-btn");
+    const checkoutStepIndicators = document.querySelectorAll(".checkout-step-indicator");
+
+    const productDetailModal = document.getElementById("product-detail-modal");
+    const productDetailClose = document.getElementById("product-detail-close");
+
+    const authModal = document.getElementById("auth-modal");
+    const btnOpenAuth = document.getElementById("open-auth");
+    const btnLogout = document.getElementById("logout-btn");
+    const authClose = document.getElementById("auth-close");
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+
+    const myOrdersBtn = document.getElementById("my-orders-btn");
+    const ordersModal = document.getElementById("orders-modal");
+    const ordersClose = document.getElementById("orders-close");
+    const ordersConfirmYes = document.getElementById("orders-confirm-yes");
+    const ordersConfirmNo = document.getElementById("orders-confirm-no");
+
+    const checkoutSuccessModal = document.getElementById("checkout-success-modal");
+    const checkoutSuccessClose = document.getElementById("checkout-success-close");
+    const checkoutSuccessOrders = document.getElementById("checkout-success-orders");
+    const checkoutSuccessContinue = document.getElementById("checkout-success-continue");
+
+    let currentCheckoutStep = "cart";
+
+    function getActiveCheckoutStep() {
+        const activeIndicator = document.querySelector(".checkout-step-indicator.active");
+
+        return activeIndicator?.dataset.step || currentCheckoutStep || "cart";
+    }
+
+    function setCheckoutStep(step) {
+        currentCheckoutStep = step;
+
+        document.querySelectorAll(".checkout-step-panel").forEach((panel) => {
+            panel.classList.remove("active");
+        });
+
+        document
+            .getElementById(`checkout-step-${step}`)
+            ?.classList.add("active");
+
+        checkoutStepIndicators.forEach((indicator) => {
+            indicator.classList.toggle(
+                "active",
+                indicator.dataset.step === step
+            );
+        });
+
+        if (checkoutPrevBtn) {
+            checkoutPrevBtn.style.display = step === "cart" ? "none" : "block";
+        }
+
+        if (checkoutNextBtn) {
+            checkoutNextBtn.style.display = step === "confirm" ? "none" : "block";
+        }
+
+        if (checkoutBtn) {
+            checkoutBtn.style.display = step === "confirm" ? "block" : "none";
+        }
+    }
+
+    async function cartHasItems() {
+        const serverCart = await getServerCart();
+        const localCart = getLocalCart();
+
+        const hasServerItems =
+            serverCart &&
+            Array.isArray(serverCart.items) &&
+            serverCart.items.length > 0;
+
+        const hasLocalItems =
+            localCart &&
+            Object.keys(localCart).length > 0;
+
+        return hasServerItems || hasLocalItems;
+    }
+
+    async function renderCheckoutConfirmSummary() {
+        const summary = document.getElementById("checkout-confirm-summary");
+
+        if (!summary) return false;
+
+        const shippingData = getShippingFormData();
+
+        if (!shippingData) {
+            return false;
+        }
+
+        const serverCart = await getServerCart();
+        const items = serverCart?.items || [];
+        const total = Number(serverCart?.total || 0);
+
+        if (!items.length) {
+            showCartFeedback("Tu carrito esta vacio.", "error");
+            resetCheckoutSummary();
+            setCheckoutStep("cart");
+
+            return false;
+        }
+
+        const itemsHtml = items
+            .map((item) => {
+                const price = Number(item.product?.price || 0);
+                const quantity = Number(item.quantity || 0);
+                const subtotal = price * quantity;
+
+                return `
+                    <div class="checkout-confirm-item">
+                        <span>${escapeHtml(item.product?.name || "Producto")} x ${quantity}</span>
+                        <strong>$${subtotal.toFixed(2)}</strong>
+                    </div>
+                `;
+            })
+            .join("");
+
+        summary.innerHTML = `
+            <div class="checkout-confirm-section">
+                <h5>Productos</h5>
+                ${itemsHtml}
+            </div>
+
+            <div class="checkout-confirm-section">
+                <h5>Envío</h5>
+
+                <p>
+                    <strong>Nombre:</strong>
+                    ${escapeHtml(shippingData.shippingName)}
+                </p>
+
+                <p>
+                    <strong>Teléfono:</strong>
+                    ${escapeHtml(shippingData.shippingPhone)}
+                </p>
+
+                <p>
+                    <strong>Dirección:</strong>
+                    ${escapeHtml(shippingData.shippingAddress)}
+                </p>
+
+                <p>
+                    <strong>Ciudad:</strong>
+                    ${escapeHtml(shippingData.shippingCity)}
+                </p>
+
+                ${shippingData.shippingNotes
+                ? `
+                            <p>
+                                <strong>Notas:</strong>
+                                ${escapeHtml(shippingData.shippingNotes)}
+                            </p>
+                        `
+                : ""
+            }
+            </div>
+
+            <div class="checkout-confirm-total">
+                <span>Total a pagar</span>
+                <strong>$${total.toFixed(2)}</strong>
+            </div>
+        `;
+
+        return true;
+    }
+
     cartToggle?.addEventListener("click", () => {
         clearCartFeedback();
+        resetCheckoutSummary();
+        setCheckoutStep("cart");
 
         cartDrawer?.setAttribute("aria-hidden", "false");
         cartDrawer?.classList.add("open");
@@ -1391,36 +1638,207 @@ await updateCartUI();
         closeModalSafely(cartDrawer, cartToggle);
     });
 
-    const continueShoppingBtn = document.getElementById("continue-shopping-btn");
-const clearCartBtn = document.getElementById("clear-cart-btn");
+    continueShoppingBtn?.addEventListener("click", () => {
+        closeModalSafely(cartDrawer, cartToggle);
 
-continueShoppingBtn?.addEventListener("click", () => {
-    closeModalSafely(cartDrawer, cartToggle);
+        document
+            .getElementById("productos")
+            ?.scrollIntoView({
+                behavior: "smooth",
+            });
+    });
 
-    document
-        .getElementById("productos")
-        ?.scrollIntoView({
-            behavior: "smooth",
+    clearCartBtn?.addEventListener("click", async () => {
+        await clearCart();
+
+        resetCheckoutSummary();
+        setCheckoutStep("cart");
+    });
+
+    checkoutNextBtn?.addEventListener("click", async () => {
+        const activeStep = getActiveCheckoutStep();
+
+        if (activeStep === "cart") {
+            const hasItems = await cartHasItems();
+
+            if (!hasItems) {
+                showCartFeedback("Tu carrito esta vacio.", "error");
+                resetCheckoutSummary();
+                setCheckoutStep("cart");
+
+                return;
+            }
+
+            setCheckoutStep("shipping");
+            return;
+        }
+
+        if (activeStep === "shipping") {
+            const isSummaryReady = await renderCheckoutConfirmSummary();
+
+            if (!isSummaryReady) {
+                return;
+            }
+
+            setCheckoutStep("confirm");
+        }
+    });
+
+    checkoutPrevBtn?.addEventListener("click", (event) => {
+        event.preventDefault();
+
+        const activeStep = getActiveCheckoutStep();
+
+        if (activeStep === "confirm") {
+            setCheckoutStep("shipping");
+            return;
+        }
+
+        if (activeStep === "shipping") {
+            setCheckoutStep("cart");
+        }
+    });
+
+    checkoutStepIndicators.forEach((indicator) => {
+        indicator.addEventListener("click", async () => {
+            const targetStep = indicator.dataset.step;
+
+            if (targetStep === "cart") {
+                setCheckoutStep("cart");
+                return;
+            }
+
+            if (targetStep === "shipping") {
+                const hasItems = await cartHasItems();
+
+                if (!hasItems) {
+                    showCartFeedback("Tu carrito esta vacio.", "error");
+                    resetCheckoutSummary();
+                    setCheckoutStep("cart");
+
+                    return;
+                }
+
+                setCheckoutStep("shipping");
+                return;
+            }
+
+            if (targetStep === "confirm") {
+                const isSummaryReady = await renderCheckoutConfirmSummary();
+
+                if (!isSummaryReady) {
+                    return;
+                }
+
+                setCheckoutStep("confirm");
+            }
         });
-});
+    });
 
-clearCartBtn?.addEventListener("click", async () => {
-    await clearCart();
-});
+    checkoutBtn?.addEventListener("click", async () => {
+        const originalText = checkoutBtn.textContent;
 
-    const productDetailModal = document.getElementById("product-detail-modal");
-const productDetailClose = document.getElementById("product-detail-close");
+        const serverCart = await getServerCart();
+        const localCart = getLocalCart();
 
-productDetailClose?.addEventListener("click", () => {
-    closeModalSafely(productDetailModal);
-});
+        const hasServerItems =
+            serverCart &&
+            Array.isArray(serverCart.items) &&
+            serverCart.items.length > 0;
 
-    const authModal = document.getElementById("auth-modal");
-    const btnOpenAuth = document.getElementById("open-auth");
-    const btnLogout = document.getElementById("logout-btn");
-    const authClose = document.getElementById("auth-close");
-    const loginForm = document.getElementById("login-form");
-    const registerForm = document.getElementById("register-form");
+        const hasLocalItems =
+            localCart &&
+            Object.keys(localCart).length > 0;
+
+        if (!hasServerItems && !hasLocalItems) {
+            showCartFeedback("Tu carrito esta vacio.", "error");
+            resetCheckoutSummary();
+            setCheckoutStep("cart");
+
+            return;
+        }
+
+        const shippingData = getShippingFormData();
+
+        if (!shippingData) {
+            setCheckoutStep("shipping");
+            return;
+        }
+
+        checkoutBtn.disabled = true;
+        checkoutBtn.textContent = "Procesando...";
+
+        let okData = null;
+
+        try {
+            const res = await fetch(api.checkout, {
+                method: "POST",
+                headers: csrfHeaders(),
+                credentials: "include",
+                body: JSON.stringify(shippingData),
+            });
+
+            if (!res.ok) {
+                let msg = "Error en el pago. Intenta nuevamente.";
+
+                try {
+                    const data = await res.json();
+
+                    msg = data?.error || data?.detail || data?.message || msg;
+                } catch {
+                    // Se conserva el mensaje por defecto.
+                }
+
+                if (res.status === 401 || res.status === 403) {
+                    msg = "Inicia sesion para pagar";
+                    btnOpenAuth?.click();
+                }
+
+                showCartFeedback(msg, "error");
+                return;
+            }
+
+            okData = await res.json();
+        } catch (err) {
+            console.warn("checkout error:", err);
+            showCartFeedback("No se pudo conectar con el servidor.", "error");
+            return;
+        } finally {
+            checkoutBtn.disabled = false;
+            checkoutBtn.textContent = originalText;
+        }
+
+        localStorage.removeItem("cart");
+
+        clearShippingForm();
+        resetCheckoutSummary();
+        setCheckoutStep("cart");
+
+        try {
+            await updateCartUI();
+        } catch (err) {
+            console.warn("Error actualizando carrito despues del checkout:", err);
+        }
+
+        try {
+            await refreshProductsUI();
+        } catch (err) {
+            console.warn("Error actualizando productos despues del checkout:", err);
+        }
+
+        try {
+            closeModalSafely(cartDrawer, cartToggle);
+        } catch (err) {
+            console.warn("Error cerrando carrito despues del checkout:", err);
+        }
+
+        showCheckoutSuccess(okData);
+        showToast("Compra realizada con exito.", "success");
+    });
+
+    productDetailClose?.addEventListener("click", () => {
+        closeModalSafely(productDetailModal);
+    });
 
     btnOpenAuth?.addEventListener("click", () => {
         clearAuthFeedback();
@@ -1535,34 +1953,25 @@ productDetailClose?.addEventListener("click", () => {
         await logoutUser();
     });
 
-    const myOrdersBtn = document.getElementById("my-orders-btn");
-    const ordersModal = document.getElementById("orders-modal");
-    const ordersClose = document.getElementById("orders-close");
+    checkoutSuccessClose?.addEventListener("click", () => {
+        closeModalSafely(checkoutSuccessModal, cartToggle);
+    });
 
-    const checkoutSuccessModal = document.getElementById("checkout-success-modal");
-const checkoutSuccessClose = document.getElementById("checkout-success-close");
-const checkoutSuccessOrders = document.getElementById("checkout-success-orders");
-const checkoutSuccessContinue = document.getElementById("checkout-success-continue");
+    checkoutSuccessContinue?.addEventListener("click", () => {
+        closeModalSafely(checkoutSuccessModal, cartToggle);
 
-checkoutSuccessClose?.addEventListener("click", () => {
-    closeModalSafely(checkoutSuccessModal, cartToggle);
-});
+        document
+            .getElementById("productos")
+            ?.scrollIntoView({
+                behavior: "smooth",
+            });
+    });
 
-checkoutSuccessContinue?.addEventListener("click", () => {
-    closeModalSafely(checkoutSuccessModal, cartToggle);
+    checkoutSuccessOrders?.addEventListener("click", () => {
+        closeModalSafely(checkoutSuccessModal, myOrdersBtn);
 
-    document
-        .getElementById("productos")
-        ?.scrollIntoView({
-            behavior: "smooth",
-        });
-});
-
-checkoutSuccessOrders?.addEventListener("click", () => {
-    closeModalSafely(checkoutSuccessModal, myOrdersBtn);
-
-    myOrdersBtn?.click();
-});
+        myOrdersBtn?.click();
+    });
 
     myOrdersBtn?.addEventListener("click", async () => {
         ordersModal?.setAttribute("aria-hidden", "false");
@@ -1590,9 +1999,6 @@ checkoutSuccessOrders?.addEventListener("click", () => {
 
         closeModalSafely(ordersModal, myOrdersBtn);
     });
-
-    const ordersConfirmYes = document.getElementById("orders-confirm-yes");
-    const ordersConfirmNo = document.getElementById("orders-confirm-no");
 
     ordersConfirmNo?.addEventListener("click", () => {
         hideOrderCancelConfirm();
@@ -1636,151 +2042,5 @@ checkoutSuccessOrders?.addEventListener("click", () => {
         }
     });
 
-})
-
-/*
- * Nombre: getShippingFormData
- * Descripcion: Obtiene y valida los datos de envio escritos por el usuario en el carrito.
- */
-function getShippingFormData() {
-    const shippingName = document.getElementById("shipping-name")?.value.trim() || "";
-    const shippingPhone = document.getElementById("shipping-phone")?.value.trim() || "";
-    const shippingAddress = document.getElementById("shipping-address")?.value.trim() || "";
-    const shippingCity = document.getElementById("shipping-city")?.value.trim() || "";
-    const shippingNotes = document.getElementById("shipping-notes")?.value.trim() || "";
-
-    if (!shippingName || !shippingPhone || !shippingAddress || !shippingCity) {
-        showCartFeedback("Completa nombre, telefono, direccion y ciudad.", "error");
-        showToast("Faltan datos de envio.", "error");
-
-        return null;
-    }
-
-    return {
-        shippingName,
-        shippingPhone,
-        shippingAddress,
-        shippingCity,
-        shippingNotes,
-    };
-}
-
-/*
- * Nombre: clearShippingForm
- * Descripcion: Limpia los campos del formulario de datos de envio del carrito.
- */
-function clearShippingForm() {
-    const shippingName = document.getElementById("shipping-name");
-    const shippingPhone = document.getElementById("shipping-phone");
-    const shippingAddress = document.getElementById("shipping-address");
-    const shippingCity = document.getElementById("shipping-city");
-    const shippingNotes = document.getElementById("shipping-notes");
-
-    if (shippingName) shippingName.value = "";
-    if (shippingPhone) shippingPhone.value = "";
-    if (shippingAddress) shippingAddress.value = "";
-    if (shippingCity) shippingCity.value = "";
-    if (shippingNotes) shippingNotes.value = "";
-}
-
-const checkoutBtn = document.getElementById("checkout-btn");
-
-checkoutBtn?.addEventListener("click", async () => {
-    const originalText = checkoutBtn.textContent;
-
-    const serverCart = await getServerCart();
-    const localCart = getLocalCart();
-
-    const hasServerItems =
-        serverCart &&
-        Array.isArray(serverCart.items) &&
-        serverCart.items.length > 0;
-
-    const hasLocalItems =
-        localCart &&
-        Object.keys(localCart).length > 0;
-
-    if (!hasServerItems && !hasLocalItems) {
-        showCartFeedback("Tu carrito esta vacio.", "error");
-        return;
-    }
-
-    const shippingData = getShippingFormData();
-
-    if (!shippingData) {
-        return;
-    }
-
-    checkoutBtn.disabled = true;
-    checkoutBtn.textContent = "Procesando...";
-
-    let okData = null;
-
-    try {
-        const res = await fetch(api.checkout, {
-            method: "POST",
-            headers: csrfHeaders(),
-            credentials: "include",
-            body: JSON.stringify(shippingData),
-        });
-
-        if (!res.ok) {
-            let msg = "Error en el pago. Intenta nuevamente.";
-
-            try {
-                const data = await res.json();
-
-                msg = data?.error || data?.detail || data?.message || msg;
-            } catch {
-                // Se conserva el mensaje por defecto.
-            }
-
-            if (res.status === 401 || res.status === 403) {
-                msg = "Inicia sesion para pagar";
-                btnOpenAuth?.click();
-            }
-
-            showCartFeedback(msg, "error");
-            return;
-        }
-
-        okData = await res.json();
-    } catch (err) {
-        console.warn("checkout error:", err);
-        showCartFeedback("No se pudo conectar con el servidor.", "error");
-        return;
-    } finally {
-        checkoutBtn.disabled = false;
-        checkoutBtn.textContent = originalText;
-    }
-
-    localStorage.removeItem("cart");
-
-    clearShippingForm();
-
-    try {
-        await updateCartUI();
-    } catch (err) {
-        console.warn("Error actualizando carrito despues del checkout:", err);
-    }
-
-    try {
-        await refreshProductsUI();
-    } catch (err) {
-        console.warn("Error actualizando productos despues del checkout:", err);
-    }
-
-    try {
-        closeModalSafely(cartDrawer, cartToggle);
-    } catch (err) {
-        console.warn("Error cerrando carrito despues del checkout:", err);
-    }
-
-    if (typeof showCheckoutSuccess === "function") {
-        showCheckoutSuccess(okData);
-    } else {
-        showCartFeedback("Compra realizada con exito.", "success");
-    }
-
-    showToast("Compra realizada con exito.", "success");
+    setCheckoutStep("cart");
 });
