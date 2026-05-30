@@ -498,6 +498,66 @@ function renderShippingInfo(order) {
 }
 
 /*
+ * Nombre: renderOrderTimeline
+ * Descripcion: Genera una linea visual de progreso segun el estado actual de una orden.
+ */
+function renderOrderTimeline(order) {
+    const statusNorm = normalizeStatus(order.status);
+
+    if (statusNorm === "cancelado") {
+        return `
+            <div class="order-timeline cancelled">
+                <div class="order-timeline-cancelled">
+                    Pedido cancelado
+                </div>
+            </div>
+        `;
+    }
+
+    const steps = [
+        {
+            key: "pendiente",
+            label: "Pendiente",
+        },
+        {
+            key: "pagado",
+            label: "Pagado",
+        },
+        {
+            key: "enviado",
+            label: "Enviado",
+        },
+        {
+            key: "entregado",
+            label: "Entregado",
+        },
+    ];
+
+    const currentIndex = steps.findIndex((step) => step.key === statusNorm);
+    const safeCurrentIndex = currentIndex >= 0 ? currentIndex : 0;
+
+    const stepsHtml = steps
+        .map((step, index) => {
+            const isActive = index <= safeCurrentIndex;
+            const isCurrent = index === safeCurrentIndex;
+
+            return `
+                <div class="order-timeline-step ${isActive ? "active" : ""} ${isCurrent ? "current" : ""}">
+                    <span class="order-timeline-dot"></span>
+                    <span class="order-timeline-label">${escapeHtml(step.label)}</span>
+                </div>
+            `;
+        })
+        .join("");
+
+    return `
+        <div class="order-timeline">
+            ${stepsHtml}
+        </div>
+    `;
+}
+
+/*
  * Nombre: renderMyOrders
  * Descripcion: Renderiza el historial de pedidos, estados, productos, totales y acciones disponibles.
  */
@@ -596,6 +656,8 @@ function renderMyOrders(data) {
 
                         <div class="muted">${fechaStr}</div>
                     </div>
+                    
+                    ${renderOrderTimeline(order)}
 
                     <div class="order-items">
                         ${itemsHtml}
