@@ -2439,3 +2439,109 @@ body.light-mode .order-timeline-cancelled {
         top: 6px;
     }
 }
+
+/*
+ * Nombre: Verificacion de edad y aviso legal
+ * Descripcion: Define el bloqueo inicial para mayores de edad y el aviso legal visible del sitio.
+ */
+body.age-verification-locked {
+    overflow: hidden;
+}
+
+.age-modal {
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(5px);
+}
+
+.age-modal-content {
+    width: min(540px, 100%);
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.age-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 30px;
+    text-align: center;
+}
+
+.age-modal-body h2 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.age-modal-body .muted {
+    line-height: 1.6;
+}
+
+.age-warning {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(255, 90, 44, 0.12);
+    border: 1px solid rgba(255, 90, 44, 0.35);
+    color: #ffd5c8;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.age-feedback {
+    min-height: 20px;
+    color: #fca5a5;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.age-modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.footer-legal {
+    width: 100%;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--muted-dark);
+    font-size: 13px;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.footer-legal p {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+body.light-mode .age-warning {
+    background: rgba(255, 90, 44, 0.1);
+    border-color: rgba(255, 90, 44, 0.3);
+    color: #9a3412;
+}
+
+body.light-mode .age-feedback {
+    color: #dc2626;
+}
+
+body.light-mode .footer-legal {
+    border-top-color: rgba(0, 0, 0, 0.1);
+    color: var(--muted-light);
+}
+
+@media (max-width: 560px) {
+    .age-modal-body {
+        padding: 24px 18px;
+    }
+
+    .age-modal-body h2 {
+        font-size: 24px;
+    }
+
+    .age-modal-actions .btn {
+        width: 100%;
+    }
+}

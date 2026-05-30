@@ -89,6 +89,103 @@ function normalizeStatus(status) {
 }
 
 // =============================================================================
+//  VERIFICACION DE EDAD
+// =============================================================================
+
+const AGE_VERIFICATION_KEY = "vapeShopAgeVerified";
+let ageVerifiedInSession = false;
+
+/*
+ * Nombre: hasAgeVerification
+ * Descripcion: Comprueba si el usuario ya confirmo que cumple con la edad legal requerida.
+ * Retorna: true si la confirmacion esta guardada, false en caso contrario.
+ */
+function hasAgeVerification() {
+    if (ageVerifiedInSession) return true;
+
+    try {
+        return localStorage.getItem(AGE_VERIFICATION_KEY) === "true";
+    } catch {
+        return false;
+    }
+}
+
+/*
+ * Nombre: showAgeVerification
+ * Descripcion: Muestra el modal obligatorio de verificacion de edad.
+ */
+function showAgeVerification() {
+    const modal = document.getElementById("age-verification-modal");
+    const confirmBtn = document.getElementById("age-confirm-btn");
+
+    if (!modal) return;
+
+    modal.setAttribute("aria-hidden", "false");
+    modal.classList.add("open");
+    document.body.classList.add("age-verification-locked");
+
+    requestAnimationFrame(() => {
+        confirmBtn?.focus();
+    });
+}
+
+/*
+ * Nombre: hideAgeVerification
+ * Descripcion: Cierra el modal de verificacion de edad y libera la navegacion.
+ */
+function hideAgeVerification() {
+    const modal = document.getElementById("age-verification-modal");
+    const feedback = document.getElementById("age-verification-feedback");
+
+    if (!modal) return;
+
+    if (feedback) {
+        feedback.textContent = "";
+    }
+
+    modal.setAttribute("aria-hidden", "true");
+    modal.classList.remove("open");
+    document.body.classList.remove("age-verification-locked");
+}
+
+/*
+ * Nombre: confirmAgeVerification
+ * Descripcion: Guarda la confirmacion de mayoria de edad y permite usar la tienda.
+ */
+function confirmAgeVerification() {
+    ageVerifiedInSession = true;
+
+    try {
+        localStorage.setItem(AGE_VERIFICATION_KEY, "true");
+    } catch {
+        // Si localStorage no esta disponible, la confirmacion se conserva solo en la sesion actual.
+    }
+
+    hideAgeVerification();
+    showToast("Verificacion de edad confirmada.", "success");
+}
+
+/*
+ * Nombre: denyAgeVerification
+ * Descripcion: Mantiene bloqueado el acceso cuando el usuario no confirma la edad requerida.
+ */
+function denyAgeVerification() {
+    const feedback = document.getElementById("age-verification-feedback");
+
+    ageVerifiedInSession = false;
+
+    try {
+        localStorage.removeItem(AGE_VERIFICATION_KEY);
+    } catch {
+        // Se conserva el bloqueo visual aunque no se pueda modificar localStorage.
+    }
+
+    if (feedback) {
+        feedback.textContent = "No puedes continuar sin confirmar que cumples con la edad legal requerida.";
+    }
+}
+
+// =============================================================================
 //  FEEDBACK VISUAL
 // =============================================================================
 
@@ -1501,6 +1598,16 @@ function resetCheckoutSummary() {
  * Descripcion: Conecta los elementos del DOM con las funciones principales cuando la pagina termina de cargar.
  */
 document.addEventListener("DOMContentLoaded", async () => {
+    const ageConfirmBtn = document.getElementById("age-confirm-btn");
+    const ageDenyBtn = document.getElementById("age-deny-btn");
+
+    ageConfirmBtn?.addEventListener("click", confirmAgeVerification);
+    ageDenyBtn?.addEventListener("click", denyAgeVerification);
+
+    if (!hasAgeVerification()) {
+        showAgeVerification();
+    }
+
     await refreshAuthState();
 
     renderProductsSkeleton();
@@ -1799,6 +1906,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     checkoutBtn?.addEventListener("click", async () => {
         const originalText = checkoutBtn.textContent;
+
+        if (!hasAgeVerification()) {
+            showCartFeedback(
+                "Confirma que eres mayor de edad para finalizar el pedido.",
+                "error"
+            );
+            showToast("Debes confirmar la verificacion de edad.", "error");
+            showAgeVerification();
+
+            return;
+        }
 
         const serverCart = await getServerCart();
         const localCart = getLocalCart();

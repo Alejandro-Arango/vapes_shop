@@ -14,7 +14,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
 
     <title>{% block title %}VapeShop{% endblock %}</title>
 
-    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=22">
+    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=23">
 
     <link
         rel="stylesheet"
@@ -44,6 +44,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
     {% include 'store/components/orders_modal.html' %}
     {% include 'store/components/product_detail_modal.html' %}
     {% include 'store/components/checkout_success_modal.html' %}
+    {% include 'store/components/age_verification_modal.html' %}
     <div id="toast-container" class="toast-container"></div>
 
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
@@ -107,7 +108,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
         });
     </script>
 
-    <script src="{% static 'store/js/app.js' %}?v=checkout-fase7-1"></script>
+    <script src="{% static 'store/js/app.js' %}?v=fase10-edad-1"></script>
 
     {% block extra_scripts %}{% endblock %}
 </body>

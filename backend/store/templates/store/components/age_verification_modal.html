@@ -1,0 +1,52 @@
+<!--
+Nombre: age_verification_modal.html
+Descripcion: Componente modal para solicitar confirmacion de mayoria de edad antes de navegar o comprar.
+-->
+
+<div
+    id="age-verification-modal"
+    class="modal age-modal"
+    aria-hidden="true"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="age-verification-title"
+>
+    <div class="modal-content age-modal-content">
+        <div class="age-modal-body">
+            <h2 id="age-verification-title">Verificacion de edad</h2>
+
+            <p class="muted">
+                Este sitio contiene productos dirigidos exclusivamente a personas mayores de edad.
+                Confirma que cumples con la edad legal requerida para continuar.
+            </p>
+
+            <div class="age-warning">
+                El acceso y la compra están restringidos a usuarios mayores de edad según la normativa aplicable.
+            </div>
+
+            <p
+                id="age-verification-feedback"
+                class="age-feedback"
+                aria-live="polite"
+            ></p>
+
+            <div class="age-modal-actions">
+                <button id="age-confirm-btn" class="btn" type="button">
+                    Soy mayor de edad
+                </button>
+
+                <button id="age-deny-btn" class="btn btn-outline" type="button">
+                    No soy mayor de edad
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--
+[CAPTURA REQUERIDA]
+- Nombre de archivo sugerido: fase10_verificacion_edad.png
+- Que debe mostrarse: Modal de verificacion de edad bloqueando la tienda antes de confirmar.
+- Momento: Al cargar el sitio sin confirmacion guardada en localStorage.
+- Etiqueta para el documento: Fase 10 - Verificacion de edad
+-->
