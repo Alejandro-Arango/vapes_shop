@@ -1,77 +1,88 @@
-# VapeShop
+# Vape Shop / vapes_shop
 
-## Descripción del proyecto
+## Descripción
 
-VapeShop es una aplicación web desarrollada como proyecto académico final. El sistema permite visualizar productos, gestionar un carrito de compras, registrar usuarios, iniciar sesión, realizar pedidos, consultar el historial de compras y cancelar órdenes.
+Vape Shop es una tienda e-commerce desarrollada como proyecto académico con Django, Django REST Framework, templates HTML, CSS personalizado y JavaScript vanilla.
 
-El proyecto está construido con Django en el backend y HTML, CSS y JavaScript en el frontend. La comunicación entre frontend y backend se realiza mediante endpoints API creados con Django REST Framework.
+El sistema permite explorar productos, gestionar un carrito de compras, registrarse, iniciar sesión, realizar pedidos, consultar historial, cancelar órdenes y administrar productos desde el panel de Django.
 
-## Estado del proyecto
+El proyecto queda pausado en este estado para entrega académica, pero está pensado para seguir escalando hacia una versión más completa y desplegable en producción.
 
-Proyecto en desarrollo académico.
+## Objetivo
 
-## Tecnologías utilizadas
+Construir una aplicación web funcional que simule el flujo principal de una tienda en línea: catálogo, carrito, checkout, usuarios, pedidos, administración e inventario básico.
+
+## Alcance Actual
+
+El proyecto incluye:
+
+- Catálogo dinámico de productos.
+- Búsqueda por nombre o descripción.
+- Filtros por disponibilidad.
+- Ordenamiento por precio, stock y nombre.
+- Filtros rápidos del catálogo.
+- Modal de detalle de producto.
+- Carrito lateral.
+- Agregar, disminuir, eliminar y vaciar productos.
+- Control de stock máximo.
+- Subtotal por producto.
+- Checkout por pasos.
+- Formulario de datos de envío.
+- Registro, login, logout y consulta del usuario actual.
+- Modal de compra exitosa.
+- Historial de pedidos.
+- Cancelación de pedidos.
+- Devolución de stock al cancelar pedidos pagados.
+- Timeline visual del estado del pedido.
+- Verificación de edad.
+- Aviso legal para productos de vapeo.
+- Formulario de contacto con registro en base de datos.
+- Enlace de WhatsApp con mensaje prellenado.
+- Notificación de contacto por correo en modo desarrollo.
+- Panel administrativo mejorado.
+- Pruebas automatizadas para flujos principales.
+
+## Tecnologías
 
 ### Backend
+
 - Python
 - Django
 - Django REST Framework
-- SQLite
+- SQLite en desarrollo
 - WhiteNoise
 
 ### Frontend
-- HTML5
-- CSS3
-- JavaScript
+
+- HTML5 con templates de Django
+- CSS personalizado
+- JavaScript vanilla
 - Font Awesome
 - AOS Animation Library
 
-### Herramientas de desarrollo
-- Visual Studio Code
+### Herramientas
+
 - Git y GitHub
 - PowerShell
+- Visual Studio Code
 - Entorno virtual de Python
 
-## Funcionalidades principales
-
-- Visualización de productos disponibles.
-- Carga dinámica de productos desde el backend.
-- Gestión de carrito de compras.
-- Aumento, disminución y eliminación de productos del carrito.
-- Validación de stock disponible.
-- Registro de usuarios.
-- Inicio y cierre de sesión.
-- Consulta del usuario autenticado.
-- Creación de pedidos mediante checkout.
-- Consulta del historial de pedidos.
-- Cancelación de pedidos.
-- Devolución automática de stock al cancelar una orden.
-- Panel administrativo para gestionar clientes, productos, órdenes e items de orden.
-- Interfaz responsive con modo oscuro y modo claro.
-- Mensajes visuales mediante toasts y feedback en modales.
-
-## Estructura del proyecto
+## Estructura Principal
 
 ```text
 vapes_shop/
-│
 ├── .gitignore
 ├── README.md
-│
 └── backend/
     ├── manage.py
     ├── requirements.txt
-    ├── db.sqlite3
-    │
+    ├── db.sqlite3                # Base local de desarrollo, no debe versionarse
     ├── mi_tienda/
-    │   ├── __init__.py
-    │   ├── asgi.py
     │   ├── settings.py
     │   ├── urls.py
+    │   ├── asgi.py
     │   └── wsgi.py
-    │
     └── store/
-        ├── __init__.py
         ├── admin.py
         ├── apps.py
         ├── models.py
@@ -82,47 +93,30 @@ vapes_shop/
         ├── views_api.py
         ├── views_auth.py
         ├── views_cart.py
+        ├── views_contact.py
         ├── views_orders.py
-        │
         ├── migrations/
-        │   ├── __init__.py
-        │   ├── 0001_initial.py
-        │   ├── 0002_product_image_alter_product_description_and_more.py
-        │   ├── 0003_alter_order_customer.py
-        │   ├── 0004_customer_user.py
-        │   ├── 0005_alter_customer_user.py
-        │   ├── 0006_alter_customer_user.py
-        │   ├── 0007_alter_customer_user.py
-        │   ├── 0008_alter_customer_user.py
-        │   ├── 0009_order_status_alter_order_customer.py
-        │   └── 0010_alter_order_status.py
-        │
         ├── static/
         │   └── store/
-        │       ├── css/
-        │       │   └── style.css
-        │       ├── js/
-        │       │   └── app.js
+        │       ├── css/style.css
+        │       ├── js/app.js
         │       └── img/
-        │           ├── banner.3.avif
-        │           ├── placeholder.png
-        │           ├── Pri-var.webp
-        │           ├── savage.webp
-        │           └── STLTH.webp
-        │
         └── templates/
             └── store/
                 ├── base.html
                 ├── home.html
                 └── components/
+                    ├── age_verification_modal.html
                     ├── auth_modal.html
                     ├── cart_drawer.html
+                    ├── checkout_success_modal.html
                     ├── footer.html
                     ├── header.html
-                    └── orders_modal.html
+                    ├── orders_modal.html
+                    └── product_detail_modal.html
 ```
 
-## Instalación y ejecución
+## Instalación Local
 
 ### 1. Clonar el repositorio
 
@@ -131,118 +125,183 @@ git clone URL_DEL_REPOSITORIO
 cd vapes_shop
 ```
 
-### 2. Entrar a la carpeta del backend
+### 2. Entrar al backend
 
 ```powershell
-cd backend
+cd C:\dev\vapes_shop\backend
 ```
 
-### 3. Crear entorno virtual
+### 3. Activar entorno virtual
 
-```powershell
-python -m venv .venv
-```
-
-### 4. Activar entorno virtual en PowerShell
+Si el entorno está dentro de `backend`:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 5. Instalar dependencias
+Si usas el entorno de la raíz del proyecto:
+
+```powershell
+..\.venv\Scripts\Activate.ps1
+```
+
+### 4. Instalar dependencias
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-### 6. Aplicar migraciones
+### 5. Aplicar migraciones
 
 ```powershell
 python manage.py migrate
 ```
 
-### 7. Ejecutar servidor local
+### 6. Ejecutar validaciones
+
+```powershell
+python manage.py check
+python manage.py test store
+```
+
+### 7. Ejecutar servidor
 
 ```powershell
 python manage.py runserver
 ```
 
-### 8. Abrir el proyecto en el navegador
+Abrir en el navegador:
 
 ```text
 http://127.0.0.1:8000/
 ```
 
-## Comandos útiles
+## Panel Administrativo
 
-### Activar entorno virtual
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-### Revisar configuración del proyecto
-
-```powershell
-python manage.py check
-```
-
-### Crear migraciones
-
-```powershell
-python manage.py makemigrations
-```
-
-### Aplicar migraciones
-
-```powershell
-python manage.py migrate
-```
-
-### Crear superusuario
+Crear superusuario:
 
 ```powershell
 python manage.py createsuperuser
 ```
 
-### Ejecutar servidor local
+Entrar al admin:
 
-```powershell
-python manage.py runserver
+```text
+http://127.0.0.1:8000/admin/
 ```
 
-### Generar archivo de dependencias
+Desde el panel se pueden gestionar:
+
+- Productos.
+- Clientes.
+- Órdenes.
+- Items de orden.
+- Contactos recibidos desde el formulario.
+
+## Flujo del Usuario
+
+1. El usuario entra al sitio.
+2. Confirma la verificación de edad.
+3. Explora productos.
+4. Busca, filtra u ordena el catálogo.
+5. Abre el detalle de un producto.
+6. Agrega productos al carrito.
+7. Revisa cantidades, subtotales y stock.
+8. Inicia sesión o se registra.
+9. Completa datos de envío.
+10. Confirma la compra.
+11. Recibe un modal de compra exitosa.
+12. Consulta su historial de pedidos.
+13. Cancela pedidos cuando el estado lo permite.
+
+## Flujo del Administrador
+
+1. Ingresa al panel de Django.
+2. Crea o edita productos.
+3. Revisa clientes registrados.
+4. Revisa pedidos.
+5. Cambia estados de órdenes.
+6. Usa acciones masivas para marcar órdenes como pagadas, enviadas, entregadas o canceladas.
+7. Revisa contactos recibidos.
+
+## Validaciones Realizadas
+
+Última validación reportada:
 
 ```powershell
-pip freeze > requirements.txt
+python manage.py check
+python manage.py test store
 ```
 
-### Instalar dependencias
+Resultado:
 
-```powershell
-pip install -r requirements.txt
+- `System check identified no issues`.
+- `10 tests` ejecutados correctamente.
+- Resultado final: `OK`.
+
+## Seguridad y Producción
+
+El proyecto está listo para una entrega académica local, pero todavía no debe considerarse producción.
+
+Aspectos aceptables para desarrollo:
+
+- SQLite local.
+- `DEBUG=True` por defecto.
+- Email por consola.
+- Archivos media locales.
+- Sesiones de Django.
+
+Aspectos a configurar antes de producción:
+
+- `DJANGO_DEBUG=False`.
+- `DJANGO_SECRET_KEY` desde variable de entorno.
+- `DJANGO_ALLOWED_HOSTS` con dominio real.
+- Base de datos PostgreSQL o MySQL configurada correctamente.
+- SMTP real para correos.
+- HTTPS.
+- Protección anti-spam para contacto.
+- Validación legal y de edad más robusta.
+- Pasarela de pago real.
+- Variables de entorno para datos sensibles.
+- Política de archivos media.
+- CI/CD y despliegue controlado.
+
+## Variables de Entorno Relevantes
+
+```text
+DJANGO_DEBUG
+DJANGO_SECRET_KEY
+DJANGO_ALLOWED_HOSTS
+DJANGO_EMAIL_BACKEND
+DEFAULT_FROM_EMAIL
+CONTACT_NOTIFICATION_EMAIL
+CONTACT_WHATSAPP_NUMBER
 ```
 
-## Validaciones realizadas
+## Mejoras Futuras
 
-Durante el desarrollo se realizaron las siguientes validaciones:
+- Pasarela de pagos real.
+- Despliegue en producción.
+- PostgreSQL.
+- Recuperación de contraseña.
+- Sistema de roles.
+- Dashboard con métricas.
+- Categorías reales para productos.
+- Control avanzado de inventario.
+- Notificaciones transaccionales por correo.
+- Facturación.
+- Docker.
+- CI/CD.
+- Pruebas frontend.
+- Optimización responsive adicional.
+- Seguridad avanzada para formularios públicos.
 
-- Ejecución de `python manage.py check` sin errores.
-- Verificación de carga correcta de la página principal.
-- Validación de carga dinámica de productos desde el backend.
-- Prueba de registro de usuario.
-- Prueba de inicio y cierre de sesión.
-- Prueba de agregar productos al carrito.
-- Prueba de aumentar, disminuir y eliminar productos del carrito.
-- Validación de stock insuficiente antes del checkout.
-- Prueba de creación de pedidos mediante checkout.
-- Prueba de visualización del historial de pedidos.
-- Prueba de cancelación de pedidos.
-- Verificación de devolución de stock al cancelar una orden.
-- Verificación de mensajes visuales en toasts y modales.
-- Validación del panel administrativo de Django.
-- Confirmación de cambios guardados con Git.
+## Estado de Entrega
+
+Proyecto funcional para presentación académica.
+
+Queda pausado en el estado actual para exposición y revisión docente, con intención de seguir escalándolo hacia una versión de producción más adelante.
 
 ## Autor
 
-Proyecto desarrollado por Alejandro Arango como proyecto académico final de la técnica en desarrollo de software.
+Proyecto desarrollado por Alejandro Arango como proyecto académico de desarrollo de software.
