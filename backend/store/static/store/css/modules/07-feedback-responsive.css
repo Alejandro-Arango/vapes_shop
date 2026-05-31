@@ -1,0 +1,406 @@
+/*
+ * Modulo: 07-feedback-responsive.css
+ * Nombre: Feedback y responsive base
+ * Descripcion: Toasts, skeletons, estados vacios, animaciones, foco accesible y responsive general.
+ */
+
+/*
+ * Nombre: Toasts
+ * Descripcion: Define notificaciones flotantes generadas desde JavaScript.
+ */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    min-width: 240px;
+    max-width: 360px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    animation: toastIn 0.25s ease;
+}
+
+.toast.success {
+    background: rgba(34, 197, 94, 0.95);
+    color: #ffffff;
+}
+
+.toast.error {
+    background: rgba(239, 68, 68, 0.95);
+    color: #ffffff;
+}
+
+.toast.info {
+    background: rgba(59, 130, 246, 0.95);
+    color: #ffffff;
+}
+
+/*
+ * Nombre: Skeleton loading y estados vacios
+ * Descripcion: Define placeholders de carga y mensajes visuales cuando no hay datos.
+ */
+.skeleton-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 20px;
+    padding: 18px;
+    animation: skeletonPulse 1.2s infinite ease-in-out;
+}
+
+.skeleton-image {
+    width: 100%;
+    height: 180px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    margin-bottom: 16px;
+}
+
+.skeleton-line {
+    height: 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    margin-bottom: 12px;
+}
+
+.skeleton-line.short {
+    width: 40%;
+}
+
+.skeleton-line.medium {
+    width: 70%;
+}
+
+.empty-cart,
+.empty-orders,
+.empty-products {
+    text-align: center;
+}
+
+.empty-cart,
+.empty-orders {
+    padding: 36px 20px;
+}
+
+.empty-products {
+    padding: 60px 20px;
+}
+
+.empty-cart-icon,
+.empty-orders-icon {
+    font-size: 48px;
+    margin-bottom: 14px;
+}
+
+.empty-products-icon {
+    font-size: 52px;
+    margin-bottom: 16px;
+}
+
+.empty-cart h3,
+.empty-orders h3 {
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.empty-products h3 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.empty-cart p,
+.empty-orders p {
+    opacity: 0.75;
+    margin-bottom: 18px;
+}
+
+.empty-products p {
+    opacity: 0.75;
+    margin-bottom: 20px;
+}
+
+.empty-cart-btn,
+.empty-orders-btn {
+    min-width: 180px;
+}
+
+.retry-products-btn {
+    min-width: 220px;
+}
+
+/*
+ * Nombre: Animaciones
+ * Descripcion: Define transiciones visuales usadas por hero, toasts y skeletons.
+ */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes skeletonPulse {
+    0% {
+        opacity: 0.65;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.65;
+    }
+}
+
+/*
+ * Nombre: Accesibilidad
+ * Descripcion: Mejora la visibilidad del foco en enlaces, botones e inputs.
+ */
+a:focus,
+button:focus,
+input:focus {
+    outline: 3px solid rgba(255, 90, 44, 0.16);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/*
+ * Nombre: Responsive
+ * Descripcion: Ajusta productos, hero, navegacion, carrito y toasts para pantallas pequeñas.
+ */
+@media (max-width: 1000px) {
+    .product-content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .header-txt h1 {
+        font-size: 40px;
+    }
+}
+
+@media (max-width: 900px) {
+    .header-content.hero {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 2rem;
+    }
+
+    .hero-text p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .hero-actions {
+        justify-content: center;
+    }
+
+    .hero-badges {
+        justify-content: center;
+    }
+
+    .hero-media img {
+        max-width: 330px;
+    }
+
+    .catalog-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .product-section-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .contact-shell,
+    .footer-inner {
+        grid-template-columns: 1fr;
+    }
+
+    .contact-copy {
+        text-align: center;
+    }
+
+    .contact-copy h2,
+    .contact-copy p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .contact-highlights {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 700px) {
+    .menu-label {
+        display: block;
+        z-index: 40;
+    }
+
+    .navbar {
+        position: fixed;
+        inset: 70px 0 auto 0;
+        background: rgba(255, 255, 255, 0.96);
+        flex-direction: column;
+        padding: 12px 20px;
+        display: none;
+        border-bottom: 1px solid rgba(18, 63, 53, 0.08);
+    }
+
+    body.dark-mode .navbar {
+        background: rgba(12, 20, 18, 0.96);
+    }
+
+    #menu:checked ~ .navbar {
+        display: flex;
+    }
+
+    .navbar ul {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .product-content {
+        grid-template-columns: 1fr;
+    }
+
+    .header-txt h1 {
+        font-size: 28px;
+    }
+
+    .menu {
+        padding: 12px;
+    }
+
+    .popular-content {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .carousel-container {
+        min-height: 290px;
+    }
+
+    .carousel-slide img {
+        height: 240px;
+    }
+
+    .logo {
+        font-size: 20px;
+    }
+
+    .logo-mark {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+
+    .contact {
+        padding: 64px 16px;
+    }
+
+    .contact-content {
+        padding: 26px 20px;
+    }
+
+    .contact-form-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .contact-form-row input[type="email"],
+    .contact-form-row .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .cart-item {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .cart-item img {
+        width: 48px;
+        height: 48px;
+    }
+
+    .cart-item-info h4 {
+        font-size: 15px;
+    }
+
+    .cart-item-info p {
+        font-size: 13px;
+    }
+
+    .cart-item-actions {
+        margin-top: 6px;
+        gap: 6px;
+    }
+
+    .cart-item-actions .btn.small {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+    }
+
+    .cart-item-actions .remove-item {
+        padding: 0 10px !important;
+        font-size: 12px !important;
+        height: 30px;
+    }
+
+    .cart-qty {
+        min-width: 16px;
+        font-size: 14px;
+    }
+
+    .toast-container {
+        right: 10px;
+        left: 10px;
+        top: 10px;
+    }
+
+    .toast {
+        min-width: auto;
+        max-width: 100%;
+        font-size: 13px;
+    }
+}

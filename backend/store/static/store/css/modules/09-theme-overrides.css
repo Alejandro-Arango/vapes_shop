@@ -1,0 +1,422 @@
+/*
+ * Modulo: 09-theme-overrides.css
+ * Nombre: Ajustes de tema
+ * Descripcion: Overrides de modo claro, acciones del carrito y contraste especifico de modo oscuro.
+ */
+
+/*
+ * Nombre: Compatibilidad de modo claro
+ * Descripcion: Ajusta tarjetas, modales, botones, productos y textos para mantener contraste correcto en modo claro.
+ */
+body.light-mode h2,
+body.light-mode h3,
+body.light-mode strong {
+    color: #222;
+}
+
+body.light-mode .header h1,
+body.light-mode .header h2,
+body.light-mode .header h3,
+body.light-mode .header strong {
+    color: #1f2523;
+}
+
+body.light-mode .header p {
+    color: #52605b;
+}
+
+body.light-mode .hero-text h1 span {
+    color: var(--accent);
+}
+
+body.light-mode .product-card {
+    background: var(--card-light);
+    color: #222;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .product-card:hover {
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.14);
+}
+
+body.light-mode .product-info h3 {
+    color: #222;
+}
+
+body.light-mode .product-info .muted {
+    color: var(--muted-light);
+}
+
+body.light-mode .modal-content {
+    background: #ffffff;
+    color: #222;
+}
+
+body.light-mode .modal-content h2,
+body.light-mode .modal-content h3,
+body.light-mode .modal-content strong {
+    color: #222;
+}
+
+body.light-mode .modal-close {
+    color: #222;
+}
+
+body.light-mode .btn {
+    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+body.light-mode .btn:hover {
+    color: #fff;
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+}
+
+body.light-mode .btn.btn-outline {
+    color: var(--accent);
+    background: transparent;
+    border-color: rgba(18, 63, 53, 0.28);
+}
+
+body.light-mode .header .btn.btn-outline {
+    color: var(--accent);
+    border-color: rgba(18, 63, 53, 0.28);
+}
+
+body.light-mode .btn:disabled {
+    color: #999;
+    border-color: #ddd;
+    background: #f2f2f2;
+}
+
+body.light-mode .product-detail-content {
+    background: #ffffff;
+}
+
+body.light-mode .product-detail-tag {
+    background: rgba(255, 90, 44, 0.12);
+    color: var(--accent);
+}
+
+body.light-mode .product-detail-description {
+    color: var(--muted-light);
+}
+
+body.light-mode .product-detail-price {
+    color: var(--accent);
+}
+
+body.light-mode .product-detail-image {
+    background: #f7f7f7;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .catalog-results-info {
+    color: var(--muted-light);
+}
+
+body.light-mode .empty-products,
+body.light-mode .empty-cart,
+body.light-mode .empty-orders {
+    color: #222;
+}
+
+body.light-mode .empty-products p,
+body.light-mode .empty-cart p,
+body.light-mode .empty-orders p {
+    color: var(--muted-light);
+}
+
+body.light-mode .order-card {
+    background: #ffffff;
+    color: #222;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .order-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .cart-drawer {
+    background: linear-gradient(180deg, #ffffff, #f4f4f4);
+    color: #222;
+}
+
+body.light-mode .cart-drawer header h3 {
+    color: #222;
+}
+
+body.light-mode #cart-close {
+    color: #222;
+}
+
+body.light-mode .cart-item {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+body.light-mode .cart-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/*
+ * Nombre: Acciones profesionales del carrito
+ * Descripcion: Organiza los botones de continuar comprando, vaciar carrito y pagar dentro del drawer.
+ */
+.cart-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.cart-actions .btn {
+    width: 100%;
+    text-align: center;
+}
+
+#clear-cart-btn {
+    border-color: rgba(239, 68, 68, 0.75);
+    color: #fca5a5;
+}
+
+#clear-cart-btn:hover {
+    background: rgba(239, 68, 68, 0.95);
+    border-color: rgba(239, 68, 68, 0.95);
+    color: #fff;
+}
+
+#continue-shopping-btn {
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+body.light-mode #clear-cart-btn {
+    border-color: rgba(239, 68, 68, 0.75);
+    color: #dc2626;
+}
+
+body.light-mode #clear-cart-btn:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: #fff;
+}
+
+body.light-mode #continue-shopping-btn {
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+body.dark-mode .menu {
+    background: rgba(18, 31, 28, 0.94);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .header {
+    background:
+        linear-gradient(180deg, #1f332e 0%, #2a463f 100%);
+}
+
+body.dark-mode .logo {
+    color: #5ee0bc;
+}
+
+body.dark-mode .logo-mark {
+    background: #5ee0bc;
+    color: #12231f;
+}
+
+body.dark-mode .hero-text p {
+    color: rgba(255, 255, 255, 0.82);
+}
+
+body.dark-mode .header .btn.btn-outline {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.56);
+}
+
+body.dark-mode .hero-badges .badge {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .navbar ul li a {
+    color: rgba(255, 255, 255, 0.82);
+}
+
+body.dark-mode .theme-toggle,
+body.dark-mode .cart-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+
+body.dark-mode .product-card,
+body.dark-mode .catalog-controls {
+    background: #213832;
+    border-color: rgba(156, 205, 190, 0.18);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-mode .product-card img {
+    background: rgba(255, 255, 255, 0.96);
+}
+
+body.dark-mode .product-info h3 {
+    color: #fff;
+}
+
+body.dark-mode .product-info .muted,
+body.dark-mode .catalog-results-info {
+    color: #d7e5df;
+}
+
+body.dark-mode .about {
+    color: #e4eee9;
+}
+
+body.dark-mode .about p,
+body.dark-mode .about .muted {
+    color: #e4eee9;
+}
+
+body.dark-mode .about strong {
+    color: #ffffff;
+}
+
+body.dark-mode .stock-label {
+    color: #d7e5df;
+}
+
+body.dark-mode .price p {
+    color: #5ee0bc;
+}
+
+body.dark-mode .btn {
+    background: #16725f;
+    border-color: #16725f;
+    color: #fff;
+}
+
+body.dark-mode .btn:hover {
+    background: #1b8a73;
+    border-color: #1b8a73;
+}
+
+body.dark-mode .carousel h2,
+body.dark-mode .popular h2,
+body.dark-mode .product-section-head h2 {
+    color: #fff;
+}
+
+body.dark-mode .catalog-search label,
+body.dark-mode .catalog-filter label,
+body.dark-mode .catalog-sort label {
+    color: #eef8f4;
+}
+
+body.dark-mode .catalog-search input,
+body.dark-mode .catalog-filter select,
+body.dark-mode .catalog-sort select,
+body.dark-mode .quick-filter {
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+body.dark-mode .catalog-search input::placeholder {
+    color: rgba(255, 255, 255, 0.68);
+}
+
+body.dark-mode .quick-filter.active {
+    background: #17836c;
+    border-color: #17836c;
+    color: #fff;
+}
+
+body.dark-mode .quick-filter:hover {
+    color: #fff;
+    border-color: #5ee0bc;
+}
+
+body.dark-mode .contact {
+    background:
+        linear-gradient(135deg, rgba(29, 52, 46, 0.95), rgba(20, 34, 31, 0.98));
+    border-color: rgba(156, 205, 190, 0.14);
+}
+
+body.dark-mode .section-eyebrow,
+body.dark-mode .contact-highlights span {
+    background: rgba(255, 255, 255, 0.08);
+    color: #5ee0bc;
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .contact-copy h2 {
+    color: #fff;
+}
+
+body.dark-mode .contact-copy p {
+    color: #d7e5df;
+}
+
+body.dark-mode .contact-content {
+    background: #213832;
+    border-color: rgba(156, 205, 190, 0.18);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+}
+
+body.dark-mode .contact-form label,
+body.dark-mode .contact-content h3 {
+    color: #eef8f4;
+}
+
+body.dark-mode .contact-form-row input[type="email"] {
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+body.dark-mode .contact-form-row input[type="email"]::placeholder {
+    color: rgba(255, 255, 255, 0.68);
+}
+
+body.dark-mode .whatsapp-contact,
+body.dark-mode .whatsapp-contact a {
+    color: #5ee0bc;
+}
+
+body.dark-mode .contact-feedback.success {
+    background: rgba(37, 211, 102, 0.14);
+    color: #b8f7ce;
+    border-color: rgba(37, 211, 102, 0.25);
+}
+
+body.dark-mode .contact-feedback.error {
+    background: rgba(239, 68, 68, 0.14);
+    color: #fecaca;
+    border-color: rgba(239, 68, 68, 0.28);
+}
+
+body.dark-mode .footer {
+    background: #162723;
+    color: #eef8f4;
+}
+
+body.dark-mode .footer h4 {
+    color: #fff;
+}
+
+body.dark-mode .footer-brand p,
+body.dark-mode .footer-support span,
+body.dark-mode .footer-legal {
+    color: #d7e5df;
+}
+
+body.dark-mode .footer-nav a,
+body.dark-mode .footer-support a {
+    color: #5ee0bc;
+}
+
+body.dark-mode .footer-legal {
+    border-top-color: rgba(255, 255, 255, 0.12);
+}

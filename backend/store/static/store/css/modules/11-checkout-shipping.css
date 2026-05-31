@@ -1,0 +1,419 @@
+/*
+ * Modulo: 11-checkout-shipping.css
+ * Nombre: Checkout y envio
+ * Descripcion: Modal de compra exitosa, formulario de envio, datos de envio en pedidos y checkout por pasos.
+ */
+
+/*
+ * Nombre: Modal de compra exitosa
+ * Descripcion: Define el diseño visual del resumen mostrado después de completar el checkout.
+ */
+.checkout-success-content {
+    width: min(620px, 100%);
+    padding: 28px;
+}
+
+.checkout-success-body {
+    text-align: center;
+    padding: 18px 8px 6px;
+}
+
+.checkout-success-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(34, 197, 94, 0.18);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    font-size: 34px;
+    font-weight: 800;
+}
+
+.checkout-success-body h2 {
+    margin-bottom: 10px;
+}
+
+.checkout-success-body .muted {
+    max-width: 48ch;
+    margin: 0 auto 22px;
+    line-height: 1.6;
+}
+
+.checkout-success-summary {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin: 22px 0;
+}
+
+.checkout-success-summary div {
+    padding: 16px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.checkout-success-summary span {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--muted-dark);
+}
+
+.checkout-success-summary strong {
+    display: block;
+    font-size: 22px;
+    color: #fff;
+}
+
+.checkout-success-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+body.light-mode .checkout-success-content {
+    background: #ffffff;
+    color: #222;
+}
+
+body.light-mode .checkout-success-icon {
+    background: rgba(34, 197, 94, 0.14);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.28);
+}
+
+body.light-mode .checkout-success-summary div {
+    background: #f8f8f8;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .checkout-success-summary span {
+    color: var(--muted-light);
+}
+
+body.light-mode .checkout-success-summary strong {
+    color: #222;
+}
+
+@media (max-width: 560px) {
+    .checkout-success-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .checkout-success-actions {
+        flex-direction: column;
+    }
+
+    .checkout-success-actions .btn {
+        width: 100%;
+    }
+}
+
+/*
+ * Nombre: Formulario de datos de envio
+ * Descripcion: Define la presentacion visual de los campos de envio dentro del carrito.
+ */
+.shipping-form {
+    margin: 14px 0;
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.shipping-form h4 {
+    margin-bottom: 6px;
+    font-size: 16px;
+}
+
+.shipping-form .muted {
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.shipping-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.shipping-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.shipping-field label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted-dark);
+}
+
+.shipping-field input,
+.shipping-field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+}
+
+.shipping-field textarea {
+    resize: vertical;
+    min-height: 76px;
+}
+
+.shipping-field input::placeholder,
+.shipping-field textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.shipping-field input:focus,
+.shipping-field textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255, 90, 44, 0.14);
+}
+
+body.light-mode .shipping-form {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .shipping-form h4 {
+    color: #222;
+}
+
+body.light-mode .shipping-field label {
+    color: var(--muted-light);
+}
+
+body.light-mode .shipping-field input,
+body.light-mode .shipping-field textarea {
+    background: #fff;
+    color: #222;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .shipping-field input::placeholder,
+body.light-mode .shipping-field textarea::placeholder {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * Nombre: Datos de envio en pedidos
+ * Descripcion: Define el diseño visual de la informacion de envio dentro del historial de pedidos.
+ */
+.order-shipping {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.order-shipping h4 {
+    margin-bottom: 10px;
+    font-size: 15px;
+    color: #fff;
+}
+
+.order-shipping-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 14px;
+}
+
+.order-shipping-grid p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--muted-dark);
+}
+
+.order-shipping-grid strong {
+    color: #fff;
+}
+
+.order-shipping-notes {
+    grid-column: 1 / -1;
+}
+
+body.light-mode .order-shipping {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .order-shipping h4,
+body.light-mode .order-shipping-grid strong {
+    color: #222;
+}
+
+body.light-mode .order-shipping-grid p {
+    color: var(--muted-light);
+}
+
+@media (max-width: 560px) {
+    .order-shipping-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/*
+ * Nombre: Checkout por pasos
+ * Descripcion: Organiza visualmente los pasos de resumen, envio y confirmacion dentro del carrito.
+ */
+.checkout-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 10px 0 14px;
+}
+
+.checkout-step-indicator {
+    padding: 8px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted-dark);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.checkout-step-indicator.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.checkout-step-panel {
+    display: none;
+}
+
+.checkout-step-panel.active {
+    display: block;
+}
+
+.checkout-step-title {
+    margin-bottom: 12px;
+}
+
+.checkout-step-title h4,
+.checkout-confirm-box h4 {
+    margin-bottom: 6px;
+    font-size: 16px;
+}
+
+.checkout-confirm-box {
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.checkout-confirm-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.checkout-confirm-section {
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.checkout-confirm-section h5 {
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #fff;
+}
+
+.checkout-confirm-section p {
+    margin: 6px 0;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.checkout-confirm-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.checkout-confirm-item:last-child {
+    border-bottom: none;
+}
+
+.checkout-confirm-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 90, 44, 0.12);
+    border: 1px solid rgba(255, 90, 44, 0.25);
+}
+
+.checkout-confirm-total strong {
+    color: var(--accent);
+}
+
+.cart-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding-top: 12px;
+    background: inherit;
+}
+
+body.light-mode .checkout-step-indicator {
+    background: #fff;
+    color: var(--muted-light);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .checkout-step-indicator.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+body.light-mode .checkout-confirm-box,
+body.light-mode .checkout-confirm-section {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .checkout-confirm-section h5 {
+    color: #222;
+}
+
+body.light-mode .checkout-confirm-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 430px) {
+    .checkout-step-indicator {
+        font-size: 11px;
+        padding: 7px 4px;
+    }
+}

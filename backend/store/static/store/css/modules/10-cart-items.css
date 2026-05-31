@@ -1,0 +1,162 @@
+/*
+ * Modulo: 10-cart-items.css
+ * Nombre: Items del carrito
+ * Descripcion: Mejoras visuales para subtotales, limites de stock y distribucion interna de items.
+ */
+
+/*
+ * Nombre: Detalle visual de items del carrito
+ * Descripcion: Mejora la lectura de subtotal por producto y aviso de stock maximo.
+ */
+.cart-line-subtotal {
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.cart-stock-limit {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fbbf24;
+}
+
+body.light-mode .cart-line-subtotal {
+    color: var(--accent);
+}
+
+body.light-mode .cart-stock-limit {
+    color: #b45309;
+}
+
+/*
+ * Nombre: Distribucion mejorada de items del carrito
+ * Descripcion: Organiza imagen, informacion, cantidades y acciones para evitar que el contenido se apile en el drawer.
+ */
+.cart-item {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    grid-template-areas:
+        "image info"
+        "actions actions";
+    gap: 12px;
+    align-items: start;
+    padding: 14px;
+}
+
+.cart-item img {
+    grid-area: image;
+    width: 56px;
+    height: 72px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.cart-item-info {
+    grid-area: info;
+    min-width: 0;
+}
+
+.cart-item-info strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 15px;
+    line-height: 1.3;
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
+.cart-item-info small {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 13px;
+    opacity: 0.82;
+}
+
+.cart-line-subtotal {
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.cart-stock-limit {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #fbbf24;
+}
+
+.cart-item-actions {
+    grid-area: actions;
+    display: grid;
+    grid-template-columns: 34px 34px 34px 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.cart-item-actions .btn.small {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    padding: 0;
+}
+
+.cart-item-actions .remove-item {
+    width: 100% !important;
+    height: 34px;
+    padding: 0 12px !important;
+    border-radius: 999px !important;
+    font-size: 13px !important;
+}
+
+.cart-qty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    font-weight: 700;
+}
+
+body.light-mode .cart-line-subtotal {
+    color: var(--accent);
+}
+
+body.light-mode .cart-stock-limit {
+    color: #b45309;
+}
+
+@media (max-width: 430px) {
+    .cart-item {
+        grid-template-columns: 52px 1fr;
+        padding: 12px;
+    }
+
+    .cart-item img {
+        width: 48px;
+        height: 64px;
+    }
+
+    .cart-item-actions {
+        grid-template-columns: 30px 30px 30px 1fr;
+        gap: 6px;
+    }
+
+    .cart-item-actions .btn.small,
+    .cart-qty {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+    }
+
+    .cart-item-actions .remove-item {
+        height: 30px;
+        font-size: 12px !important;
+    }
+}

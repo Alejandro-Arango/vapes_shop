@@ -1,0 +1,195 @@
+/*
+ * Modulo: 06-modals-orders.css
+ * Nombre: Modales y pedidos
+ * Descripcion: Estructura base de modales, autenticacion, pedidos y estados de orden.
+ */
+
+/*
+ * Nombre: Modales
+ * Descripcion: Define estructura base de modales, autenticacion y pedidos.
+ */
+.modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 9999;
+}
+
+.modal.open {
+    display: flex;
+}
+
+.modal-content {
+    width: min(760px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow: hidden;
+    border-radius: 16px;
+    background: #2b2340;
+    padding: 18px;
+    position: relative;
+    box-shadow: var(--shadow);
+}
+
+.modal-close {
+    position: absolute;
+    right: 12px;
+    top: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #fff;
+    cursor: pointer;
+}
+
+body.light-mode .modal-content {
+    background: var(--card-light);
+    color: #222;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.auth-form input {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: none;
+}
+
+.auth-feedback,
+.orders-feedback {
+    margin: 10px 0 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    display: none;
+}
+
+.auth-feedback.success,
+.orders-feedback.success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.auth-feedback.error,
+.orders-feedback.error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.orders-body {
+    margin-top: 14px;
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.orders-confirm {
+    margin: 10px 0 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255, 193, 7, 0.12);
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    display: none;
+}
+
+.orders-confirm p {
+    margin-bottom: 10px;
+}
+
+.orders-confirm-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.order-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.order-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.order-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.order-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    font-size: 15px;
+}
+
+/*
+ * Nombre: Estados de pedido
+ * Descripcion: Define badges visuales para cada estado de una orden.
+ */
+.order-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: 8px;
+    text-transform: capitalize;
+    letter-spacing: 0.02em;
+}
+
+.status-pendiente {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.45);
+}
+
+.status-pagado {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.45);
+}
+
+.status-enviado {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.45);
+}
+
+.status-entregado {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.45);
+}
+
+.status-cancelado {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.45);
+}

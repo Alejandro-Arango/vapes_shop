@@ -1,0 +1,138 @@
+/*
+ * Modulo: 12-order-timeline.css
+ * Nombre: Timeline de pedidos
+ * Descripcion: Linea visual de estados del pedido y variante de pedido cancelado.
+ */
+
+/*
+ * Nombre: Timeline visual de pedidos
+ * Descripcion: Define la linea de progreso para representar el estado de una orden.
+ */
+.order-timeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 14px 0;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.order-timeline-step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    color: var(--muted-dark);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.order-timeline-step::before {
+    content: "";
+    position: absolute;
+    top: 7px;
+    left: -50%;
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.14);
+    z-index: 0;
+}
+
+.order-timeline-step:first-child::before {
+    display: none;
+}
+
+.order-timeline-step.active::before {
+    background: var(--accent);
+}
+
+.order-timeline-dot {
+    position: relative;
+    z-index: 1;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    border: 2px solid rgba(255, 255, 255, 0.22);
+}
+
+.order-timeline-step.active .order-timeline-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.order-timeline-step.current .order-timeline-dot {
+    box-shadow: 0 0 0 5px rgba(255, 90, 44, 0.16);
+}
+
+.order-timeline-label {
+    line-height: 1.25;
+}
+
+.order-timeline.cancelled {
+    display: block;
+    grid-template-columns: none;
+}
+
+.order-timeline-cancelled {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.14);
+    border: 1px solid rgba(239, 68, 68, 0.32);
+    color: #fca5a5;
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+}
+
+body.light-mode .order-timeline {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .order-timeline-step {
+    color: var(--muted-light);
+}
+
+body.light-mode .order-timeline-step::before {
+    background: rgba(0, 0, 0, 0.14);
+}
+
+body.light-mode .order-timeline-step.active::before {
+    background: var(--accent);
+}
+
+body.light-mode .order-timeline-dot {
+    background: rgba(0, 0, 0, 0.12);
+    border-color: rgba(0, 0, 0, 0.18);
+}
+
+body.light-mode .order-timeline-cancelled {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.28);
+    color: #dc2626;
+}
+
+@media (max-width: 560px) {
+    .order-timeline {
+        gap: 4px;
+        padding: 10px 6px;
+    }
+
+    .order-timeline-step {
+        font-size: 10px;
+    }
+
+    .order-timeline-dot {
+        width: 12px;
+        height: 12px;
+    }
+
+    .order-timeline-step::before {
+        top: 6px;
+    }
+}

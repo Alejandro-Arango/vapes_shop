@@ -1,0 +1,206 @@
+/*
+ * Modulo: 04-contact.css
+ * Nombre: Contacto
+ * Descripcion: Bloque de contacto, formulario, feedback y boton flotante de WhatsApp.
+ */
+
+/*
+ * Nombre: Contacto
+ * Descripcion: Define formulario de contacto y boton flotante externo.
+ */
+.contact-content {
+    background: #ffffff;
+    padding: 34px;
+    border-radius: 22px;
+    border: 1px solid rgba(18, 63, 53, 0.08);
+    box-shadow: 0 22px 56px rgba(18, 63, 53, 0.12);
+}
+
+.contact-content h3 {
+    margin-bottom: 8px;
+    color: #1f2523;
+    font-size: 21px;
+    line-height: 1.35;
+}
+
+.contact {
+    margin-top: 54px;
+    padding: 88px 20px;
+    background:
+        linear-gradient(135deg, rgba(232, 242, 239, 0.9), rgba(255, 255, 255, 0.94));
+    border-top: 1px solid rgba(18, 63, 53, 0.08);
+    border-bottom: 1px solid rgba(18, 63, 53, 0.08);
+}
+
+.contact-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1fr);
+    gap: 44px;
+    align-items: center;
+}
+
+.section-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(18, 63, 53, 0.08);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.contact-copy h2 {
+    max-width: 520px;
+    margin-bottom: 16px;
+    font-size: 36px;
+    line-height: 1.15;
+}
+
+.contact-copy p {
+    max-width: 58ch;
+    color: var(--muted-light);
+    line-height: 1.7;
+}
+
+.contact-highlights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.contact-highlights span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 13px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--accent);
+    border: 1px solid rgba(18, 63, 53, 0.08);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+body.light-mode .contact-content {
+    background: var(--card-light);
+    box-shadow: 0 22px 56px rgba(18, 63, 53, 0.12);
+}
+
+form {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+input {
+    padding: 12px 16px;
+    border: none;
+    border-radius: 25px;
+    outline: none;
+}
+
+input[type="email"] {
+    flex: 1;
+    min-width: 250px;
+}
+
+.contact-form {
+    display: block;
+    margin-top: 20px;
+    text-align: left;
+}
+
+.contact-form label {
+    display: block;
+    margin-bottom: 10px;
+    color: #35413d;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.contact-form-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.contact-form-row input[type="email"] {
+    min-height: 48px;
+    border: 1px solid rgba(18, 63, 53, 0.12);
+    background: #f8fbfa;
+    color: #22312d;
+}
+
+.contact-form-row .btn {
+    min-height: 48px;
+}
+
+.whatsapp-contact,
+.whatsapp-contact a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+    font-weight: 800;
+}
+
+.whatsapp-contact {
+    margin-top: 20px;
+}
+
+.whatsapp-contact:hover,
+.whatsapp-contact a:hover {
+    color: var(--warning-accent);
+}
+
+.contact-feedback {
+    display: none;
+    margin-top: 18px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.contact-feedback.success {
+    display: block;
+    background: rgba(37, 211, 102, 0.12);
+    color: #0f6b39;
+    border: 1px solid rgba(37, 211, 102, 0.24);
+}
+
+.contact-feedback.error {
+    display: block;
+    background: rgba(239, 68, 68, 0.1);
+    color: #b91c1c;
+    border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+input:focus {
+    box-shadow: 0 0 8px rgba(255, 90, 44, 0.18);
+    transform: translateY(-1px);
+}
+
+.whatsapp-float {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--success);
+    color: #fff;
+    border-radius: 50%;
+    padding: 14px;
+    font-size: 20px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    z-index: 1000;
+    transition: transform 0.18s ease;
+}
+
+.whatsapp-float:hover {
+    transform: scale(1.08);
+}

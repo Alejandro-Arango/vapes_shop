@@ -1,0 +1,109 @@
+/*
+ * Modulo: 00-foundation.css
+ * Nombre: Base global
+ * Descripcion: Variables, reset, contenedor, anclas y modos claro/oscuro base.
+ */
+
+/*
+ * Nombre: Variables globales
+ * Descripcion: Centraliza colores, sombras y medidas reutilizables del sitio.
+ */
+:root {
+    --accent: #123f35;
+    --accent-strong: #0d2f28;
+    --accent-soft: #e8f2ef;
+    --warning-accent: #ff6a2a;
+    --bg-dark: #111c1a;
+    --card-dark: #182826;
+    --muted-dark: #e0e0e0;
+    --bg-light: #f7f8f6;
+    --card-light: #ffffff;
+    --muted-light: #666f6b;
+    --success: #25d366;
+    --glass: rgba(255, 255, 255, 0.06);
+    --shadow: 0 16px 40px rgba(18, 63, 53, 0.14);
+    --max-width: 1200px;
+}
+
+/*
+ * Nombre: Reset base
+ * Descripcion: Limpia estilos por defecto y define comportamiento general del documento.
+ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    text-decoration: none;
+    list-style: none;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: "Poppins", sans-serif;
+    transition: background-color 0.4s ease, color 0.4s ease;
+    background: var(--bg-dark);
+    color: #fff;
+}
+
+.container {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+#inicio,
+#informacion,
+#productos,
+#contacto {
+    scroll-margin-top: 92px;
+}
+
+/*
+ * Nombre: Modos de color
+ * Descripcion: Define estilos base para modo oscuro y modo claro.
+ */
+body.dark-mode {
+    background:
+        linear-gradient(180deg, #1f332e 0%, #263f39 48%, #1f332e 100%);
+    color: #f4faf7;
+}
+
+body.dark-mode .card {
+    background: var(--card-dark);
+    color: #fff;
+}
+
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode strong {
+    color: #fff;
+}
+
+body.light-mode {
+    background:
+        linear-gradient(180deg, #ffffff 0%, var(--bg-light) 42%, #ffffff 100%);
+    color: #222;
+}
+
+body.light-mode .card {
+    background: var(--card-light);
+    color: #222;
+}
+
+.muted {
+    color: var(--muted-dark);
+}
+
+body.light-mode .muted {
+    color: var(--muted-light);
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
