@@ -58,6 +58,13 @@ body {
     padding: 0 15px;
 }
 
+#inicio,
+#informacion,
+#productos,
+#contacto {
+    scroll-margin-top: 92px;
+}
+
 /*
  * Nombre: Modos de color
  * Descripcion: Define estilos base para modo oscuro y modo claro.
@@ -136,11 +143,28 @@ img {
 }
 
 .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
     color: var(--accent);
-    font-size: 25px;
+    font-size: 24px;
     font-weight: 800;
-    text-transform: uppercase;
+    letter-spacing: 0;
     transition: transform 0.3s ease;
+}
+
+.logo-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 10px 22px rgba(18, 63, 53, 0.18);
 }
 
 .logo:hover {
@@ -409,6 +433,10 @@ main {
     padding: 54px 20px;
 }
 
+body > main {
+    padding: 0;
+}
+
 h2 {
     font-size: 34px;
     margin-bottom: 18px;
@@ -634,17 +662,84 @@ body.light-mode .price p {
  * Descripcion: Define formulario de contacto y boton flotante externo.
  */
 .contact-content {
-    background: var(--card-dark);
-    padding: 36px;
-    border-radius: 16px;
-    text-align: center;
-    max-width: 720px;
-    margin: 0 auto;
+    background: #ffffff;
+    padding: 34px;
+    border-radius: 22px;
+    border: 1px solid rgba(18, 63, 53, 0.08);
+    box-shadow: 0 22px 56px rgba(18, 63, 53, 0.12);
+}
+
+.contact-content h3 {
+    margin-bottom: 8px;
+    color: #1f2523;
+    font-size: 21px;
+    line-height: 1.35;
+}
+
+.contact {
+    margin-top: 54px;
+    padding: 88px 20px;
+    background:
+        linear-gradient(135deg, rgba(232, 242, 239, 0.9), rgba(255, 255, 255, 0.94));
+    border-top: 1px solid rgba(18, 63, 53, 0.08);
+    border-bottom: 1px solid rgba(18, 63, 53, 0.08);
+}
+
+.contact-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1fr);
+    gap: 44px;
+    align-items: center;
+}
+
+.section-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(18, 63, 53, 0.08);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.contact-copy h2 {
+    max-width: 520px;
+    margin-bottom: 16px;
+    font-size: 36px;
+    line-height: 1.15;
+}
+
+.contact-copy p {
+    max-width: 58ch;
+    color: var(--muted-light);
+    line-height: 1.7;
+}
+
+.contact-highlights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.contact-highlights span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 13px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--accent);
+    border: 1px solid rgba(18, 63, 53, 0.08);
+    font-size: 13px;
+    font-weight: 700;
 }
 
 body.light-mode .contact-content {
     background: var(--card-light);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 22px 56px rgba(18, 63, 53, 0.12);
 }
 
 form {
@@ -665,6 +760,79 @@ input {
 input[type="email"] {
     flex: 1;
     min-width: 250px;
+}
+
+.contact-form {
+    display: block;
+    margin-top: 20px;
+    text-align: left;
+}
+
+.contact-form label {
+    display: block;
+    margin-bottom: 10px;
+    color: #35413d;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.contact-form-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.contact-form-row input[type="email"] {
+    min-height: 48px;
+    border: 1px solid rgba(18, 63, 53, 0.12);
+    background: #f8fbfa;
+    color: #22312d;
+}
+
+.contact-form-row .btn {
+    min-height: 48px;
+}
+
+.whatsapp-contact,
+.whatsapp-contact a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+    font-weight: 800;
+}
+
+.whatsapp-contact {
+    margin-top: 20px;
+}
+
+.whatsapp-contact:hover,
+.whatsapp-contact a:hover {
+    color: var(--warning-accent);
+}
+
+.contact-feedback {
+    display: none;
+    margin-top: 18px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.contact-feedback.success {
+    display: block;
+    background: rgba(37, 211, 102, 0.12);
+    color: #0f6b39;
+    border: 1px solid rgba(37, 211, 102, 0.24);
+}
+
+.contact-feedback.error {
+    display: block;
+    background: rgba(239, 68, 68, 0.1);
+    color: #b91c1c;
+    border: 1px solid rgba(239, 68, 68, 0.22);
 }
 
 input:focus {
@@ -1285,6 +1453,25 @@ input:focus {
         align-items: flex-start;
         flex-direction: column;
     }
+
+    .contact-shell,
+    .footer-inner {
+        grid-template-columns: 1fr;
+    }
+
+    .contact-copy {
+        text-align: center;
+    }
+
+    .contact-copy h2,
+    .contact-copy p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .contact-highlights {
+        justify-content: center;
+    }
 }
 
 @media (max-width: 700px) {
@@ -1339,6 +1526,34 @@ input:focus {
 
     .carousel-slide img {
         height: 240px;
+    }
+
+    .logo {
+        font-size: 20px;
+    }
+
+    .logo-mark {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+
+    .contact {
+        padding: 64px 16px;
+    }
+
+    .contact-content {
+        padding: 26px 20px;
+    }
+
+    .contact-form-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .contact-form-row input[type="email"],
+    .contact-form-row .btn {
+        width: 100%;
     }
 }
 
@@ -1886,6 +2101,11 @@ body.dark-mode .logo {
     color: #5ee0bc;
 }
 
+body.dark-mode .logo-mark {
+    background: #5ee0bc;
+    color: #12231f;
+}
+
 body.dark-mode .hero-text p {
     color: rgba(255, 255, 255, 0.82);
 }
@@ -1998,6 +2218,89 @@ body.dark-mode .quick-filter.active {
 body.dark-mode .quick-filter:hover {
     color: #fff;
     border-color: #5ee0bc;
+}
+
+body.dark-mode .contact {
+    background:
+        linear-gradient(135deg, rgba(29, 52, 46, 0.95), rgba(20, 34, 31, 0.98));
+    border-color: rgba(156, 205, 190, 0.14);
+}
+
+body.dark-mode .section-eyebrow,
+body.dark-mode .contact-highlights span {
+    background: rgba(255, 255, 255, 0.08);
+    color: #5ee0bc;
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .contact-copy h2 {
+    color: #fff;
+}
+
+body.dark-mode .contact-copy p {
+    color: #d7e5df;
+}
+
+body.dark-mode .contact-content {
+    background: #213832;
+    border-color: rgba(156, 205, 190, 0.18);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+}
+
+body.dark-mode .contact-form label,
+body.dark-mode .contact-content h3 {
+    color: #eef8f4;
+}
+
+body.dark-mode .contact-form-row input[type="email"] {
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+body.dark-mode .contact-form-row input[type="email"]::placeholder {
+    color: rgba(255, 255, 255, 0.68);
+}
+
+body.dark-mode .whatsapp-contact,
+body.dark-mode .whatsapp-contact a {
+    color: #5ee0bc;
+}
+
+body.dark-mode .contact-feedback.success {
+    background: rgba(37, 211, 102, 0.14);
+    color: #b8f7ce;
+    border-color: rgba(37, 211, 102, 0.25);
+}
+
+body.dark-mode .contact-feedback.error {
+    background: rgba(239, 68, 68, 0.14);
+    color: #fecaca;
+    border-color: rgba(239, 68, 68, 0.28);
+}
+
+body.dark-mode .footer {
+    background: #162723;
+    color: #eef8f4;
+}
+
+body.dark-mode .footer h4 {
+    color: #fff;
+}
+
+body.dark-mode .footer-brand p,
+body.dark-mode .footer-support span,
+body.dark-mode .footer-legal {
+    color: #d7e5df;
+}
+
+body.dark-mode .footer-nav a,
+body.dark-mode .footer-support a {
+    color: #5ee0bc;
+}
+
+body.dark-mode .footer-legal {
+    border-top-color: rgba(255, 255, 255, 0.12);
 }
 
 /*
@@ -2765,11 +3068,69 @@ body.age-verification-locked {
     flex-wrap: wrap;
 }
 
+.footer {
+    padding: 54px 20px 28px;
+    background: #ffffff;
+    color: #24302c;
+}
+
+.footer-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(160px, 0.7fr) minmax(220px, 0.9fr);
+    gap: 42px;
+    align-items: start;
+}
+
+.footer-brand p {
+    max-width: 420px;
+    margin-top: 14px;
+    color: var(--muted-light);
+    line-height: 1.7;
+}
+
+.footer h4 {
+    margin-bottom: 14px;
+    color: #1f2523;
+    font-size: 15px;
+}
+
+.footer-nav ul {
+    display: grid;
+    gap: 10px;
+}
+
+.footer-nav a,
+.footer-support a {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.footer-nav a:hover,
+.footer-support a:hover {
+    color: var(--warning-accent);
+}
+
+.footer-support {
+    display: grid;
+    gap: 10px;
+}
+
+.footer-support a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.footer-support span {
+    color: var(--muted-light);
+    line-height: 1.6;
+}
+
 .footer-legal {
     width: 100%;
-    margin-top: 18px;
+    margin-top: 34px;
     padding-top: 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(18, 63, 53, 0.12);
     color: var(--muted-dark);
     font-size: 13px;
     line-height: 1.6;

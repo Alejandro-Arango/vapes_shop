@@ -187,6 +187,31 @@ CSRF_TRUSTED_ORIGINS = [
 
 
 # =============================================================================
+# CONFIGURACION DE CONTACTO Y CORREO
+# =============================================================================
+
+CONTACT_WHATSAPP_NUMBER = os.environ.get(
+    "CONTACT_WHATSAPP_NUMBER",
+    "573016604375",
+)
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    "Vape Shop <no-reply@vape-shop.local>",
+)
+
+CONTACT_NOTIFICATION_EMAIL = os.environ.get(
+    "CONTACT_NOTIFICATION_EMAIL",
+    "admin@vape-shop.local",
+)
+
+EMAIL_BACKEND = os.environ.get(
+    "DJANGO_EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+
+
+# =============================================================================
 # CONFIGURACION DEFAULT DE MODELOS
 # =============================================================================
 

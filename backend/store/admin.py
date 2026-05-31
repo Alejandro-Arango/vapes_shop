@@ -1,13 +1,13 @@
 """
 Archivo: admin.py
 Descripcion: Configura la visualizacion y gestion de los modelos principales en el panel administrativo de Django.
-Dependencias: Django admin y modelos Customer, Product, Order y OrderItem
+Dependencias: Django admin y modelos principales de store
 """
 
 from django.contrib import admin
 from django.db import transaction
 
-from .models import Customer, Product, Order, OrderItem
+from .models import ContactLead, Customer, Product, Order, OrderItem
 
 
 @admin.register(Customer)
@@ -43,6 +43,41 @@ class CustomerAdmin(admin.ModelAdmin):
     ordering = (
         "first_name",
         "last_name",
+    )
+
+
+@admin.register(ContactLead)
+class ContactLeadAdmin(admin.ModelAdmin):
+    """
+    Nombre: ContactLeadAdmin
+    Descripcion: Permite consultar los correos recibidos desde el formulario de contacto.
+    """
+
+    list_display = (
+        "id",
+        "email",
+        "email_notification_sent",
+        "created_at",
+    )
+
+    search_fields = (
+        "email",
+    )
+
+    list_filter = (
+        "email_notification_sent",
+        "created_at",
+    )
+
+    readonly_fields = (
+        "email",
+        "whatsapp_message",
+        "email_notification_sent",
+        "created_at",
+    )
+
+    ordering = (
+        "-created_at",
     )
 
 

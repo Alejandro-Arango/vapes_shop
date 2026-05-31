@@ -1,22 +1,49 @@
 <!--
 Nombre: footer.html
-Descripcion: Componente inferior con logo y enlaces principales de navegacion.
+Descripcion: Componente inferior con marca, enlaces principales, contacto y aviso legal.
 -->
 
-<footer class="footer container" data-aos="fade-up">
-    <div class="link">
-        <a href="#" class="logo">VapeShop</a>
+<footer class="footer" data-aos="fade-up">
+    <div class="footer-inner container">
+        <div class="footer-brand">
+            <a href="#inicio" class="logo" aria-label="Ir al inicio">
+                <span class="logo-mark">VS</span>
+                <span>Vape Shop</span>
+            </a>
+
+            <p>
+                Tienda especializada en vapes, sabores y accesorios con atención
+                cercana y compra segura.
+            </p>
+        </div>
+
+        <nav class="footer-nav" aria-label="Navegación inferior">
+            <h4>Navegación</h4>
+
+            <ul>
+                <li><a href="#inicio">Inicio</a></li>
+                <li><a href="#productos">Productos</a></li>
+                <li><a href="#contacto">Contacto</a></li>
+            </ul>
+        </nav>
+
+        <div class="footer-support">
+            <h4>Soporte</h4>
+
+            <a
+                href="https://wa.me/573016604375"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                <i class="fab fa-whatsapp"></i>
+                WhatsApp
+            </a>
+
+            <span>Respuesta rápida para pedidos y disponibilidad.</span>
+        </div>
     </div>
 
-    <div class="link">
-        <ul>
-            <li><a href="#inicio">Inicio</a></li>
-            <li><a href="#productos">Productos</a></li>
-            <li><a href="#contacto">Contacto</a></li>
-        </ul>
-    </div>
-
-    <div class="footer-legal">
+    <div class="footer-legal container">
         <p>
             Venta exclusiva para mayores de edad. El acceso, la compra y el uso
             de estos productos estan sujetos a la normativa aplicable.

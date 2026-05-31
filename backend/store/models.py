@@ -55,6 +55,24 @@ class Product(models.Model):
         return self.name
 
 
+class ContactLead(models.Model):
+    """
+    Nombre: ContactLead
+    Descripcion: Registra correos enviados desde el formulario de contacto del home.
+    """
+
+    email = models.EmailField()
+    whatsapp_message = models.TextField(blank=True)
+    email_notification_sent = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return self.email
+
+
 class Order(models.Model):
     """
     Nombre: Order

@@ -6,13 +6,15 @@ Dependencias: Django test, Django auth, Django urls, Django REST Framework y mod
 
 from decimal import Decimal
 
+from django.core import mail
 from django.contrib.auth.models import User
+from django.test import override_settings
 from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Customer, Order, OrderItem, Product
+from .models import ContactLead, Customer, Order, OrderItem, Product
 
 
 class StoreApiTests(APITestCase):
@@ -108,6 +110,30 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["username"], "cliente")
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        CONTACT_NOTIFICATION_EMAIL="admin@example.com",
+        DEFAULT_FROM_EMAIL="no-reply@example.com",
+    )
+    def test_contact_form_saves_lead_sends_email_and_returns_whatsapp(self):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "email": " VISITANTE@Example.COM ",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        lead = ContactLead.objects.get()
+
+        self.assertEqual(lead.email, "visitante@example.com")
+        self.assertTrue(lead.email_notification_sent)
+        self.assertIn("wa.me", response.data["whatsapp_url"])
+        self.assertIn("visitante%40example.com", response.data["whatsapp_url"])
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         response = self.client.post(

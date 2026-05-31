@@ -5,9 +5,12 @@ Nombre: header.html
 Descripcion: Componente superior que contiene navegación, controles de usuario, carrito, cambio de tema y sección principal de bienvenida.
 -->
 
-<header class="header">
+<header id="inicio" class="header">
     <div class="menu container">
-        <a href="#" class="logo">VapeShop</a>
+        <a href="#inicio" class="logo" aria-label="Ir al inicio">
+            <span class="logo-mark">VS</span>
+            <span>Vape Shop</span>
+        </a>
 
         <input type="checkbox" id="menu" />
 
@@ -82,7 +85,7 @@ Descripcion: Componente superior que contiene navegación, controles de usuario,
         <div class="hero-media">
             <img
                 src="{% static 'store/img/STLTH.webp' %}"
-                alt="VapeShop productos"
+                alt="Vape Shop productos"
                 loading="lazy"
             />
         </div>

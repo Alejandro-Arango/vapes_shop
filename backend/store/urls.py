@@ -6,7 +6,14 @@ Dependencias: Django path y vistas de la aplicacion store
 
 from django.urls import path
 
-from . import views, views_api, views_auth, views_cart, views_orders
+from . import (
+    views,
+    views_api,
+    views_auth,
+    views_cart,
+    views_contact,
+    views_orders,
+)
 
 
 urlpatterns = [
@@ -15,6 +22,9 @@ urlpatterns = [
 
     # Productos
     path("api/products/", views_api.api_products, name="api_products"),
+
+    # Contacto
+    path("api/contact/", views_contact.contact, name="contact"),
 
     # Carrito
     path("api/cart/", views_cart.api_cart, name="api_cart"),

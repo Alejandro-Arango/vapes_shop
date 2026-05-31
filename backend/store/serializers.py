@@ -1,14 +1,14 @@
 """
 Archivo: serializers.py
 Descripcion: Define los serializadores usados para convertir modelos y datos de usuario en estructuras JSON para la API.
-Dependencias: Django REST Framework, modelo User y modelo Product
+Dependencias: Django REST Framework, modelo User y modelos principales de store
 """
 
 from django.contrib.auth.models import User
 
 from rest_framework import serializers
 
-from .models import Customer, Product
+from .models import ContactLead, Customer, Product
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -20,6 +20,42 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = "__all__"
+
+
+class ContactLeadSerializer(serializers.ModelSerializer):
+    """
+    Nombre: ContactLeadSerializer
+    Descripcion: Valida y registra correos enviados desde el formulario de contacto.
+    """
+
+    class Meta:
+        model = ContactLead
+        fields = (
+            "id",
+            "email",
+            "whatsapp_message",
+            "email_notification_sent",
+            "created_at",
+        )
+        read_only_fields = (
+            "id",
+            "whatsapp_message",
+            "email_notification_sent",
+            "created_at",
+        )
+
+    def validate_email(self, value):
+        """
+        Nombre: validate_email
+        Descripcion: Normaliza el correo de contacto antes de guardarlo.
+        Retorna: Correo normalizado en minusculas.
+        """
+        email = value.strip().lower()
+
+        if not email:
+            raise serializers.ValidationError("El correo es obligatorio.")
+
+        return email
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):

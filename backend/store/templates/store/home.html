@@ -1,7 +1,7 @@
 {% extends 'store/base.html' %}
 {% load static %}
 
-{% block title %}VapeShop - Tienda{% endblock %}
+{% block title %}Vape Shop - Tienda{% endblock %}
 
 {% block content %}
 
@@ -158,34 +158,70 @@ Descripcion: Plantilla principal que contiene secciones informativas, carrusel, 
     </div>
 </main>
 
-<section id="contacto" class="contact container" data-aos="fade-up">
-    <div class="contact-content">
-        <h3>Ponte en contacto con nuestro equipo</h3>
+<section id="contacto" class="contact" data-aos="fade-up">
+    <div class="contact-shell container">
+        <div class="contact-copy">
+            <span class="section-eyebrow">Contacto</span>
 
-        <form id="contact-form">
-            <input
-                type="email"
-                id="contact-email"
-                placeholder="Escribe tu correo"
-                required
-            />
+            <h2>&iquest;Necesitas ayuda con tu pedido?</h2>
 
-            <input
-                type="submit"
-                class="btn"
-                value="Enviar"
-            />
-        </form>
+            <p>
+                Te acompañamos para elegir el producto adecuado, confirmar
+                disponibilidad y resolver dudas antes de comprar.
+            </p>
 
-        <div class="whatsapp-contact">
-            <a
-                href="https://wa.me/573016604375"
-                target="_blank"
-                rel="noopener noreferrer"
-            >
-                <i class="fab fa-whatsapp"></i>
-                Escríbenos por WhatsApp
-            </a>
+            <div class="contact-highlights">
+                <span>
+                    <i class="fas fa-clock"></i>
+                    Respuesta rápida
+                </span>
+
+                <span>
+                    <i class="fas fa-box-open"></i>
+                    Stock actualizado
+                </span>
+
+                <span>
+                    <i class="fas fa-shield-alt"></i>
+                    Compra segura
+                </span>
+            </div>
+        </div>
+
+        <div class="contact-content">
+            <h3>Ponte en contacto con nuestro equipo</h3>
+
+            <form id="contact-form" class="contact-form">
+                <label for="contact-email">Correo electrónico</label>
+
+                <div class="contact-form-row">
+                    <input
+                        type="email"
+                        id="contact-email"
+                        placeholder="Escribe tu correo"
+                        required
+                    />
+
+                    <input
+                        type="submit"
+                        class="btn"
+                        value="Enviar"
+                    />
+                </div>
+            </form>
+
+            <div class="whatsapp-contact">
+                <a
+                    href="https://wa.me/573016604375"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <i class="fab fa-whatsapp"></i>
+                    Escríbenos por WhatsApp
+                </a>
+            </div>
+
+            <p id="contact-feedback" class="contact-feedback" aria-live="polite"></p>
         </div>
     </div>
 </section>

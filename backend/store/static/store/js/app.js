@@ -21,6 +21,7 @@ const api = {
     cartClear: "/api/cart/clear/",
     checkout: "/api/orders/checkout/",
     myOrders: "/api/orders/my/",
+    contact: "/api/contact/",
 
     cancelOrder: (orderId) => `/api/orders/cancel/${orderId}/`,
 };
@@ -294,6 +295,26 @@ function clearOrdersFeedback() {
     feedback.style.display = "none";
 }
 
+function showContactFeedback(message, type = "success") {
+    const feedback = document.getElementById("contact-feedback");
+
+    if (!feedback) return;
+
+    feedback.textContent = message;
+    feedback.className = `contact-feedback ${type}`;
+    feedback.style.display = "block";
+}
+
+function clearContactFeedback() {
+    const feedback = document.getElementById("contact-feedback");
+
+    if (!feedback) return;
+
+    feedback.textContent = "";
+    feedback.className = "contact-feedback";
+    feedback.style.display = "none";
+}
+
 /*
  * Nombre: showCheckoutSuccess
  * Descripcion: Muestra el modal de resumen cuando una compra se completa correctamente.
@@ -489,6 +510,40 @@ async function logoutUser() {
 
     await updateCartUI();
     await refreshProductsUI();
+}
+
+// =============================================================================
+//  CONTACTO
+// =============================================================================
+
+/*
+ * Nombre: submitContactEmail
+ * Descripcion: Envia el correo del formulario de contacto al backend.
+ */
+async function submitContactEmail(email) {
+    const res = await fetch(api.contact, {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        const emailError = Array.isArray(data?.email)
+            ? data.email[0]
+            : data?.email;
+
+        throw new Error(
+            emailError ||
+            data?.error ||
+            data?.detail ||
+            "No se pudo enviar el contacto."
+        );
+    }
+
+    return data;
 }
 
 // =============================================================================
@@ -1638,6 +1693,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const authClose = document.getElementById("auth-close");
     const loginForm = document.getElementById("login-form");
     const registerForm = document.getElementById("register-form");
+    const contactForm = document.getElementById("contact-form");
+    const contactEmail = document.getElementById("contact-email");
 
     const myOrdersBtn = document.getElementById("my-orders-btn");
     const ordersModal = document.getElementById("orders-modal");
@@ -2129,6 +2186,72 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     btnLogout?.addEventListener("click", async () => {
         await logoutUser();
+    });
+
+    contactForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        clearContactFeedback();
+
+        const email = contactEmail?.value || "";
+        const contactSubmit = contactForm.querySelector('input[type="submit"]');
+        const originalText = contactSubmit?.value || "Enviar";
+
+        if (isEmpty(email)) {
+            showContactFeedback("Ingresa tu correo electronico.", "error");
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            showContactFeedback("Ingresa un correo valido.", "error");
+            return;
+        }
+
+        const whatsappWindow = window.open("about:blank", "_blank");
+
+        if (whatsappWindow) {
+            whatsappWindow.opener = null;
+        }
+
+        if (contactSubmit) {
+            contactSubmit.disabled = true;
+            contactSubmit.value = "Enviando...";
+        }
+
+        try {
+            const data = await submitContactEmail(email);
+
+            contactForm.reset();
+
+            showContactFeedback(
+                data?.message || "Gracias. Registramos tu correo correctamente.",
+                "success"
+            );
+            showToast("Contacto registrado correctamente.", "success");
+
+            if (data?.whatsapp_url) {
+                if (whatsappWindow) {
+                    whatsappWindow.location.href = data.whatsapp_url;
+                } else {
+                    window.open(data.whatsapp_url, "_blank", "noopener,noreferrer");
+                }
+            }
+        } catch (err) {
+            if (whatsappWindow && !whatsappWindow.closed) {
+                whatsappWindow.close();
+            }
+
+            showContactFeedback(
+                err.message || "No se pudo registrar el contacto.",
+                "error"
+            );
+            showToast("No se pudo enviar el contacto.", "error");
+        } finally {
+            if (contactSubmit) {
+                contactSubmit.disabled = false;
+                contactSubmit.value = originalText;
+            }
+        }
     });
 
     checkoutSuccessClose?.addEventListener("click", () => {

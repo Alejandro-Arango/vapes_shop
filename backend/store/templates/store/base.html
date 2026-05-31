@@ -12,9 +12,9 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="csrf-token" content="{{ csrf_token }}">
 
-    <title>{% block title %}VapeShop{% endblock %}</title>
+    <title>{% block title %}Vape Shop{% endblock %}</title>
 
-    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=24">
+    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=26">
 
     <link
         rel="stylesheet"
@@ -108,7 +108,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
         });
     </script>
 
-    <script src="{% static 'store/js/app.js' %}?v=visual-1"></script>
+    <script src="{% static 'store/js/app.js' %}?v=contact-1"></script>
 
     {% block extra_scripts %}{% endblock %}
 </body>
