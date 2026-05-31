@@ -6,8 +6,6 @@ Vape Shop es una tienda e-commerce desarrollada como proyecto académico con Dja
 
 El sistema permite explorar productos, gestionar un carrito de compras, registrarse, iniciar sesión, realizar pedidos, consultar historial, cancelar órdenes y administrar productos desde el panel de Django.
 
-El proyecto queda pausado en este estado para entrega académica, pero está pensado para seguir escalando hacia una versión más completa y desplegable en producción.
-
 ## Objetivo
 
 Construir una aplicación web funcional que simule el flujo principal de una tienda en línea: catálogo, carrito, checkout, usuarios, pedidos, administración e inventario básico.
@@ -241,8 +239,6 @@ Resultado:
 
 ## Seguridad y Producción
 
-El proyecto está listo para una entrega académica local, pero todavía no debe considerarse producción.
-
 Aspectos aceptables para desarrollo:
 
 - SQLite local.
@@ -250,21 +246,6 @@ Aspectos aceptables para desarrollo:
 - Email por consola.
 - Archivos media locales.
 - Sesiones de Django.
-
-Aspectos a configurar antes de producción:
-
-- `DJANGO_DEBUG=False`.
-- `DJANGO_SECRET_KEY` desde variable de entorno.
-- `DJANGO_ALLOWED_HOSTS` con dominio real.
-- Base de datos PostgreSQL o MySQL configurada correctamente.
-- SMTP real para correos.
-- HTTPS.
-- Protección anti-spam para contacto.
-- Validación legal y de edad más robusta.
-- Pasarela de pago real.
-- Variables de entorno para datos sensibles.
-- Política de archivos media.
-- CI/CD y despliegue controlado.
 
 ## Variables de Entorno Relevantes
 
@@ -295,12 +276,6 @@ CONTACT_WHATSAPP_NUMBER
 - Pruebas frontend.
 - Optimización responsive adicional.
 - Seguridad avanzada para formularios públicos.
-
-## Estado de Entrega
-
-Proyecto funcional para presentación académica.
-
-Queda pausado en el estado actual para exposición y revisión docente, con intención de seguir escalándolo hacia una versión de producción más adelante.
 
 ## Autor
 
