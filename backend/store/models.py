@@ -52,6 +52,13 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        indexes = [
+            models.Index(fields=["created_at"], name="product_created_idx"),
+            models.Index(
+                fields=["stock", "created_at"],
+                name="product_stock_created_idx",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(price__gte=0),
@@ -96,6 +103,13 @@ class ContactLead(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["created_at"], name="contact_created_idx"),
+            models.Index(
+                fields=["status", "created_at"],
+                name="contact_status_date_idx",
+            ),
+        ]
 
     def __str__(self):
         return self.name or self.email
@@ -135,6 +149,21 @@ class EventLog(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["created_at"], name="event_created_idx"),
+            models.Index(
+                fields=["event_type", "created_at"],
+                name="event_type_date_idx",
+            ),
+            models.Index(
+                fields=["severity", "created_at"],
+                name="event_severity_date_idx",
+            ),
+            models.Index(
+                fields=["user", "created_at"],
+                name="event_user_date_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.event_type} - {self.severity}"
@@ -173,6 +202,19 @@ class Order(models.Model):
     shipping_city = models.CharField(max_length=100, blank=True, null=True)
     shipping_notes = models.TextField(blank=True, null=True)
     age_verified = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["date_ordered"], name="order_date_idx"),
+            models.Index(
+                fields=["customer", "date_ordered"],
+                name="order_customer_date_idx",
+            ),
+            models.Index(
+                fields=["status", "date_ordered"],
+                name="order_status_date_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"Orden #{self.id} - {self.customer}"
@@ -236,6 +278,12 @@ class OrderItem(models.Model):
     )
 
     class Meta:
+        indexes = [
+            models.Index(
+                fields=["order", "product"],
+                name="orderitem_order_product_idx",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(quantity__gte=1),
