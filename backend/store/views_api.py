@@ -12,6 +12,6 @@ def api_products(request):
     Usa el serializer de Product. Si en el futuro agregas imagen al producto,
     se podrá incluir ahí.
     """
-    products = Product.objects.all()
+    products = Product.objects.filter(is_active=True)
     serializer = ProductSerializer(products, many=True)
     return Response(serializer.data)

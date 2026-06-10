@@ -313,6 +313,7 @@ class ProductAdmin(admin.ModelAdmin):
         "name",
         "price",
         "stock",
+        "is_active",
         "get_stock_status",
         "created_at",
     )
@@ -323,6 +324,7 @@ class ProductAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
+        "is_active",
         "created_at",
         "stock",
     )
@@ -332,6 +334,8 @@ class ProductAdmin(admin.ModelAdmin):
     )
 
     actions = (
+        "activate_products",
+        "deactivate_products",
         "mark_out_of_stock",
         "increase_stock_by_10",
     )
@@ -345,6 +349,24 @@ class ProductAdmin(admin.ModelAdmin):
 
         return "Disponible"
     get_stock_status.short_description = "Estado stock"
+
+    @admin.action(description="Activar productos seleccionados")
+    def activate_products(self, request, queryset):
+        updated = queryset.update(is_active=True)
+
+        self.message_user(
+            request,
+            f"{updated} producto(s) activados."
+        )
+
+    @admin.action(description="Desactivar productos seleccionados")
+    def deactivate_products(self, request, queryset):
+        updated = queryset.update(is_active=False)
+
+        self.message_user(
+            request,
+            f"{updated} producto(s) desactivados."
+        )
 
     @admin.action(description="Marcar productos seleccionados sin stock")
     def mark_out_of_stock(self, request, queryset):

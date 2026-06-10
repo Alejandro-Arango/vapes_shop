@@ -205,7 +205,7 @@ def checkout(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    products = Product.objects.filter(id__in=product_ids)
+    products = Product.objects.filter(id__in=product_ids, is_active=True)
 
     if not products.exists():
         log_event(
@@ -225,6 +225,22 @@ def checkout(request):
         product.id: product
         for product in products
     }
+
+    unavailable_product_ids = set(product_ids) - set(product_map.keys())
+
+    if unavailable_product_ids:
+        log_event(
+            "checkout_failed",
+            "Checkout rechazado por productos no disponibles.",
+            request=request,
+            severity="warning",
+            metadata={"product_ids": sorted(unavailable_product_ids)},
+        )
+
+        return Response(
+            {"error": "Uno o mas productos del carrito ya no estan disponibles"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     order_lines = []
 

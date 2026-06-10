@@ -316,6 +316,22 @@ class StoreApiTests(APITestCase):
             EventLog.objects.filter(event_type="contact_invalid").exists()
         )
 
+    def test_products_api_returns_only_active_products(self):
+        inactive_product = Product.objects.create(
+            name="Producto oculto",
+            description="No debe aparecer en catalogo.",
+            price=Decimal("15.00"),
+            stock=4,
+            is_active=False,
+        )
+
+        response = self.client.get(reverse("api_products"))
+        product_ids = [product["id"] for product in response.data]
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(self.product.id, product_ids)
+        self.assertNotIn(inactive_product.id, product_ids)
+
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         response = self.client.post(
             reverse("api_cart_add"),
@@ -351,6 +367,56 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["cart"][str(self.product.id)], 2)
+
+    def test_cart_rejects_inactive_product_and_cleans_existing_item(self):
+        self.product.is_active = False
+        self.product.save(update_fields=["is_active"])
+
+        response = self.client.post(
+            reverse("api_cart_add"),
+            {
+                "productId": self.product.id,
+                "quantity": 1,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        self.set_session_cart({str(self.product.id): 1})
+        response = self.client.get(reverse("api_cart"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["items"], [])
+        self.assertEqual(self.client.session.get("cart"), {})
+
+    def test_checkout_rejects_inactive_product(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+        self.product.is_active = False
+        self.product.save(update_fields=["is_active"])
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3000000000",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "",
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 5)
+        self.assertEqual(Order.objects.count(), 0)
+        self.assertTrue(
+            EventLog.objects.filter(event_type="checkout_failed").exists()
+        )
 
     def test_checkout_creates_order_and_discounts_stock(self):
         user = self.create_user()

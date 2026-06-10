@@ -49,6 +49,7 @@ class Product(models.Model):
         null=True
     )
     stock = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -57,6 +58,14 @@ class Product(models.Model):
             models.Index(
                 fields=["stock", "created_at"],
                 name="product_stock_created_idx",
+            ),
+            models.Index(
+                fields=["is_active", "created_at"],
+                name="product_active_date_idx",
+            ),
+            models.Index(
+                fields=["is_active", "stock"],
+                name="product_active_stock_idx",
             ),
         ]
         constraints = [

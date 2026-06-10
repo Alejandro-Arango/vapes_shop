@@ -48,7 +48,7 @@ def api_cart(request):
                 cart_changed = True
                 continue
 
-            product = Product.objects.get(id=product_id)
+            product = Product.objects.get(id=product_id, is_active=True)
 
             items.append({
                 "product": {
@@ -99,9 +99,9 @@ def api_cart_add(request):
         return Response({"error": "Cantidad invalida"}, status=400)
 
     try:
-        product = Product.objects.get(id=int(product_id))
+        product = Product.objects.get(id=int(product_id), is_active=True)
     except Product.DoesNotExist:
-        return Response({"error": "Producto no encontrado"}, status=404)
+        return Response({"error": "Producto no disponible"}, status=404)
 
     if product.stock <= 0:
         return Response({"error": "Producto sin stock"}, status=400)
