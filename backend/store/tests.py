@@ -6,14 +6,16 @@ Dependencias: Django test, Django auth, Django urls, Django REST Framework y mod
 
 from decimal import Decimal
 
+from django.contrib.admin.sites import AdminSite
 from django.core import mail
 from django.contrib.auth.models import User
-from django.test import override_settings
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin
 from .models import ContactLead, Customer, EventLog, Order, OrderItem, Product
 
 
@@ -34,6 +36,8 @@ class StoreApiTests(APITestCase):
             price=Decimal("10.00"),
             stock=5,
         )
+        self.admin_site = AdminSite()
+        self.request_factory = RequestFactory()
 
     def set_session_cart(self, cart):
         """
@@ -55,6 +59,21 @@ class StoreApiTests(APITestCase):
             email="cliente@example.com",
             password="ClaveSegura123",
         )
+
+    def create_admin_request(self):
+        """
+        Nombre: create_admin_request
+        Descripcion: Construye un request autenticado para probar acciones del admin.
+        Retorna: Request con usuario administrador.
+        """
+        request = self.request_factory.get("/admin/")
+        request.user = User.objects.create_superuser(
+            username="admin",
+            email="admin@example.com",
+            password="ClaveSegura123",
+        )
+
+        return request
 
     def test_register_rejects_duplicate_email(self):
         User.objects.create_user(
@@ -414,3 +433,87 @@ class StoreApiTests(APITestCase):
         order.refresh_from_db()
         self.assertEqual(self.product.stock, 5)
         self.assertEqual(order.status, "cancelado")
+
+    def test_admin_exports_contacts_to_csv(self):
+        ContactLead.objects.create(
+            name="Visitante",
+            email="visitante@example.com",
+            phone="3000000000",
+            message="Necesito informacion.",
+        )
+        admin_model = ContactLeadAdmin(ContactLead, self.admin_site)
+
+        response = admin_model.export_contacts_csv(
+            self.create_admin_request(),
+            ContactLead.objects.all(),
+        )
+
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/csv", response["Content-Type"])
+        self.assertIn("contactos.csv", response["Content-Disposition"])
+        self.assertIn("visitante@example.com", content)
+        self.assertIn("Necesito informacion.", content)
+
+    def test_admin_exports_orders_to_csv(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+            age_verified=True,
+            shipping_name="Cliente Prueba",
+            shipping_phone="3000000000",
+            shipping_city="Medellin",
+            shipping_address="Calle 1",
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=2,
+        )
+        admin_model = OrderAdmin(Order, self.admin_site)
+
+        response = admin_model.export_orders_csv(
+            self.create_admin_request(),
+            Order.objects.all(),
+        )
+
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("ordenes.csv", response["Content-Disposition"])
+        self.assertIn("cliente@example.com", content)
+        self.assertIn("Medellin", content)
+        self.assertIn("20.00", content)
+
+    def test_admin_exports_events_to_csv(self):
+        user = self.create_user()
+        EventLog.objects.create(
+            event_type="checkout_success",
+            severity="info",
+            user=user,
+            message="Compra realizada correctamente.",
+            path="/api/orders/checkout/",
+            metadata={"order_id": 1},
+        )
+        admin_model = EventLogAdmin(EventLog, self.admin_site)
+
+        response = admin_model.export_events_csv(
+            self.create_admin_request(),
+            EventLog.objects.all(),
+        )
+
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("eventos.csv", response["Content-Disposition"])
+        self.assertIn("checkout_success", content)
+        self.assertIn("Compra realizada correctamente.", content)

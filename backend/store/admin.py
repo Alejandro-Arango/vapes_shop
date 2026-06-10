@@ -4,10 +4,47 @@ Descripcion: Configura la visualizacion y gestion de los modelos principales en 
 Dependencias: Django admin y modelos principales de store
 """
 
+import csv
+import json
+
 from django.contrib import admin
 from django.db import transaction
+from django.http import HttpResponse
 
 from .models import ContactLead, Customer, EventLog, Product, Order, OrderItem
+
+
+def format_admin_bool(value):
+    """
+    Nombre: format_admin_bool
+    Descripcion: Convierte booleanos a texto claro para exportaciones CSV.
+    """
+    return "Si" if value else "No"
+
+
+def format_admin_datetime(value):
+    """
+    Nombre: format_admin_datetime
+    Descripcion: Convierte fechas del admin a texto estable para CSV.
+    """
+    return value.isoformat() if value else ""
+
+
+def build_csv_response(filename, headers, rows):
+    """
+    Nombre: build_csv_response
+    Descripcion: Construye una respuesta CSV descargable para acciones del admin.
+    """
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    writer.writerow(headers)
+
+    for row in rows:
+        writer.writerow(row)
+
+    return response
 
 
 @admin.register(Customer)
@@ -88,6 +125,7 @@ class ContactLeadAdmin(admin.ModelAdmin):
     )
 
     actions = (
+        "export_contacts_csv",
         "mark_as_new",
         "mark_as_in_progress",
         "mark_as_answered",
@@ -140,6 +178,37 @@ class ContactLeadAdmin(admin.ModelAdmin):
         updated = queryset.update(status="cerrado")
         self.message_user(request, f"{updated} contacto(s) cerrados.")
 
+    @admin.action(description="Exportar contactos seleccionados a CSV")
+    def export_contacts_csv(self, request, queryset):
+        rows = (
+            (
+                lead.id,
+                lead.name,
+                lead.email,
+                lead.phone,
+                lead.get_status_display(),
+                format_admin_bool(lead.email_notification_sent),
+                format_admin_datetime(lead.created_at),
+                lead.message,
+            )
+            for lead in queryset.order_by("-created_at")
+        )
+
+        return build_csv_response(
+            "contactos.csv",
+            (
+                "ID",
+                "Nombre",
+                "Correo",
+                "Telefono",
+                "Estado",
+                "Notificacion enviada",
+                "Fecha",
+                "Mensaje",
+            ),
+            rows,
+        )
+
 
 @admin.register(EventLog)
 class EventLogAdmin(admin.ModelAdmin):
@@ -188,14 +257,48 @@ class EventLogAdmin(admin.ModelAdmin):
         "-created_at",
     )
 
-    def has_add_permission(self, request):
-        return False
+    actions = (
+        "export_events_csv",
+    )
 
-    def has_change_permission(self, request, obj=None):
+    def has_add_permission(self, request):
         return False
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    @admin.action(description="Exportar eventos seleccionados a CSV")
+    def export_events_csv(self, request, queryset):
+        rows = (
+            (
+                event.id,
+                event.event_type,
+                event.get_severity_display(),
+                event.user.username if event.user else "",
+                event.ip_address or "",
+                event.path,
+                event.message,
+                json.dumps(event.metadata, ensure_ascii=True),
+                format_admin_datetime(event.created_at),
+            )
+            for event in queryset.select_related("user").order_by("-created_at")
+        )
+
+        return build_csv_response(
+            "eventos.csv",
+            (
+                "ID",
+                "Tipo",
+                "Severidad",
+                "Usuario",
+                "IP",
+                "Ruta",
+                "Mensaje",
+                "Metadata",
+                "Fecha",
+            ),
+            rows,
+        )
 
 
 @admin.register(Product)
@@ -318,6 +421,7 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
 
     actions = (
+        "export_orders_csv",
         "mark_as_paid",
         "mark_as_sent",
         "mark_as_delivered",
@@ -358,6 +462,51 @@ class OrderAdmin(admin.ModelAdmin):
         total = sum(item.product.price * item.quantity for item in obj.orderitem_set.all())
         return total
     get_total_order.short_description = "Total"
+
+    @admin.action(description="Exportar ordenes seleccionadas a CSV")
+    def export_orders_csv(self, request, queryset):
+        queryset = (
+            queryset
+            .select_related("customer", "customer__user")
+            .prefetch_related("orderitem_set__product")
+            .order_by("-date_ordered")
+        )
+        rows = (
+            (
+                order.id,
+                order.customer.user.username if order.customer.user else "",
+                order.customer.email,
+                order.get_status_display(),
+                format_admin_bool(order.completed),
+                format_admin_bool(order.age_verified),
+                order.shipping_name or "",
+                order.shipping_phone or "",
+                order.shipping_city or "",
+                order.shipping_address or "",
+                str(self.get_total_order(order)),
+                format_admin_datetime(order.date_ordered),
+            )
+            for order in queryset
+        )
+
+        return build_csv_response(
+            "ordenes.csv",
+            (
+                "ID",
+                "Usuario",
+                "Correo cliente",
+                "Estado",
+                "Completada",
+                "Edad verificada",
+                "Nombre envio",
+                "Telefono envio",
+                "Ciudad",
+                "Direccion",
+                "Total",
+                "Fecha",
+            ),
+            rows,
+        )
 
     @admin.action(description="Marcar ordenes seleccionadas como pagadas")
     def mark_as_paid(self, request, queryset):
