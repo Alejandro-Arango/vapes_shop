@@ -10,6 +10,7 @@ from django.contrib.admin.sites import AdminSite
 from django.core import mail
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
+from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
@@ -379,6 +380,7 @@ class StoreApiTests(APITestCase):
         self.assertTrue(order.age_verified)
         self.assertEqual(self.client.session.get("cart"), {})
         item = order.orderitem_set.get()
+        self.assertEqual(item.product_name, "Producto prueba")
         self.assertEqual(item.unit_price, Decimal("10.00"))
         self.assertTrue(
             EventLog.objects.filter(
@@ -387,8 +389,9 @@ class StoreApiTests(APITestCase):
             ).exists()
         )
 
+        self.product.name = "Producto renombrado"
         self.product.price = Decimal("99.00")
-        self.product.save(update_fields=["price"])
+        self.product.save(update_fields=["name", "price"])
 
         orders_response = self.client.get(reverse("my_orders"))
 
@@ -397,6 +400,10 @@ class StoreApiTests(APITestCase):
         self.assertEqual(orders_response.data["orders"][0]["status_label"], "Pagado")
         self.assertEqual(orders_response.data["orders"][0]["total"], 20.0)
         self.assertEqual(
+            orders_response.data["orders"][0]["items"][0]["product"]["name"],
+            "Producto prueba",
+        )
+        self.assertEqual(
             orders_response.data["orders"][0]["items"][0]["product"]["price"],
             10.0,
         )
@@ -404,6 +411,9 @@ class StoreApiTests(APITestCase):
             orders_response.data["orders"][0]["items"][0]["line_total"],
             20.0,
         )
+
+        with self.assertRaises(ProtectedError):
+            self.product.delete()
 
     def test_checkout_rejects_missing_age_confirmation(self):
         user = self.create_user()

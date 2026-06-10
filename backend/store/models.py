@@ -303,7 +303,8 @@ class OrderItem(models.Model):
     """
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    product_name = models.CharField(max_length=150, blank=True)
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(
         max_digits=10,
@@ -334,17 +335,28 @@ class OrderItem(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.quantity} x {self.product.name}"
+        return f"{self.quantity} x {self.display_product_name}"
 
     def save(self, *args, **kwargs):
         """
         Nombre: save
-        Descripcion: Congela el precio del producto al crear el item de una orden.
+        Descripcion: Congela el nombre y precio del producto al crear el item de una orden.
         """
+        if not self.product_name and self.product_id:
+            self.product_name = self.product.name
+
         if self.unit_price is None and self.product_id:
             self.unit_price = self.product.price
 
         super().save(*args, **kwargs)
+
+    @property
+    def display_product_name(self):
+        """
+        Nombre: display_product_name
+        Descripcion: Retorna el nombre guardado de compra o el nombre actual como respaldo.
+        """
+        return self.product_name or self.product.name
 
     @property
     def effective_unit_price(self):

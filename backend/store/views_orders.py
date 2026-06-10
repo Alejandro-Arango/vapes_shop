@@ -46,7 +46,7 @@ def serialize_order(order):
         items.append({
             "product": {
                 "id": item.product.id,
-                "name": item.product.name,
+                "name": item.display_product_name,
                 "price": float(unit_price),
                 "image": item.product.image.url if item.product.image else "",
                 "stock": item.product.stock,
@@ -345,6 +345,7 @@ def checkout(request):
             OrderItem.objects.create(
                 order=order,
                 product=locked_product,
+                product_name=locked_product.name,
                 quantity=qty,
                 unit_price=unit_price,
             )
