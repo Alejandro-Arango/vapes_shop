@@ -423,9 +423,11 @@ class OrderAdmin(admin.ModelAdmin):
     actions = (
         "export_orders_csv",
         "mark_as_paid",
+        "mark_as_preparing",
         "mark_as_sent",
         "mark_as_delivered",
         "mark_as_cancelled",
+        "mark_as_refunded",
     )
 
     fieldsets = (
@@ -510,7 +512,7 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar ordenes seleccionadas como pagadas")
     def mark_as_paid(self, request, queryset):
-        updated = queryset.exclude(status="cancelado").update(
+        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
             status="pagado",
             completed=True
         )
@@ -520,9 +522,21 @@ class OrderAdmin(admin.ModelAdmin):
             f"{updated} orden(es) marcadas como pagadas."
         )
 
+    @admin.action(description="Marcar ordenes seleccionadas en preparacion")
+    def mark_as_preparing(self, request, queryset):
+        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
+            status="en_preparacion",
+            completed=True
+        )
+
+        self.message_user(
+            request,
+            f"{updated} orden(es) marcadas en preparacion."
+        )
+
     @admin.action(description="Marcar ordenes seleccionadas como enviadas")
     def mark_as_sent(self, request, queryset):
-        updated = queryset.exclude(status="cancelado").update(
+        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
             status="enviado",
             completed=True
         )
@@ -534,7 +548,7 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar ordenes seleccionadas como entregadas")
     def mark_as_delivered(self, request, queryset):
-        updated = queryset.exclude(status="cancelado").update(
+        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
             status="entregado",
             completed=True
         )
@@ -572,6 +586,18 @@ class OrderAdmin(admin.ModelAdmin):
         self.message_user(
             request,
             f"{updated} orden(es) canceladas. {skipped} omitida(s) por estado no cancelable."
+        )
+
+    @admin.action(description="Marcar ordenes seleccionadas como reembolsadas")
+    def mark_as_refunded(self, request, queryset):
+        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
+            status="reembolsado",
+            completed=False
+        )
+
+        self.message_user(
+            request,
+            f"{updated} orden(es) marcadas como reembolsadas."
         )
 
 @admin.register(OrderItem)

@@ -59,6 +59,7 @@ def serialize_order(order):
         "date_ordered": order.date_ordered,
         "completed": order.completed,
         "status": order.status,
+        "status_label": order.get_status_display(),
         "age_verified": order.age_verified,
         "total": total,
         "shipping": {
@@ -487,17 +488,17 @@ def cancel_order(request, order_id):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        if order.status == "cancelado":
+        if order.status in {"cancelado", "reembolsado"}:
             log_event(
                 "order_cancel_failed",
-                "Cancelacion rechazada porque la orden ya estaba cancelada.",
+                "Cancelacion rechazada porque la orden ya esta cerrada.",
                 request=request,
                 severity="warning",
                 metadata={"order_id": order.id, "status": order.status},
             )
 
             return Response(
-                {"error": "La orden ya esta cancelada"},
+                {"error": "La orden ya esta cerrada"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

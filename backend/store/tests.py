@@ -67,9 +67,10 @@ class StoreApiTests(APITestCase):
         Retorna: Request con usuario administrador.
         """
         request = self.request_factory.get("/admin/")
+        next_id = User.objects.count() + 1
         request.user = User.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
+            username=f"admin{next_id}",
+            email=f"admin{next_id}@example.com",
             password="ClaveSegura123",
         )
 
@@ -305,6 +306,12 @@ class StoreApiTests(APITestCase):
             ).exists()
         )
 
+        orders_response = self.client.get(reverse("my_orders"))
+
+        self.assertEqual(orders_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(orders_response.data["orders"][0]["status"], "pagado")
+        self.assertEqual(orders_response.data["orders"][0]["status_label"], "Pagado")
+
     def test_checkout_rejects_missing_age_confirmation(self):
         user = self.create_user()
         self.client.login(username=user.username, password="ClaveSegura123")
@@ -405,6 +412,33 @@ class StoreApiTests(APITestCase):
         self.assertEqual(self.product.stock, 5)
         self.assertEqual(order.status, "entregado")
 
+    def test_cancel_preparing_order_is_rejected(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="en_preparacion",
+            completed=True,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=2,
+        )
+
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.post(reverse("cancel_order", args=[order.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        order.refresh_from_db()
+        self.assertEqual(order.status, "en_preparacion")
+
     def test_cancel_pending_order_does_not_restore_stock(self):
         user = self.create_user()
         customer = Customer.objects.create(
@@ -493,6 +527,40 @@ class StoreApiTests(APITestCase):
         self.assertIn("cliente@example.com", content)
         self.assertIn("Medellin", content)
         self.assertIn("20.00", content)
+
+    def test_admin_can_mark_orders_as_preparing_and_refunded(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+        )
+        admin_model = OrderAdmin(Order, self.admin_site)
+        admin_model.message_user = lambda *args, **kwargs: None
+
+        admin_model.mark_as_preparing(
+            self.create_admin_request(),
+            Order.objects.filter(id=order.id),
+        )
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, "en_preparacion")
+        self.assertTrue(order.completed)
+
+        admin_model.mark_as_refunded(
+            self.create_admin_request(),
+            Order.objects.filter(id=order.id),
+        )
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, "reembolsado")
+        self.assertFalse(order.completed)
 
     def test_admin_exports_events_to_csv(self):
         user = self.create_user()

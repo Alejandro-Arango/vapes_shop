@@ -176,6 +176,12 @@ body.light-mode .modal-content {
     border: 1px solid rgba(59, 130, 246, 0.45);
 }
 
+.status-en_preparacion {
+    background: rgba(14, 165, 233, 0.2);
+    color: #38bdf8;
+    border: 1px solid rgba(14, 165, 233, 0.45);
+}
+
 .status-enviado {
     background: rgba(168, 85, 247, 0.2);
     color: #c084fc;
@@ -192,4 +198,10 @@ body.light-mode .modal-content {
     background: rgba(239, 68, 68, 0.2);
     color: #f87171;
     border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.status-reembolsado {
+    background: rgba(100, 116, 139, 0.2);
+    color: #cbd5e1;
+    border: 1px solid rgba(100, 116, 139, 0.45);
 }

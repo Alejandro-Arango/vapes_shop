@@ -10,7 +10,7 @@
  */
 .order-timeline {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 8px;
     margin: 14px 0;
     padding: 12px;

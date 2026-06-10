@@ -137,11 +137,14 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ("pendiente", "Pendiente"),
         ("pagado", "Pagado"),
-        ("cancelado", "Cancelado"),
+        ("en_preparacion", "En preparacion"),
         ("enviado", "Enviado"),
         ("entregado", "Entregado"),
+        ("cancelado", "Cancelado"),
+        ("reembolsado", "Reembolsado"),
     ]
     CANCELLABLE_STATUSES = {"pendiente", "pagado"}
+    FINAL_STATUSES = {"entregado", "cancelado", "reembolsado"}
 
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     date_ordered = models.DateTimeField(auto_now_add=True)

@@ -87,6 +87,22 @@ function normalizeStatus(status) {
     return (status || "pendiente").toLowerCase().trim();
 }
 
+function formatOrderStatus(order) {
+    const statusNorm = normalizeStatus(order?.status);
+
+    const labels = {
+        pendiente: "Pendiente",
+        pagado: "Pagado",
+        en_preparacion: "En preparacion",
+        enviado: "Enviado",
+        entregado: "Entregado",
+        cancelado: "Cancelado",
+        reembolsado: "Reembolsado",
+    };
+
+    return order?.status_label || labels[statusNorm] || statusNorm;
+}
+
 // =============================================================================
 //  VERIFICACION DE EDAD
 // =============================================================================
@@ -658,11 +674,15 @@ function renderShippingInfo(order) {
 function renderOrderTimeline(order) {
     const statusNorm = normalizeStatus(order.status);
 
-    if (statusNorm === "cancelado") {
+    if (statusNorm === "cancelado" || statusNorm === "reembolsado") {
+        const label = statusNorm === "reembolsado"
+            ? "Pedido reembolsado"
+            : "Pedido cancelado";
+
         return `
             <div class="order-timeline cancelled">
                 <div class="order-timeline-cancelled">
-                    Pedido cancelado
+                    ${label}
                 </div>
             </div>
         `;
@@ -676,6 +696,10 @@ function renderOrderTimeline(order) {
         {
             key: "pagado",
             label: "Pagado",
+        },
+        {
+            key: "en_preparacion",
+            label: "Preparacion",
         },
         {
             key: "enviado",
@@ -785,13 +809,13 @@ function renderMyOrders(data) {
                 `)
                 .join("");
 
-            const cancelButton = statusNorm !== "cancelado"
+            const cancelButton = ["pendiente", "pagado"].includes(statusNorm)
                 ? `
                     <button class="btn small cancel-order-btn" data-id="${order.id}">
                         Cancelar pedido
                     </button>
                 `
-                : `<span class="muted">Pedido cancelado</span>`;
+                : `<span class="muted">Pedido no cancelable</span>`;
 
             const fechaStr = order.date_ordered
                 ? new Date(order.date_ordered).toLocaleString()
@@ -804,7 +828,7 @@ function renderMyOrders(data) {
                             <strong>Pedido #${order.id}</strong>
 
                             <span class="order-status status-${escapeHtml(statusNorm)}">
-                                ${escapeHtml(order.status || "pendiente")}
+                                ${escapeHtml(formatOrderStatus(order))}
                             </span>
                         </div>
 
