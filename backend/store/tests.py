@@ -299,6 +299,8 @@ class StoreApiTests(APITestCase):
         self.assertEqual(order.shipping_city, "Medellin")
         self.assertTrue(order.age_verified)
         self.assertEqual(self.client.session.get("cart"), {})
+        item = order.orderitem_set.get()
+        self.assertEqual(item.unit_price, Decimal("10.00"))
         self.assertTrue(
             EventLog.objects.filter(
                 event_type="checkout_success",
@@ -306,11 +308,23 @@ class StoreApiTests(APITestCase):
             ).exists()
         )
 
+        self.product.price = Decimal("99.00")
+        self.product.save(update_fields=["price"])
+
         orders_response = self.client.get(reverse("my_orders"))
 
         self.assertEqual(orders_response.status_code, status.HTTP_200_OK)
         self.assertEqual(orders_response.data["orders"][0]["status"], "pagado")
         self.assertEqual(orders_response.data["orders"][0]["status_label"], "Pagado")
+        self.assertEqual(orders_response.data["orders"][0]["total"], 20.0)
+        self.assertEqual(
+            orders_response.data["orders"][0]["items"][0]["product"]["price"],
+            10.0,
+        )
+        self.assertEqual(
+            orders_response.data["orders"][0]["items"][0]["line_total"],
+            20.0,
+        )
 
     def test_checkout_rejects_missing_age_confirmation(self):
         user = self.create_user()
@@ -513,6 +527,8 @@ class StoreApiTests(APITestCase):
             product=self.product,
             quantity=2,
         )
+        self.product.price = Decimal("99.00")
+        self.product.save(update_fields=["price"])
         admin_model = OrderAdmin(Order, self.admin_site)
 
         response = admin_model.export_orders_csv(

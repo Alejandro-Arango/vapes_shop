@@ -373,8 +373,15 @@ class OrderItemInline(admin.TabularInline):
     readonly_fields = (
         "product",
         "quantity",
+        "unit_price",
+        "get_line_total",
     )
     can_delete = False
+
+    def get_line_total(self, obj):
+        return obj.get_total
+
+    get_line_total.short_description = "Subtotal"
 
 
 @admin.register(Order)
@@ -461,7 +468,7 @@ class OrderAdmin(admin.ModelAdmin):
     get_user.short_description = "Usuario"
 
     def get_total_order(self, obj):
-        total = sum(item.product.price * item.quantity for item in obj.orderitem_set.all())
+        total = sum(item.get_total for item in obj.orderitem_set.all())
         return total
     get_total_order.short_description = "Total"
 
@@ -613,6 +620,7 @@ class OrderItemAdmin(admin.ModelAdmin):
         "order",
         "product",
         "quantity",
+        "unit_price",
         "get_line_total",
     )
 
@@ -631,6 +639,6 @@ class OrderItemAdmin(admin.ModelAdmin):
     )
 
     def get_line_total(self, obj):
-        return obj.product.price * obj.quantity
+        return obj.get_total
 
     get_line_total.short_description = "Subtotal"

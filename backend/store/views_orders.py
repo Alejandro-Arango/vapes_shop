@@ -39,14 +39,15 @@ def serialize_order(order):
     total = 0.0
 
     for item in order.orderitem_set.all():
-        line_total = float(item.product.price) * item.quantity
+        unit_price = item.effective_unit_price
+        line_total = float(unit_price) * item.quantity
         total += line_total
 
         items.append({
             "product": {
                 "id": item.product.id,
                 "name": item.product.name,
-                "price": float(item.product.price),
+                "price": float(unit_price),
                 "image": item.product.image.url if item.product.image else "",
                 "stock": item.product.stock,
             },
@@ -339,14 +340,16 @@ def checkout(request):
 
         for product, qty in order_lines:
             locked_product = locked_map[product.id]
+            unit_price = locked_product.price
 
             OrderItem.objects.create(
                 order=order,
                 product=locked_product,
-                quantity=qty
+                quantity=qty,
+                unit_price=unit_price,
             )
 
-            total += float(locked_product.price) * qty
+            total += float(unit_price) * qty
 
             locked_product.stock -= qty
             locked_product.save(update_fields=["stock"])

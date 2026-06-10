@@ -216,10 +216,34 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
 
+    def save(self, *args, **kwargs):
+        """
+        Nombre: save
+        Descripcion: Congela el precio del producto al crear el item de una orden.
+        """
+        if self.unit_price is None and self.product_id:
+            self.unit_price = self.product.price
+
+        super().save(*args, **kwargs)
+
+    @property
+    def effective_unit_price(self):
+        """
+        Nombre: effective_unit_price
+        Descripcion: Retorna el precio guardado de compra o el precio actual como respaldo.
+        """
+        return self.unit_price if self.unit_price is not None else self.product.price
+
     @property
     def get_total(self):
-        return self.product.price * self.quantity
+        return self.effective_unit_price * self.quantity
