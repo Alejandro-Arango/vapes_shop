@@ -517,15 +517,15 @@ async function logoutUser() {
 // =============================================================================
 
 /*
- * Nombre: submitContactEmail
- * Descripcion: Envia el correo del formulario de contacto al backend.
+ * Nombre: submitContactLead
+ * Descripcion: Envia los datos del formulario de contacto al backend.
  */
-async function submitContactEmail(email) {
+async function submitContactLead(contactData) {
     const res = await fetch(api.contact, {
         method: "POST",
         headers: csrfHeaders(),
         credentials: "include",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(contactData),
     });
 
     const data = await res.json();
@@ -534,9 +534,13 @@ async function submitContactEmail(email) {
         const emailError = Array.isArray(data?.email)
             ? data.email[0]
             : data?.email;
+        const phoneError = Array.isArray(data?.phone)
+            ? data.phone[0]
+            : data?.phone;
 
         throw new Error(
             emailError ||
+            phoneError ||
             data?.error ||
             data?.detail ||
             "No se pudo enviar el contacto."
@@ -1694,7 +1698,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const loginForm = document.getElementById("login-form");
     const registerForm = document.getElementById("register-form");
     const contactForm = document.getElementById("contact-form");
+    const contactName = document.getElementById("contact-name");
     const contactEmail = document.getElementById("contact-email");
+    const contactPhone = document.getElementById("contact-phone");
+    const contactMessage = document.getElementById("contact-message");
 
     const myOrdersBtn = document.getElementById("my-orders-btn");
     const ordersModal = document.getElementById("orders-modal");
@@ -2196,16 +2203,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         clearContactFeedback();
 
-        const email = contactEmail?.value || "";
+        const contactData = {
+            name: contactName?.value || "",
+            email: contactEmail?.value || "",
+            phone: contactPhone?.value || "",
+            message: contactMessage?.value || "",
+        };
         const contactSubmit = contactForm.querySelector('input[type="submit"]');
         const originalText = contactSubmit?.value || "Enviar";
 
-        if (isEmpty(email)) {
+        if (isEmpty(contactData.email)) {
             showContactFeedback("Ingresa tu correo electronico.", "error");
             return;
         }
 
-        if (!isValidEmail(email)) {
+        if (!isValidEmail(contactData.email)) {
             showContactFeedback("Ingresa un correo valido.", "error");
             return;
         }
@@ -2222,7 +2234,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         try {
-            const data = await submitContactEmail(email);
+            const data = await submitContactLead(contactData);
 
             contactForm.reset();
 

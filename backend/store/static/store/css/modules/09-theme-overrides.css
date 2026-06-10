@@ -370,13 +370,17 @@ body.dark-mode .contact-content h3 {
     color: #eef8f4;
 }
 
-body.dark-mode .contact-form-row input[type="email"] {
+body.dark-mode .contact-field input,
+body.dark-mode .contact-field textarea,
+body.dark-mode .contact-form-row > input[type="email"] {
     background: rgba(255, 255, 255, 0.09);
     color: #fff;
     border-color: rgba(255, 255, 255, 0.18);
 }
 
-body.dark-mode .contact-form-row input[type="email"]::placeholder {
+body.dark-mode .contact-field input::placeholder,
+body.dark-mode .contact-field textarea::placeholder,
+body.dark-mode .contact-form-row > input[type="email"]::placeholder {
     color: rgba(255, 255, 255, 0.68);
 }
 

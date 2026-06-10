@@ -58,19 +58,35 @@ class Product(models.Model):
 class ContactLead(models.Model):
     """
     Nombre: ContactLead
-    Descripcion: Registra correos enviados desde el formulario de contacto del home.
+    Descripcion: Registra contactos enviados desde el formulario del home y permite darles seguimiento.
     """
 
+    STATUS_CHOICES = [
+        ("nuevo", "Nuevo"),
+        ("en_proceso", "En proceso"),
+        ("respondido", "Respondido"),
+        ("cerrado", "Cerrado"),
+    ]
+
+    name = models.CharField(max_length=120, blank=True)
     email = models.EmailField()
+    phone = models.CharField(max_length=30, blank=True)
+    message = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="nuevo",
+    )
     whatsapp_message = models.TextField(blank=True)
     email_notification_sent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ("-created_at",)
 
     def __str__(self):
-        return self.email
+        return self.name or self.email
 
 
 class Order(models.Model):

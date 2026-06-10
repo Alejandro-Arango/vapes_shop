@@ -34,17 +34,32 @@ class ContactLeadSerializer(serializers.ModelSerializer):
         model = ContactLead
         fields = (
             "id",
+            "name",
             "email",
+            "phone",
+            "message",
+            "status",
             "whatsapp_message",
             "email_notification_sent",
             "created_at",
+            "updated_at",
         )
         read_only_fields = (
             "id",
+            "status",
             "whatsapp_message",
             "email_notification_sent",
             "created_at",
+            "updated_at",
         )
+
+    def validate_name(self, value):
+        """
+        Nombre: validate_name
+        Descripcion: Normaliza el nombre enviado en el formulario de contacto.
+        Retorna: Nombre sin espacios externos.
+        """
+        return value.strip()
 
     def validate_email(self, value):
         """
@@ -58,6 +73,39 @@ class ContactLeadSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("El correo es obligatorio.")
 
         return email
+
+    def validate_phone(self, value):
+        """
+        Nombre: validate_phone
+        Descripcion: Valida un telefono opcional evitando caracteres inesperados.
+        Retorna: Telefono normalizado.
+        """
+        phone = value.strip()
+
+        if not phone:
+            return phone
+
+        allowed_chars = set("0123456789+() -")
+
+        if any(char not in allowed_chars for char in phone):
+            raise serializers.ValidationError(
+                "El telefono solo puede contener numeros, espacios, +, - y parentesis."
+            )
+
+        digits_count = sum(char.isdigit() for char in phone)
+
+        if digits_count < 7:
+            raise serializers.ValidationError("El telefono debe tener al menos 7 digitos.")
+
+        return phone
+
+    def validate_message(self, value):
+        """
+        Nombre: validate_message
+        Descripcion: Normaliza el mensaje enviado desde contacto.
+        Retorna: Mensaje sin espacios externos.
+        """
+        return value.strip()
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):

@@ -192,6 +192,16 @@ Descripcion: Plantilla principal que contiene secciones informativas, carrusel, 
             <h3>Ponte en contacto con nuestro equipo</h3>
 
             <form id="contact-form" class="contact-form">
+                <div class="contact-field">
+                    <label for="contact-name">Nombre</label>
+
+                    <input
+                        type="text"
+                        id="contact-name"
+                        placeholder="Tu nombre"
+                        autocomplete="name"
+                    />
+                </div>
                 <label for="contact-email">Correo electrónico</label>
 
                 <div class="contact-form-row">
@@ -199,8 +209,30 @@ Descripcion: Plantilla principal que contiene secciones informativas, carrusel, 
                         type="email"
                         id="contact-email"
                         placeholder="Escribe tu correo"
+                        autocomplete="email"
                         required
                     />
+
+                    <div class="contact-field">
+                        <label for="contact-phone">Telefono</label>
+
+                        <input
+                            type="tel"
+                            id="contact-phone"
+                            placeholder="Numero de contacto"
+                            autocomplete="tel"
+                        />
+                    </div>
+
+                    <div class="contact-field contact-field-full">
+                        <label for="contact-message">Mensaje</label>
+
+                        <textarea
+                            id="contact-message"
+                            placeholder="Cuentanos que producto buscas o que duda tienes"
+                            rows="4"
+                        ></textarea>
+                    </div>
 
                     <input
                         type="submit"

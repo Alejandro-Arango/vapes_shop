@@ -154,7 +154,10 @@ class StoreApiTests(APITestCase):
         response = self.client.post(
             reverse("contact"),
             {
+                "name": " Visitante ",
                 "email": " VISITANTE@Example.COM ",
+                "phone": " 300 000 0000 ",
+                "message": " Quiero saber si hay sabores disponibles. ",
             },
             format="json",
         )
@@ -164,10 +167,27 @@ class StoreApiTests(APITestCase):
         lead = ContactLead.objects.get()
 
         self.assertEqual(lead.email, "visitante@example.com")
+        self.assertEqual(lead.name, "Visitante")
+        self.assertEqual(lead.phone, "300 000 0000")
+        self.assertEqual(lead.message, "Quiero saber si hay sabores disponibles.")
+        self.assertEqual(lead.status, "nuevo")
         self.assertTrue(lead.email_notification_sent)
         self.assertIn("wa.me", response.data["whatsapp_url"])
         self.assertIn("visitante%40example.com", response.data["whatsapp_url"])
         self.assertEqual(len(mail.outbox), 1)
+
+    def test_contact_form_rejects_invalid_phone(self):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "email": "visitante@example.com",
+                "phone": "abc",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone", response.data)
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         response = self.client.post(

@@ -55,30 +55,90 @@ class ContactLeadAdmin(admin.ModelAdmin):
 
     list_display = (
         "id",
+        "name",
         "email",
+        "phone",
+        "status",
         "email_notification_sent",
         "created_at",
     )
 
     search_fields = (
+        "name",
         "email",
+        "phone",
+        "message",
     )
 
     list_filter = (
+        "status",
         "email_notification_sent",
         "created_at",
     )
 
     readonly_fields = (
-        "email",
         "whatsapp_message",
         "email_notification_sent",
         "created_at",
+        "updated_at",
     )
 
     ordering = (
         "-created_at",
     )
+
+    actions = (
+        "mark_as_new",
+        "mark_as_in_progress",
+        "mark_as_answered",
+        "mark_as_closed",
+    )
+
+    fieldsets = (
+        (
+            "Datos del contacto",
+            {
+                "fields": (
+                    "name",
+                    "email",
+                    "phone",
+                    "message",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Seguimiento tecnico",
+            {
+                "fields": (
+                    "whatsapp_message",
+                    "email_notification_sent",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
+
+    @admin.action(description="Marcar contactos como nuevos")
+    def mark_as_new(self, request, queryset):
+        updated = queryset.update(status="nuevo")
+        self.message_user(request, f"{updated} contacto(s) marcados como nuevos.")
+
+    @admin.action(description="Marcar contactos en proceso")
+    def mark_as_in_progress(self, request, queryset):
+        updated = queryset.update(status="en_proceso")
+        self.message_user(request, f"{updated} contacto(s) marcados en proceso.")
+
+    @admin.action(description="Marcar contactos como respondidos")
+    def mark_as_answered(self, request, queryset):
+        updated = queryset.update(status="respondido")
+        self.message_user(request, f"{updated} contacto(s) marcados como respondidos.")
+
+    @admin.action(description="Cerrar contactos seleccionados")
+    def mark_as_closed(self, request, queryset):
+        updated = queryset.update(status="cerrado")
+        self.message_user(request, f"{updated} contacto(s) cerrados.")
 
 
 @admin.register(Product)

@@ -124,20 +124,42 @@ input[type="email"] {
 }
 
 .contact-form-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    align-items: center;
+    align-items: start;
 }
 
-.contact-form-row input[type="email"] {
+.contact-field {
+    min-width: 0;
+}
+
+.contact-field-full {
+    grid-column: 1 / -1;
+}
+
+.contact-field input,
+.contact-field textarea,
+.contact-form-row > input[type="email"] {
+    width: 100%;
     min-height: 48px;
     border: 1px solid rgba(18, 63, 53, 0.12);
     background: #f8fbfa;
     color: #22312d;
 }
 
+.contact-field textarea {
+    min-height: 112px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+}
+
 .contact-form-row .btn {
     min-height: 48px;
+    align-self: end;
 }
 
 .whatsapp-contact,
@@ -182,7 +204,8 @@ input[type="email"] {
     border: 1px solid rgba(239, 68, 68, 0.22);
 }
 
-input:focus {
+input:focus,
+textarea:focus {
     box-shadow: 0 0 8px rgba(255, 90, 44, 0.18);
     transform: translateY(-1px);
 }

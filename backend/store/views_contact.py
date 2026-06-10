@@ -22,15 +22,23 @@ from .throttles import ContactAnonRateThrottle
 logger = logging.getLogger(__name__)
 
 
-def build_whatsapp_contact(email):
+def build_whatsapp_contact(contact_data):
     """
     Nombre: build_whatsapp_contact
     Descripcion: Genera el mensaje y la URL de WhatsApp para continuar la conversacion.
     Retorna: Tupla con URL de WhatsApp y mensaje usado.
     """
+    name = contact_data.get("name") or "Visitante"
+    email = contact_data["email"]
+    phone = contact_data.get("phone") or "No indicado"
+    lead_message = contact_data.get("message") or "Quiero recibir informacion sobre productos disponibles."
+
     message = (
-        "Hola, vengo desde Vape Shop. "
-        f"Mi correo es {email} y quiero recibir informacion sobre productos disponibles."
+        "Hola, vengo desde Vape Shop.\n"
+        f"Nombre: {name}\n"
+        f"Correo: {email}\n"
+        f"Telefono: {phone}\n"
+        f"Mensaje: {lead_message}"
     )
     phone_number = getattr(settings, "CONTACT_WHATSAPP_NUMBER", "573016604375")
     whatsapp_url = f"https://wa.me/{phone_number}?text={quote(message)}"
@@ -54,7 +62,11 @@ def notify_contact_lead(lead):
             subject="Nuevo contacto desde Vape Shop",
             message=(
                 "Se recibio un nuevo contacto desde el home.\n\n"
+                f"Nombre: {lead.name or 'No indicado'}\n"
                 f"Correo: {lead.email}\n"
+                f"Telefono: {lead.phone or 'No indicado'}\n"
+                f"Mensaje: {lead.message or 'No indicado'}\n"
+                f"Estado: {lead.get_status_display()}\n"
                 f"Mensaje WhatsApp: {lead.whatsapp_message}\n"
             ),
             from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
@@ -82,7 +94,7 @@ def contact(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     whatsapp_url, whatsapp_message = build_whatsapp_contact(
-        serializer.validated_data["email"]
+        serializer.validated_data
     )
     lead = serializer.save(whatsapp_message=whatsapp_message)
     email_sent = notify_contact_lead(lead)
