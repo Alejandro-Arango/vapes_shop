@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.contrib.admin.sites import AdminSite
 from django.core import mail
 from django.contrib.auth.models import User
+from django.db import IntegrityError, transaction
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
@@ -75,6 +76,52 @@ class StoreApiTests(APITestCase):
         )
 
         return request
+
+    def test_product_constraints_reject_negative_values(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Product.objects.create(
+                    name="Precio invalido",
+                    description="Producto invalido",
+                    price=Decimal("-1.00"),
+                    stock=1,
+                )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Product.objects.create(
+                    name="Stock invalido",
+                    description="Producto invalido",
+                    price=Decimal("1.00"),
+                    stock=-1,
+                )
+
+    def test_order_item_constraints_reject_invalid_quantity_and_price(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+        order = Order.objects.create(customer=customer)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                OrderItem.objects.create(
+                    order=order,
+                    product=self.product,
+                    quantity=0,
+                )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                OrderItem.objects.create(
+                    order=order,
+                    product=self.product,
+                    quantity=1,
+                    unit_price=Decimal("-1.00"),
+                )
 
     def test_register_rejects_duplicate_email(self):
         User.objects.create_user(

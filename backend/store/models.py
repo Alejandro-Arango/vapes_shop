@@ -51,6 +51,18 @@ class Product(models.Model):
     stock = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(price__gte=0),
+                name="product_price_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(stock__gte=0),
+                name="product_stock_non_negative",
+            ),
+        ]
+
     def __str__(self):
         return self.name
 
@@ -222,6 +234,21 @@ class OrderItem(models.Model):
         blank=True,
         null=True,
     )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gte=1),
+                name="orderitem_quantity_positive",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(unit_price__gte=0)
+                    | models.Q(unit_price__isnull=True)
+                ),
+                name="orderitem_unit_price_non_negative",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
