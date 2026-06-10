@@ -8,9 +8,14 @@ import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
+
+load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(BASE_DIR / ".env")
 
 
 def env_bool(name, default=False):
@@ -24,6 +29,51 @@ def env_bool(name, default=False):
         "yes",
         "on",
     )
+
+
+def env_list(name, default=""):
+    """
+    Nombre: env_list
+    Descripcion: Convierte una variable separada por comas en una lista limpia.
+    """
+    raw_value = os.environ.get(name, default)
+
+    return [
+        item.strip()
+        for item in raw_value.split(",")
+        if item.strip()
+    ]
+
+
+def required_env(name):
+    """
+    Nombre: required_env
+    Descripcion: Obtiene una variable obligatoria o detiene la configuracion.
+    """
+    value = os.environ.get(name, "").strip()
+
+    if not value:
+        raise ImproperlyConfigured(f"{name} debe estar configurada.")
+
+    return value
+
+
+def env_path(name, default):
+    """
+    Nombre: env_path
+    Descripcion: Resuelve una ruta configurada por entorno desde la raiz del proyecto.
+    """
+    raw_value = os.environ.get(name)
+
+    if not raw_value:
+        return default
+
+    path = Path(raw_value)
+
+    if path.is_absolute():
+        return path
+
+    return PROJECT_ROOT / path
 
 
 # =============================================================================
@@ -42,11 +92,7 @@ if not SECRET_KEY:
         "DJANGO_SECRET_KEY debe estar configurada cuando DJANGO_DEBUG=False."
     )
 
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
-    if host.strip()
-]
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
 
 if not DEBUG and not ALLOWED_HOSTS:
     raise ImproperlyConfigured(
@@ -136,12 +182,33 @@ TEMPLATES = [
 # BASE DE DATOS
 # =============================================================================
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+DB_ENGINE = os.environ.get("DJANGO_DB_ENGINE", "sqlite").lower().strip()
+
+if DB_ENGINE == "sqlite":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": env_path("DJANGO_DB_NAME", BASE_DIR / "db.sqlite3"),
+        }
     }
-}
+elif DB_ENGINE == "mysql":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": required_env("DJANGO_DB_NAME"),
+            "USER": required_env("DJANGO_DB_USER"),
+            "PASSWORD": os.environ.get("DJANGO_DB_PASSWORD", ""),
+            "HOST": os.environ.get("DJANGO_DB_HOST", "127.0.0.1"),
+            "PORT": os.environ.get("DJANGO_DB_PORT", "3306"),
+            "OPTIONS": {
+                "charset": "utf8mb4",
+            },
+        }
+    }
+else:
+    raise ImproperlyConfigured(
+        "DJANGO_DB_ENGINE debe ser 'sqlite' o 'mysql'."
+    )
 
 
 # =============================================================================
@@ -201,10 +268,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 # SEGURIDAD CSRF LOCAL
 # =============================================================================
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-]
+CSRF_TRUSTED_ORIGINS = env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "http://127.0.0.1:8000,http://localhost:8000",
+)
 
 
 # =============================================================================
@@ -232,6 +299,9 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool(
 SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", False)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+
+if env_bool("DJANGO_USE_X_FORWARDED_PROTO", False):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # =============================================================================

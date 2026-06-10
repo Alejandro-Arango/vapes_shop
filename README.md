@@ -234,7 +234,7 @@ python manage.py test store
 Resultado:
 
 - `System check identified no issues`.
-- `10 tests` ejecutados correctamente.
+- `20 tests` ejecutados correctamente.
 - Resultado final: `OK`.
 
 ## Seguridad y Producción
@@ -276,6 +276,71 @@ CONTACT_WHATSAPP_NUMBER
 - Pruebas frontend.
 - Optimización responsive adicional.
 - Seguridad avanzada para formularios públicos.
+
+## Actualizacion Operativa
+
+El proyecto ya incluye mejoras posteriores a la primera documentacion:
+
+- CI con GitHub Actions.
+- Trazabilidad interna mediante `EventLog`.
+- Exportacion CSV desde el admin para ordenes, contactos y eventos.
+- Estados de pedido ampliados: `pendiente`, `pagado`, `en_preparacion`, `enviado`, `entregado`, `cancelado`, `reembolsado`.
+- Configuracion por variables de entorno usando `.env`.
+- Archivo `.env.example` como referencia segura.
+- Soporte configurable para base de datos `sqlite` o `mysql`.
+- Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
+
+## Preparacion Produccion
+
+1. Copiar `.env.example` como `.env`.
+2. Cambiar `DJANGO_SECRET_KEY`.
+3. Definir `DJANGO_ALLOWED_HOSTS`.
+4. Definir `DJANGO_CSRF_TRUSTED_ORIGINS`.
+5. Configurar base de datos.
+6. Ejecutar migraciones.
+7. Ejecutar `collectstatic`.
+8. Crear superusuario.
+9. Verificar `python manage.py check --deploy`.
+
+Comandos recomendados:
+
+```powershell
+cd C:\dev\vapes_shop\backend
+python manage.py check --deploy
+python manage.py migrate
+python manage.py collectstatic --noinput
+```
+
+Variables principales:
+
+```text
+DJANGO_DEBUG
+DJANGO_SECRET_KEY
+DJANGO_ALLOWED_HOSTS
+DJANGO_CSRF_TRUSTED_ORIGINS
+DJANGO_DB_ENGINE
+DJANGO_DB_NAME
+DJANGO_DB_USER
+DJANGO_DB_PASSWORD
+DJANGO_DB_HOST
+DJANGO_DB_PORT
+DJANGO_SESSION_COOKIE_SECURE
+DJANGO_CSRF_COOKIE_SECURE
+DJANGO_SECURE_SSL_REDIRECT
+DJANGO_SECURE_HSTS_SECONDS
+DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS
+DJANGO_SECURE_HSTS_PRELOAD
+DJANGO_USE_X_FORWARDED_PROTO
+AUTH_THROTTLE_RATE
+CONTACT_THROTTLE_RATE
+CHECKOUT_THROTTLE_RATE
+DJANGO_EMAIL_BACKEND
+DEFAULT_FROM_EMAIL
+CONTACT_NOTIFICATION_EMAIL
+CONTACT_WHATSAPP_NUMBER
+DJANGO_STORE_LOG_LEVEL
+DJANGO_REQUEST_LOG_LEVEL
+```
 
 ## Autor
 
