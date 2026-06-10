@@ -110,6 +110,19 @@ class ContactLead(models.Model):
                 name="contact_status_date_idx",
             ),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    status__in=[
+                        "nuevo",
+                        "en_proceso",
+                        "respondido",
+                        "cerrado",
+                    ]
+                ),
+                name="contact_status_valid",
+            ),
+        ]
 
     def __str__(self):
         return self.name or self.email
@@ -164,6 +177,12 @@ class EventLog(models.Model):
                 name="event_user_date_idx",
             ),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(severity__in=["info", "warning", "error"]),
+                name="event_severity_valid",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.event_type} - {self.severity}"
@@ -213,6 +232,22 @@ class Order(models.Model):
             models.Index(
                 fields=["status", "date_ordered"],
                 name="order_status_date_idx",
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    status__in=[
+                        "pendiente",
+                        "pagado",
+                        "en_preparacion",
+                        "enviado",
+                        "entregado",
+                        "cancelado",
+                        "reembolsado",
+                    ]
+                ),
+                name="order_status_valid",
             ),
         ]
 

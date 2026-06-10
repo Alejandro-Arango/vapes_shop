@@ -123,6 +123,38 @@ class StoreApiTests(APITestCase):
                     unit_price=Decimal("-1.00"),
                 )
 
+    def test_status_constraints_reject_invalid_values(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                ContactLead.objects.create(
+                    email="contacto@example.com",
+                    status="estado_invalido",
+                )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                EventLog.objects.create(
+                    event_type="test_event",
+                    severity="critico",
+                    user=user,
+                    message="Evento con severidad invalida.",
+                )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Order.objects.create(
+                    customer=customer,
+                    status="estado_invalido",
+                )
+
     def test_register_rejects_duplicate_email(self):
         User.objects.create_user(
             username="existente",
