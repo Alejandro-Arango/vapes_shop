@@ -1,0 +1,52 @@
+name: Django CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validar backend Django
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      DJANGO_DEBUG: "True"
+      DJANGO_SECRET_KEY: "ci-secret-key-only-for-tests"
+      DJANGO_ALLOWED_HOSTS: "127.0.0.1,localhost"
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Instalar dependencias del sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential default-libmysqlclient-dev pkg-config
+
+      - name: Instalar dependencias Python
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Revisar configuracion Django
+        run: python manage.py check
+
+      - name: Verificar migraciones pendientes
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Ejecutar pruebas
+        run: python manage.py test store
