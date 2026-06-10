@@ -7,7 +7,7 @@ Dependencias: Django admin y modelos principales de store
 from django.contrib import admin
 from django.db import transaction
 
-from .models import ContactLead, Customer, Product, Order, OrderItem
+from .models import ContactLead, Customer, EventLog, Product, Order, OrderItem
 
 
 @admin.register(Customer)
@@ -139,6 +139,63 @@ class ContactLeadAdmin(admin.ModelAdmin):
     def mark_as_closed(self, request, queryset):
         updated = queryset.update(status="cerrado")
         self.message_user(request, f"{updated} contacto(s) cerrados.")
+
+
+@admin.register(EventLog)
+class EventLogAdmin(admin.ModelAdmin):
+    """
+    Nombre: EventLogAdmin
+    Descripcion: Permite consultar eventos internos de seguridad, contacto y pedidos.
+    """
+
+    list_display = (
+        "id",
+        "event_type",
+        "severity",
+        "user",
+        "ip_address",
+        "created_at",
+    )
+
+    search_fields = (
+        "event_type",
+        "message",
+        "user__username",
+        "user__email",
+        "ip_address",
+        "path",
+    )
+
+    list_filter = (
+        "event_type",
+        "severity",
+        "created_at",
+    )
+
+    readonly_fields = (
+        "event_type",
+        "severity",
+        "user",
+        "message",
+        "path",
+        "ip_address",
+        "user_agent",
+        "metadata",
+        "created_at",
+    )
+
+    ordering = (
+        "-created_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Product)

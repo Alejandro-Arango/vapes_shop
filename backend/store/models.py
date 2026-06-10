@@ -89,6 +89,45 @@ class ContactLead(models.Model):
         return self.name or self.email
 
 
+class EventLog(models.Model):
+    """
+    Nombre: EventLog
+    Descripcion: Guarda eventos relevantes de seguridad, contacto y pedidos para trazabilidad interna.
+    """
+
+    SEVERITY_CHOICES = [
+        ("info", "Informacion"),
+        ("warning", "Advertencia"),
+        ("error", "Error"),
+    ]
+
+    event_type = models.CharField(max_length=80)
+    severity = models.CharField(
+        max_length=20,
+        choices=SEVERITY_CHOICES,
+        default="info",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="event_logs",
+    )
+    message = models.CharField(max_length=255)
+    path = models.CharField(max_length=255, blank=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.event_type} - {self.severity}"
+
+
 class Order(models.Model):
     """
     Nombre: Order

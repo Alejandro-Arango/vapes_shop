@@ -14,7 +14,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import ContactLead, Customer, Order, OrderItem, Product
+from .models import ContactLead, Customer, EventLog, Order, OrderItem, Product
 
 
 class StoreApiTests(APITestCase):
@@ -144,6 +144,24 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["username"], "cliente")
+        self.assertTrue(
+            EventLog.objects.filter(event_type="auth_login_success").exists()
+        )
+
+    def test_failed_login_creates_event_log(self):
+        response = self.client.post(
+            reverse("auth_login"),
+            {
+                "email": "no-existe",
+                "password": "ClaveIncorrecta123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(
+            EventLog.objects.filter(event_type="auth_login_failed").exists()
+        )
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
@@ -175,6 +193,12 @@ class StoreApiTests(APITestCase):
         self.assertIn("wa.me", response.data["whatsapp_url"])
         self.assertIn("visitante%40example.com", response.data["whatsapp_url"])
         self.assertEqual(len(mail.outbox), 1)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="contact_received",
+                metadata__lead_id=lead.id,
+            ).exists()
+        )
 
     def test_contact_form_rejects_invalid_phone(self):
         response = self.client.post(
@@ -188,6 +212,9 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("phone", response.data)
+        self.assertTrue(
+            EventLog.objects.filter(event_type="contact_invalid").exists()
+        )
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         response = self.client.post(
@@ -252,6 +279,12 @@ class StoreApiTests(APITestCase):
         self.assertEqual(order.shipping_city, "Medellin")
         self.assertTrue(order.age_verified)
         self.assertEqual(self.client.session.get("cart"), {})
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="checkout_success",
+                metadata__order_id=order.id,
+            ).exists()
+        )
 
     def test_checkout_rejects_missing_age_confirmation(self):
         user = self.create_user()
@@ -274,6 +307,9 @@ class StoreApiTests(APITestCase):
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 5)
         self.assertEqual(Order.objects.count(), 0)
+        self.assertTrue(
+            EventLog.objects.filter(event_type="checkout_failed").exists()
+        )
 
     def test_cancel_order_restores_stock_once(self):
         user = self.create_user()
@@ -305,12 +341,21 @@ class StoreApiTests(APITestCase):
         order.refresh_from_db()
         self.assertEqual(self.product.stock, 5)
         self.assertEqual(order.status, "cancelado")
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="order_cancel_success",
+                metadata__order_id=order.id,
+            ).exists()
+        )
 
         response = self.client.post(reverse("cancel_order", args=[order.id]))
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 5)
+        self.assertTrue(
+            EventLog.objects.filter(event_type="order_cancel_failed").exists()
+        )
 
     def test_cancel_delivered_order_is_rejected(self):
         user = self.create_user()

@@ -11,6 +11,7 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .audit import log_event
 from .models import Product, Customer, Order, OrderItem
 from .throttles import CheckoutUserRateThrottle
 
@@ -82,6 +83,13 @@ def checkout(request):
     cart = request.session.get("cart", {})
 
     if not cart:
+        log_event(
+            "checkout_failed",
+            "Checkout rechazado por carrito vacio.",
+            request=request,
+            severity="warning",
+        )
+
         return Response(
             {"error": "Carrito vacio"},
             status=status.HTTP_400_BAD_REQUEST
@@ -118,6 +126,14 @@ def checkout(request):
     ).strip()
 
     if not shipping_name or not shipping_phone or not shipping_address or not shipping_city:
+        log_event(
+            "checkout_failed",
+            "Checkout rechazado por datos de envio incompletos.",
+            request=request,
+            severity="warning",
+            metadata={"cart_items": len(cart)},
+        )
+
         return Response(
             {"error": "Debes completar los datos de envio"},
             status=status.HTTP_400_BAD_REQUEST
@@ -129,6 +145,14 @@ def checkout(request):
     )
 
     if not age_confirmed:
+        log_event(
+            "checkout_failed",
+            "Checkout rechazado por falta de confirmacion de edad.",
+            request=request,
+            severity="warning",
+            metadata={"cart_items": len(cart)},
+        )
+
         return Response(
             {"error": "Debes confirmar que cumples con la edad legal requerida"},
             status=status.HTTP_400_BAD_REQUEST
@@ -166,6 +190,14 @@ def checkout(request):
     try:
         product_ids = [int(pid) for pid in cart.keys()]
     except ValueError:
+        log_event(
+            "checkout_failed",
+            "Checkout rechazado por carrito invalido.",
+            request=request,
+            severity="warning",
+            metadata={"cart": cart},
+        )
+
         return Response(
             {"error": "Carrito invalido"},
             status=status.HTTP_400_BAD_REQUEST
@@ -174,6 +206,14 @@ def checkout(request):
     products = Product.objects.filter(id__in=product_ids)
 
     if not products.exists():
+        log_event(
+            "checkout_failed",
+            "Checkout rechazado porque no hay productos validos.",
+            request=request,
+            severity="warning",
+            metadata={"product_ids": product_ids},
+        )
+
         return Response(
             {"error": "No hay productos validos en el carrito"},
             status=status.HTTP_400_BAD_REQUEST
@@ -202,6 +242,19 @@ def checkout(request):
             continue
 
         if product.stock < qty:
+            log_event(
+                "checkout_failed",
+                "Checkout rechazado por stock insuficiente.",
+                request=request,
+                severity="warning",
+                metadata={
+                    "product_id": product.id,
+                    "product_name": product.name,
+                    "requested_qty": qty,
+                    "available_stock": product.stock,
+                },
+            )
+
             return Response(
                 {"error": f"Stock insuficiente para {product.name}"},
                 status=status.HTTP_400_BAD_REQUEST
@@ -210,6 +263,14 @@ def checkout(request):
         order_lines.append((product, qty))
 
     if not order_lines:
+        log_event(
+            "checkout_failed",
+            "Checkout rechazado porque no se pudo procesar el carrito.",
+            request=request,
+            severity="warning",
+            metadata={"cart": cart},
+        )
+
         return Response(
             {"error": "No se pudo procesar el carrito"},
             status=status.HTTP_400_BAD_REQUEST
@@ -229,12 +290,33 @@ def checkout(request):
             locked_product = locked_map.get(product.id)
 
             if not locked_product:
+                log_event(
+                    "checkout_failed",
+                    "Checkout rechazado porque un producto no esta disponible.",
+                    request=request,
+                    severity="warning",
+                    metadata={"product_id": product.id, "product_name": product.name},
+                )
+
                 return Response(
                     {"error": f"Producto no disponible: {product.name}"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
             if locked_product.stock < qty:
+                log_event(
+                    "checkout_failed",
+                    "Checkout rechazado por stock insuficiente al confirmar.",
+                    request=request,
+                    severity="warning",
+                    metadata={
+                        "product_id": locked_product.id,
+                        "product_name": locked_product.name,
+                        "requested_qty": qty,
+                        "available_stock": locked_product.stock,
+                    },
+                )
+
                 return Response(
                     {"error": f"Stock insuficiente para {locked_product.name}"},
                     status=status.HTTP_400_BAD_REQUEST
@@ -270,6 +352,17 @@ def checkout(request):
 
         request.session["cart"] = {}
         request.session.modified = True
+
+    log_event(
+        "checkout_success",
+        "Compra realizada correctamente.",
+        request=request,
+        metadata={
+            "order_id": order.id,
+            "total": total,
+            "items": len(order_lines),
+        },
+    )
 
     return Response(
         {
@@ -357,10 +450,20 @@ def cancel_order(request, order_id):
     try:
         customer = request.user.customer
     except Customer.DoesNotExist:
+        log_event(
+            "order_cancel_failed",
+            "Cancelacion rechazada porque el usuario no tiene customer.",
+            request=request,
+            severity="warning",
+            metadata={"order_id": order_id},
+        )
+
         return Response(
             {"error": "No existe un customer asociado a este usuario"},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    restored_stock = False
 
     with transaction.atomic():
         try:
@@ -371,18 +474,42 @@ def cancel_order(request, order_id):
                 .get(id=order_id, customer=customer)
             )
         except Order.DoesNotExist:
+            log_event(
+                "order_cancel_failed",
+                "Cancelacion rechazada porque la orden no existe para el usuario.",
+                request=request,
+                severity="warning",
+                metadata={"order_id": order_id},
+            )
+
             return Response(
                 {"error": "Orden no encontrada"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         if order.status == "cancelado":
+            log_event(
+                "order_cancel_failed",
+                "Cancelacion rechazada porque la orden ya estaba cancelada.",
+                request=request,
+                severity="warning",
+                metadata={"order_id": order.id, "status": order.status},
+            )
+
             return Response(
                 {"error": "La orden ya esta cancelada"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         if not order.can_be_cancelled():
+            log_event(
+                "order_cancel_failed",
+                "Cancelacion rechazada por estado no cancelable.",
+                request=request,
+                severity="warning",
+                metadata={"order_id": order.id, "status": order.status},
+            )
+
             return Response(
                 {"error": "Solo puedes cancelar pedidos pendientes o pagados"},
                 status=status.HTTP_400_BAD_REQUEST
@@ -390,10 +517,18 @@ def cancel_order(request, order_id):
 
         if order.should_restore_stock_on_cancel():
             order.restore_items_stock()
+            restored_stock = True
 
         order.status = "cancelado"
         order.completed = False
         order.save(update_fields=["status", "completed"])
+
+    log_event(
+        "order_cancel_success",
+        "Orden cancelada correctamente.",
+        request=request,
+        metadata={"order_id": order.id, "restored_stock": restored_stock},
+    )
 
     return Response(
         {"message": f"Orden #{order.id} cancelada correctamente"},

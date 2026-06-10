@@ -15,6 +15,7 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from .audit import log_event
 from .serializers import ContactLeadSerializer
 from .throttles import ContactAnonRateThrottle
 
@@ -91,6 +92,14 @@ def contact(request):
     serializer = ContactLeadSerializer(data=request.data)
 
     if not serializer.is_valid():
+        log_event(
+            "contact_invalid",
+            "Contacto rechazado por validaciones.",
+            request=request,
+            severity="warning",
+            metadata={"errors": serializer.errors},
+        )
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     whatsapp_url, whatsapp_message = build_whatsapp_contact(
@@ -99,9 +108,29 @@ def contact(request):
     lead = serializer.save(whatsapp_message=whatsapp_message)
     email_sent = notify_contact_lead(lead)
 
+    log_event(
+        "contact_received",
+        "Contacto recibido desde el home.",
+        request=request,
+        metadata={
+            "lead_id": lead.id,
+            "email": lead.email,
+            "phone": lead.phone,
+            "status": lead.status,
+        },
+    )
+
     if email_sent:
         lead.email_notification_sent = True
         lead.save(update_fields=["email_notification_sent"])
+    else:
+        log_event(
+            "contact_email_not_sent",
+            "No se pudo enviar la notificacion de contacto.",
+            request=request,
+            severity="warning",
+            metadata={"lead_id": lead.id, "email": lead.email},
+        )
 
     return Response(
         {

@@ -260,6 +260,40 @@ EMAIL_BACKEND = os.environ.get(
 
 
 # =============================================================================
+# LOGGING Y TRAZABILIDAD
+# =============================================================================
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "[{levelname}] {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        "store": {
+            "handlers": ["console"],
+            "level": os.environ.get("DJANGO_STORE_LOG_LEVEL", "WARNING"),
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": os.environ.get("DJANGO_REQUEST_LOG_LEVEL", "ERROR"),
+            "propagate": False,
+        },
+    },
+}
+
+
+# =============================================================================
 # CONFIGURACION DEFAULT DE MODELOS
 # =============================================================================
 

@@ -12,6 +12,7 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from .audit import log_event
 from .models import Customer
 from .serializers import UserRegisterSerializer, UserSerializer
 from .throttles import AuthAnonRateThrottle
@@ -68,11 +69,26 @@ def register(request):
         ensure_customer_for_user(user)
 
         login(request, user)
+        log_event(
+            "auth_register_success",
+            "Usuario registrado correctamente.",
+            request=request,
+            user=user,
+            metadata={"username": user.username, "email": user.email},
+        )
 
         return Response(
             UserSerializer(user).data,
             status=status.HTTP_201_CREATED
         )
+
+    log_event(
+        "auth_register_failed",
+        "Registro rechazado por validaciones.",
+        request=request,
+        severity="warning",
+        metadata={"errors": serializer.errors},
+    )
 
     return Response(
         serializer.errors,
@@ -96,6 +112,13 @@ def login_view(request):
     password = request.data.get("password")
 
     if not email_or_username or not password:
+        log_event(
+            "auth_login_failed",
+            "Intento de login con campos incompletos.",
+            request=request,
+            severity="warning",
+        )
+
         return Response(
             {"error": "Faltan campos"},
             status=status.HTTP_400_BAD_REQUEST
@@ -126,6 +149,14 @@ def login_view(request):
             user = None
 
     if user is None:
+        log_event(
+            "auth_login_failed",
+            "Intento de login con credenciales invalidas.",
+            request=request,
+            severity="warning",
+            metadata={"identifier": email_or_username},
+        )
+
         return Response(
             {"error": "Credenciales invalidas"},
             status=status.HTTP_400_BAD_REQUEST
@@ -134,6 +165,13 @@ def login_view(request):
     login(request, user)
 
     ensure_customer_for_user(user)
+    log_event(
+        "auth_login_success",
+        "Usuario inicio sesion correctamente.",
+        request=request,
+        user=user,
+        metadata={"username": user.username},
+    )
 
     return Response(
         UserSerializer(user).data,
@@ -148,6 +186,13 @@ def logout_view(request):
     Nombre: logout_view
     Descripcion: Cierra la sesion activa del usuario autenticado.
     """
+    log_event(
+        "auth_logout",
+        "Usuario cerro sesion.",
+        request=request,
+        user=request.user,
+    )
+
     logout(request)
 
     return Response(
