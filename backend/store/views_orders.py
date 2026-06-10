@@ -7,11 +7,26 @@ Dependencias: Django transaction, Django REST Framework, modelos Product, Custom
 from django.db import transaction
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Product, Customer, Order, OrderItem
+from .throttles import CheckoutUserRateThrottle
+
+
+def parse_bool(value):
+    """
+    Nombre: parse_bool
+    Descripcion: Interpreta valores comunes enviados por JSON como booleanos.
+    """
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on", "si")
+
+    return value == 1
 
 
 def serialize_order(order):
@@ -43,6 +58,7 @@ def serialize_order(order):
         "date_ordered": order.date_ordered,
         "completed": order.completed,
         "status": order.status,
+        "age_verified": order.age_verified,
         "total": total,
         "shipping": {
             "name": order.shipping_name or "",
@@ -57,6 +73,7 @@ def serialize_order(order):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([CheckoutUserRateThrottle])
 def checkout(request):
     """
     Nombre: checkout
@@ -103,6 +120,17 @@ def checkout(request):
     if not shipping_name or not shipping_phone or not shipping_address or not shipping_city:
         return Response(
             {"error": "Debes completar los datos de envio"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    age_confirmed = parse_bool(
+        request.data.get("ageConfirmed")
+        or request.data.get("age_confirmed")
+    )
+
+    if not age_confirmed:
+        return Response(
+            {"error": "Debes confirmar que cumples con la edad legal requerida"},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -221,6 +249,7 @@ def checkout(request):
             shipping_address=shipping_address,
             shipping_city=shipping_city,
             shipping_notes=shipping_notes,
+            age_verified=True,
         )
 
         total = 0.0

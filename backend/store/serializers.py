@@ -4,7 +4,9 @@ Descripcion: Define los serializadores usados para convertir modelos y datos de 
 Dependencias: Django REST Framework, modelo User y modelos principales de store
 """
 
+from django.contrib.auth import password_validation
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from rest_framework import serializers
 
@@ -81,6 +83,9 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         if not username:
             raise serializers.ValidationError("El nombre de usuario es obligatorio.")
 
+        if User.objects.filter(username__iexact=username).exists():
+            raise serializers.ValidationError("Este nombre de usuario ya esta registrado.")
+
         return username
 
     def validate_email(self, value):
@@ -101,6 +106,19 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Este correo ya esta asociado a un cliente.")
 
         return email
+
+    def validate_password(self, value):
+        """
+        Nombre: validate_password
+        Descripcion: Aplica las reglas de seguridad de contrasena configuradas en Django.
+        Retorna: Contrasena validada.
+        """
+        try:
+            password_validation.validate_password(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages))
+
+        return value
 
     def create(self, validated_data):
         """

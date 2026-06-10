@@ -2010,7 +2010,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 method: "POST",
                 headers: csrfHeaders(),
                 credentials: "include",
-                body: JSON.stringify(shippingData),
+                body: JSON.stringify({
+                    ...shippingData,
+                    ageConfirmed: hasAgeVerification(),
+                }),
             });
 
             if (!res.ok) {

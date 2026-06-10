@@ -102,6 +102,7 @@ class Order(models.Model):
     shipping_address = models.CharField(max_length=200, blank=True, null=True)
     shipping_city = models.CharField(max_length=100, blank=True, null=True)
     shipping_notes = models.TextField(blank=True, null=True)
+    age_verified = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Orden #{self.id} - {self.customer}"

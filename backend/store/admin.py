@@ -172,12 +172,14 @@ class OrderAdmin(admin.ModelAdmin):
         "date_ordered",
         "status",
         "completed",
+        "age_verified",
         "get_total_order",
     )
 
     list_filter = (
         "status",
         "completed",
+        "age_verified",
         "date_ordered",
         "shipping_city",
     )
@@ -213,6 +215,7 @@ class OrderAdmin(admin.ModelAdmin):
                     "customer",
                     "status",
                     "completed",
+                    "age_verified",
                 )
             },
         ),

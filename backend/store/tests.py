@@ -76,6 +76,40 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("email", response.data)
 
+    def test_register_rejects_duplicate_username(self):
+        User.objects.create_user(
+            username="cliente",
+            email="existente@example.com",
+            password="ClaveSegura123",
+        )
+
+        response = self.client.post(
+            reverse("auth_register"),
+            {
+                "username": "CLIENTE",
+                "email": "nuevo@example.com",
+                "password": "ClaveSegura123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+    def test_register_rejects_weak_password(self):
+        response = self.client.post(
+            reverse("auth_register"),
+            {
+                "username": "nuevo",
+                "email": "nuevo@example.com",
+                "password": "123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+
     def test_register_rejects_email_associated_to_customer(self):
         Customer.objects.create(
             first_name="Cliente",
@@ -184,6 +218,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
+                "ageConfirmed": True,
             },
             format="json",
         )
@@ -195,7 +230,30 @@ class StoreApiTests(APITestCase):
         order = Order.objects.get(id=response.data["order_id"])
         self.assertEqual(order.status, "pagado")
         self.assertEqual(order.shipping_city, "Medellin")
+        self.assertTrue(order.age_verified)
         self.assertEqual(self.client.session.get("cart"), {})
+
+    def test_checkout_rejects_missing_age_confirmation(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3000000000",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 5)
+        self.assertEqual(Order.objects.count(), 0)
 
     def test_cancel_order_restores_stock_once(self):
         user = self.create_user()

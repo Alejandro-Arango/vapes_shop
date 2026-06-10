@@ -13,16 +13,24 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def env_bool(name, default=False):
+    """
+    Nombre: env_bool
+    Descripcion: Convierte variables de entorno comunes en valores booleanos.
+    """
+    return os.environ.get(name, str(default)).lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
 # =============================================================================
 # CONFIGURACION GENERAL
 # =============================================================================
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in (
-    "1",
-    "true",
-    "yes",
-    "on",
-)
+DEBUG = env_bool("DJANGO_DEBUG", True)
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
@@ -61,6 +69,19 @@ INSTALLED_APPS = [
     "store",
     "rest_framework",
 ]
+
+
+# =============================================================================
+# DJANGO REST FRAMEWORK
+# =============================================================================
+
+REST_FRAMEWORK = {
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_anon": os.environ.get("AUTH_THROTTLE_RATE", "20/min"),
+        "contact_anon": os.environ.get("CONTACT_THROTTLE_RATE", "10/hour"),
+        "checkout_user": os.environ.get("CHECKOUT_THROTTLE_RATE", "20/min"),
+    },
+}
 
 
 # =============================================================================
@@ -184,6 +205,33 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
 ]
+
+
+# =============================================================================
+# SEGURIDAD PARA PRODUCCION
+# =============================================================================
+
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+
+SESSION_COOKIE_SECURE = env_bool(
+    "DJANGO_SESSION_COOKIE_SECURE",
+    not DEBUG,
+)
+CSRF_COOKIE_SECURE = env_bool(
+    "DJANGO_CSRF_COOKIE_SECURE",
+    not DEBUG,
+)
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", False)
+SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool(
+    "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS",
+    False,
+)
+SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", False)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
 
 
 # =============================================================================

@@ -8,12 +8,13 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Customer
 from .serializers import UserRegisterSerializer, UserSerializer
+from .throttles import AuthAnonRateThrottle
 
 
 def ensure_customer_for_user(user: User) -> Customer:
@@ -53,6 +54,7 @@ def ensure_customer_for_user(user: User) -> Customer:
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([AuthAnonRateThrottle])
 def register(request):
     """
     Nombre: register
@@ -80,6 +82,7 @@ def register(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([AuthAnonRateThrottle])
 def login_view(request):
     """
     Nombre: login_view
