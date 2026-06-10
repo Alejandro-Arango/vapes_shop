@@ -390,6 +390,26 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.data["items"], [])
         self.assertEqual(self.client.session.get("cart"), {})
 
+    def test_cart_syncs_existing_items_with_current_stock(self):
+        self.set_session_cart({str(self.product.id): 4})
+        self.product.stock = 2
+        self.product.save(update_fields=["stock"])
+
+        response = self.client.get(reverse("api_cart"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["items"][0]["quantity"], 2)
+        self.assertEqual(self.client.session.get("cart")[str(self.product.id)], 2)
+
+        self.product.stock = 0
+        self.product.save(update_fields=["stock"])
+
+        response = self.client.get(reverse("api_cart"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["items"], [])
+        self.assertEqual(self.client.session.get("cart"), {})
+
     def test_checkout_rejects_inactive_product(self):
         user = self.create_user()
         self.client.login(username=user.username, password="ClaveSegura123")

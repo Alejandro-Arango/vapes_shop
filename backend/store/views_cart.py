@@ -50,6 +50,16 @@ def api_cart(request):
 
             product = Product.objects.get(id=product_id, is_active=True)
 
+            if product.stock <= 0:
+                cart.pop(pid, None)
+                cart_changed = True
+                continue
+
+            if quantity > product.stock:
+                quantity = product.stock
+                cart[pid] = quantity
+                cart_changed = True
+
             items.append({
                 "product": {
                     "id": product.id,
