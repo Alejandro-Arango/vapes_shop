@@ -74,6 +74,14 @@ function getCookie(name) {
     return null;
 }
 
+function getCsrfToken() {
+    const metaToken = document
+        .querySelector('meta[name="csrf-token"]')
+        ?.getAttribute("content");
+
+    return metaToken || getCookie("csrftoken");
+}
+
 /*
  * Nombre: csrfHeaders
  * Descripcion: Construye los encabezados necesarios para enviar JSON y token CSRF al backend Django.
@@ -81,7 +89,7 @@ function getCookie(name) {
 function csrfHeaders() {
     return {
         "Content-Type": "application/json",
-        "X-CSRFToken": getCookie("csrftoken"),
+        "X-CSRFToken": getCsrfToken(),
     };
 }
 
