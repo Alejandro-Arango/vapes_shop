@@ -99,7 +99,6 @@ def serialize_order(order):
                 "name": item.display_product_name,
                 "price": float(unit_price),
                 "image": item.product.image.url if item.product.image else "",
-                "stock": item.product.stock,
             },
             "quantity": item.quantity,
             "line_total": line_total,

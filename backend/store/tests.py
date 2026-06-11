@@ -674,6 +674,10 @@ class StoreApiTests(APITestCase):
             orders_response.data["orders"][0]["items"][0]["product"]["price"],
             10.0,
         )
+        self.assertNotIn(
+            "stock",
+            orders_response.data["orders"][0]["items"][0]["product"],
+        )
         self.assertEqual(
             orders_response.data["orders"][0]["items"][0]["line_total"],
             20.0,
