@@ -453,16 +453,19 @@ class StoreApiTests(APITestCase):
         self.assertNotIn(inactive_product.id, product_ids)
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
-        response = self.client.post(
-            reverse("api_cart_add"),
-            {
-                "productId": self.product.id,
-                "quantity": 0,
-            },
-            format="json",
-        )
+        invalid_quantities = (0, "1.5", True, "abc")
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        for invalid_quantity in invalid_quantities:
+            response = self.client.post(
+                reverse("api_cart_add"),
+                {
+                    "productId": self.product.id,
+                    "quantity": invalid_quantity,
+                },
+                format="json",
+            )
+
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         response = self.client.post(
             reverse("api_cart_add"),

@@ -13,9 +13,19 @@ def parse_positive_quantity(value):
     Descripcion: Convierte una cantidad recibida desde la API en entero positivo.
     Retorna: Cantidad valida o None si el valor no es aceptable.
     """
-    try:
-        quantity = int(value)
-    except (TypeError, ValueError):
+    if isinstance(value, bool):
+        return None
+
+    if isinstance(value, int):
+        quantity = value
+    elif isinstance(value, str):
+        normalized_value = value.strip()
+
+        if not normalized_value.isdigit():
+            return None
+
+        quantity = int(normalized_value)
+    else:
         return None
 
     if quantity <= 0:
