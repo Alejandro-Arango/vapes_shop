@@ -528,6 +528,64 @@ class StoreApiTests(APITestCase):
         with self.assertRaises(ProtectedError):
             self.product.delete()
 
+    def test_user_cannot_access_or_cancel_other_user_order(self):
+        owner = self.create_user()
+        intruder = User.objects.create_user(
+            username="intruso",
+            email="intruso@example.com",
+            password="ClaveSegura123",
+        )
+        owner_customer = Customer.objects.create(
+            user=owner,
+            first_name="Cliente",
+            last_name="Propietario",
+            email=owner.email,
+        )
+        Customer.objects.create(
+            user=intruder,
+            first_name="Cliente",
+            last_name="Intruso",
+            email=intruder.email,
+        )
+        order = Order.objects.create(
+            customer=owner_customer,
+            status="pagado",
+            completed=True,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=1,
+        )
+
+        self.client.login(username=intruder.username, password="ClaveSegura123")
+
+        orders_response = self.client.get(reverse("my_orders"))
+        detail_response = self.client.get(reverse("order_detail", args=[order.id]))
+        cancel_response = self.client.post(reverse("cancel_order", args=[order.id]))
+
+        self.assertEqual(orders_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(orders_response.data["orders"], [])
+        self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(cancel_response.status_code, status.HTTP_404_NOT_FOUND)
+
+        order.refresh_from_db()
+        self.product.refresh_from_db()
+        self.assertEqual(order.status, "pagado")
+        self.assertEqual(self.product.stock, 5)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="order_detail_failed",
+                metadata__order_id=order.id,
+            ).exists()
+        )
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="order_cancel_failed",
+                metadata__order_id=order.id,
+            ).exists()
+        )
+
     def test_checkout_rejects_missing_age_confirmation(self):
         user = self.create_user()
         self.client.login(username=user.username, password="ClaveSegura123")

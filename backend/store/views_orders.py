@@ -534,6 +534,14 @@ def order_detail(request, order_id):
             .get(id=order_id, customer=customer)
         )
     except Order.DoesNotExist:
+        log_event(
+            "order_detail_failed",
+            "Consulta de orden rechazada porque no existe para el usuario.",
+            request=request,
+            severity="warning",
+            metadata={"order_id": order_id},
+        )
+
         return Response(
             {"error": "Orden no encontrada"},
             status=status.HTTP_404_NOT_FOUND
