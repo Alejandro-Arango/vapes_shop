@@ -107,6 +107,9 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "ok")
         self.assertEqual(response.data["database"], "available")
+        self.assertEqual(response.headers["Cache-Control"], "no-store, max-age=0")
+        self.assertEqual(response.headers["Pragma"], "no-cache")
+        self.assertEqual(response.headers["Expires"], "0")
 
     def test_sensitive_api_responses_are_not_cached(self):
         response = self.client.get(reverse("api_cart"))

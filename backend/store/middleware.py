@@ -26,16 +26,17 @@ class PermissionsPolicyMiddleware:
         return response
 
 
-class SensitiveApiCacheControlMiddleware:
+class ApiCacheControlMiddleware:
     """
-    Nombre: SensitiveApiCacheControlMiddleware
-    Descripcion: Evita cachear respuestas de API que pueden contener datos de usuario.
+    Nombre: ApiCacheControlMiddleware
+    Descripcion: Evita cachear respuestas de API sensibles o que deben reflejar estado actual.
     """
 
-    SENSITIVE_API_PREFIXES = (
+    NO_CACHE_API_PREFIXES = (
         "/api/auth/",
         "/api/cart/",
         "/api/contact/",
+        "/api/health/",
         "/api/orders/",
     )
 
@@ -45,7 +46,7 @@ class SensitiveApiCacheControlMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
 
-        if request.path.startswith(self.SENSITIVE_API_PREFIXES):
+        if request.path.startswith(self.NO_CACHE_API_PREFIXES):
             response.headers["Cache-Control"] = "no-store, max-age=0"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"

@@ -186,7 +186,7 @@ DATA_UPLOAD_MAX_NUMBER_FILES = env_int(
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "store.middleware.PermissionsPolicyMiddleware",
-    "store.middleware.SensitiveApiCacheControlMiddleware",
+    "store.middleware.ApiCacheControlMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
