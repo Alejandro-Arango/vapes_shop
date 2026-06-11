@@ -94,6 +94,10 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.headers["Cross-Origin-Opener-Policy"], "same-origin")
         self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertEqual(
+            response.headers["Permissions-Policy"],
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+        )
 
     def test_product_constraints_reject_negative_values(self):
         with self.assertRaises(IntegrityError):

@@ -136,6 +136,7 @@ REST_FRAMEWORK = {
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "store.middleware.PermissionsPolicyMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -306,6 +307,10 @@ SECURE_REFERRER_POLICY = os.environ.get(
 SECURE_CROSS_ORIGIN_OPENER_POLICY = os.environ.get(
     "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY",
     "same-origin",
+)
+PERMISSIONS_POLICY = os.environ.get(
+    "DJANGO_PERMISSIONS_POLICY",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
 )
 X_FRAME_OPTIONS = "DENY"
 
