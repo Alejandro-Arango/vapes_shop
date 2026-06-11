@@ -22,7 +22,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from mi_tienda.settings import env_bool
+from mi_tienda.settings import LOG_LEVEL_CHOICES, env_bool, env_choice
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
 from .audit import log_event
@@ -231,6 +231,17 @@ class StoreApiTests(APITestCase):
 
         with patch.dict(os.environ, {"TEST_BOOL": "off"}):
             self.assertFalse(env_bool("TEST_BOOL"))
+
+    def test_env_choice_validates_log_levels(self):
+        with patch.dict(os.environ, {"TEST_LOG_LEVEL": "warning"}):
+            self.assertEqual(
+                env_choice("TEST_LOG_LEVEL", "ERROR", LOG_LEVEL_CHOICES),
+                "WARNING",
+            )
+
+        with patch.dict(os.environ, {"TEST_LOG_LEVEL": "WARNNIG"}):
+            with self.assertRaises(ImproperlyConfigured):
+                env_choice("TEST_LOG_LEVEL", "ERROR", LOG_LEVEL_CHOICES)
 
     def test_register_creates_event_without_personal_metadata(self):
         response = self.client.post(

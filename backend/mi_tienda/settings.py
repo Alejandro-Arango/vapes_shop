@@ -77,6 +77,22 @@ def env_list(name, default=""):
     ]
 
 
+def env_choice(name, default, choices):
+    """
+    Nombre: env_choice
+    Descripcion: Valida una variable de entorno contra opciones permitidas.
+    """
+    value = os.environ.get(name, default).strip().upper()
+
+    if value not in choices:
+        allowed_values = ", ".join(choices)
+        raise ImproperlyConfigured(
+            f"{name} debe ser uno de: {allowed_values}."
+        )
+
+    return value
+
+
 def required_env(name):
     """
     Nombre: required_env
@@ -411,6 +427,14 @@ EMAIL_BACKEND = os.environ.get(
 # LOGGING Y TRAZABILIDAD
 # =============================================================================
 
+LOG_LEVEL_CHOICES = (
+    "DEBUG",
+    "INFO",
+    "WARNING",
+    "ERROR",
+    "CRITICAL",
+)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -429,12 +453,20 @@ LOGGING = {
     "loggers": {
         "store": {
             "handlers": ["console"],
-            "level": os.environ.get("DJANGO_STORE_LOG_LEVEL", "WARNING"),
+            "level": env_choice(
+                "DJANGO_STORE_LOG_LEVEL",
+                "WARNING",
+                LOG_LEVEL_CHOICES,
+            ),
             "propagate": False,
         },
         "django.request": {
             "handlers": ["console"],
-            "level": os.environ.get("DJANGO_REQUEST_LOG_LEVEL", "ERROR"),
+            "level": env_choice(
+                "DJANGO_REQUEST_LOG_LEVEL",
+                "ERROR",
+                LOG_LEVEL_CHOICES,
+            ),
             "propagate": False,
         },
     },
