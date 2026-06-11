@@ -303,6 +303,10 @@ SECURE_REFERRER_POLICY = os.environ.get(
     "DJANGO_SECURE_REFERRER_POLICY",
     "same-origin",
 )
+SECURE_CROSS_ORIGIN_OPENER_POLICY = os.environ.get(
+    "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY",
+    "same-origin",
+)
 X_FRAME_OPTIONS = "DENY"
 
 if env_bool("DJANGO_USE_X_FORWARDED_PROTO", False):
