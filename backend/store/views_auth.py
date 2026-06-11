@@ -39,7 +39,7 @@ def register(request):
             "Usuario registrado correctamente.",
             request=request,
             user=user,
-            metadata={"username": user.username, "email": user.email},
+            metadata={"user_id": user.id},
         )
 
         return Response(
@@ -114,12 +114,14 @@ def login_view(request):
             user = None
 
     if user is None:
+        identifier_type = "email" if "@" in email_or_username else "username"
+
         log_event(
             "auth_login_failed",
             "Intento de login con credenciales invalidas.",
             request=request,
             severity="warning",
-            metadata={"identifier": email_or_username},
+            metadata={"identifier_type": identifier_type},
         )
 
         return Response(
@@ -135,7 +137,7 @@ def login_view(request):
         "Usuario inicio sesion correctamente.",
         request=request,
         user=user,
-        metadata={"username": user.username},
+        metadata={"user_id": user.id},
     )
 
     return Response(

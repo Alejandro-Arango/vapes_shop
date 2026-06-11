@@ -178,6 +178,24 @@ class StoreApiTests(APITestCase):
                     status="estado_invalido",
                 )
 
+    def test_register_creates_event_without_personal_metadata(self):
+        response = self.client.post(
+            reverse("auth_register"),
+            {
+                "username": "nuevo",
+                "email": "nuevo@example.com",
+                "password": "ClaveSegura123",
+            },
+            format="json",
+        )
+
+        event = EventLog.objects.get(event_type="auth_register_success")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(event.metadata["user_id"], response.data["id"])
+        self.assertNotIn("email", event.metadata)
+        self.assertNotIn("username", event.metadata)
+
     def test_register_rejects_duplicate_email(self):
         User.objects.create_user(
             username="existente",
@@ -304,9 +322,11 @@ class StoreApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertTrue(
-            EventLog.objects.filter(event_type="auth_login_failed").exists()
-        )
+        event = EventLog.objects.get(event_type="auth_login_failed")
+
+        self.assertEqual(event.metadata["identifier_type"], "username")
+        self.assertNotIn("identifier", event.metadata)
+        self.assertNotIn("no-existe", str(event.metadata))
 
     def test_login_is_rate_limited(self):
         cache.clear()
@@ -366,12 +386,14 @@ class StoreApiTests(APITestCase):
         self.assertIn("wa.me", response.data["whatsapp_url"])
         self.assertIn("visitante%40example.com", response.data["whatsapp_url"])
         self.assertEqual(len(mail.outbox), 1)
-        self.assertTrue(
-            EventLog.objects.filter(
-                event_type="contact_received",
-                metadata__lead_id=lead.id,
-            ).exists()
+        event = EventLog.objects.get(
+            event_type="contact_received",
+            metadata__lead_id=lead.id,
         )
+
+        self.assertEqual(event.metadata["status"], "nuevo")
+        self.assertNotIn("email", event.metadata)
+        self.assertNotIn("phone", event.metadata)
 
     def test_contact_form_rejects_invalid_phone(self):
         response = self.client.post(

@@ -114,8 +114,6 @@ def contact(request):
         request=request,
         metadata={
             "lead_id": lead.id,
-            "email": lead.email,
-            "phone": lead.phone,
             "status": lead.status,
         },
     )
@@ -129,7 +127,7 @@ def contact(request):
             "No se pudo enviar la notificacion de contacto.",
             request=request,
             severity="warning",
-            metadata={"lead_id": lead.id, "email": lead.email},
+            metadata={"lead_id": lead.id},
         )
 
     return Response(
