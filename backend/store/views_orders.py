@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .audit import log_event
+from .cart_utils import sync_cart_with_products
 from .models import Product, Customer, Order, OrderItem
 from .throttles import CheckoutUserRateThrottle
 
@@ -96,6 +97,33 @@ def checkout(request):
             {"error": "Carrito vacio"},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    synced_cart, _, cart_changed = sync_cart_with_products(cart)
+
+    if cart_changed:
+        request.session["cart"] = synced_cart
+        request.session.modified = True
+
+        log_event(
+            "checkout_failed",
+            "Checkout detenido porque el carrito fue sincronizado.",
+            request=request,
+            severity="warning",
+            metadata={
+                "cart_items_before": len(cart),
+                "cart_items_after": len(synced_cart),
+            },
+        )
+
+        return Response(
+            {
+                "error": "Tu carrito fue actualizado por cambios de disponibilidad. Revisalo antes de pagar.",
+                "cart_updated": True,
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    cart = synced_cart
 
     shipping_name = str(
         request.data.get("shippingName")

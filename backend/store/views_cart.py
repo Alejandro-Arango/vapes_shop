@@ -7,24 +7,8 @@ Dependencias: Django REST Framework, modelo Product
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from .cart_utils import parse_positive_quantity, sync_cart_with_products
 from .models import Product
-
-
-def parse_positive_quantity(value):
-    """
-    Nombre: parse_positive_quantity
-    Descripcion: Convierte una cantidad recibida desde la API en entero positivo.
-    Retorna: Cantidad valida o None si el valor no es aceptable.
-    """
-    try:
-        quantity = int(value)
-    except (TypeError, ValueError):
-        return None
-
-    if quantity <= 0:
-        return None
-
-    return quantity
 
 
 @api_view(["GET"])
@@ -34,51 +18,27 @@ def api_cart(request):
     Descripcion: Devuelve el carrito almacenado en la sesion de Django con productos, cantidades y total.
     """
     cart = request.session.get("cart", {})
-    items = []
-
-    cart_changed = False
-
-    for pid, qty in list(cart.items()):
-        try:
-            product_id = int(pid)
-            quantity = int(qty)
-
-            if quantity <= 0:
-                cart.pop(pid, None)
-                cart_changed = True
-                continue
-
-            product = Product.objects.get(id=product_id, is_active=True)
-
-            if product.stock <= 0:
-                cart.pop(pid, None)
-                cart_changed = True
-                continue
-
-            if quantity > product.stock:
-                quantity = product.stock
-                cart[pid] = quantity
-                cart_changed = True
-
-            items.append({
-                "product": {
-                    "id": product.id,
-                    "name": product.name,
-                    "price": float(product.price),
-                    "image": product.image.url if product.image else "",
-                    "stock": product.stock,
-                },
-                "quantity": quantity,
-            })
-
-        except (ValueError, TypeError, Product.DoesNotExist):
-            cart.pop(pid, None)
-            cart_changed = True
-            continue
+    synced_cart, cart_items, cart_changed = sync_cart_with_products(cart)
 
     if cart_changed:
-        request.session["cart"] = cart
+        request.session["cart"] = synced_cart
         request.session.modified = True
+
+    items = []
+
+    for item in cart_items:
+        product = item["product"]
+
+        items.append({
+            "product": {
+                "id": product.id,
+                "name": product.name,
+                "price": float(product.price),
+                "image": product.image.url if product.image else "",
+                "stock": product.stock,
+            },
+            "quantity": item["quantity"],
+        })
 
     total = sum(
         item["product"]["price"] * item["quantity"]

@@ -410,6 +410,33 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.data["items"], [])
         self.assertEqual(self.client.session.get("cart"), {})
 
+    def test_checkout_syncs_cart_before_payment_when_stock_changes(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 4})
+        self.product.stock = 2
+        self.product.save(update_fields=["stock"])
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3000000000",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "",
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(response.data["cart_updated"])
+        self.assertEqual(self.client.session.get("cart")[str(self.product.id)], 2)
+        self.assertEqual(Order.objects.count(), 0)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 2)
+
     def test_checkout_rejects_inactive_product(self):
         user = self.create_user()
         self.client.login(username=user.username, password="ClaveSegura123")
