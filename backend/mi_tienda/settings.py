@@ -93,6 +93,31 @@ def env_choice(name, default, choices):
     return value
 
 
+def env_digits(name, default, min_digits=1, max_digits=None):
+    """
+    Nombre: env_digits
+    Descripcion: Normaliza una variable de entorno dejando solo digitos y valida su longitud.
+    """
+    raw_value = os.environ.get(name, default)
+    digits = "".join(
+        char
+        for char in str(raw_value)
+        if char.isdigit()
+    )
+
+    if len(digits) < min_digits:
+        raise ImproperlyConfigured(
+            f"{name} debe contener al menos {min_digits} digito(s)."
+        )
+
+    if max_digits is not None and len(digits) > max_digits:
+        raise ImproperlyConfigured(
+            f"{name} debe contener maximo {max_digits} digito(s)."
+        )
+
+    return digits
+
+
 def required_env(name):
     """
     Nombre: required_env
@@ -402,9 +427,11 @@ if env_bool("DJANGO_USE_X_FORWARDED_PROTO", False):
 # CONFIGURACION DE CONTACTO Y CORREO
 # =============================================================================
 
-CONTACT_WHATSAPP_NUMBER = os.environ.get(
+CONTACT_WHATSAPP_NUMBER = env_digits(
     "CONTACT_WHATSAPP_NUMBER",
     "573016604375",
+    min_digits=7,
+    max_digits=15,
 )
 
 DEFAULT_FROM_EMAIL = os.environ.get(

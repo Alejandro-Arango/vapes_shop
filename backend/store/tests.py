@@ -22,7 +22,12 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from mi_tienda.settings import LOG_LEVEL_CHOICES, env_bool, env_choice
+from mi_tienda.settings import (
+    LOG_LEVEL_CHOICES,
+    env_bool,
+    env_choice,
+    env_digits,
+)
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
 from .audit import log_event
@@ -243,6 +248,17 @@ class StoreApiTests(APITestCase):
         with patch.dict(os.environ, {"TEST_LOG_LEVEL": "WARNNIG"}):
             with self.assertRaises(ImproperlyConfigured):
                 env_choice("TEST_LOG_LEVEL", "ERROR", LOG_LEVEL_CHOICES)
+
+    def test_env_digits_normalizes_whatsapp_number(self):
+        with patch.dict(os.environ, {"TEST_PHONE": "+57 301-660-4375"}):
+            self.assertEqual(
+                env_digits("TEST_PHONE", "", min_digits=7, max_digits=15),
+                "573016604375",
+            )
+
+        with patch.dict(os.environ, {"TEST_PHONE": "abc"}):
+            with self.assertRaises(ImproperlyConfigured):
+                env_digits("TEST_PHONE", "", min_digits=7, max_digits=15)
 
     def test_cart_audit_metadata_summarizes_payload(self):
         metadata = build_cart_audit_metadata(
