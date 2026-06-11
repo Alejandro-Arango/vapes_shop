@@ -210,6 +210,10 @@ class StoreApiTests(APITestCase):
         self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FIELDS, 0)
         self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FILES, 0)
 
+    def test_hsts_seconds_is_configured_as_non_negative_integer(self):
+        self.assertIsInstance(settings.SECURE_HSTS_SECONDS, int)
+        self.assertGreaterEqual(settings.SECURE_HSTS_SECONDS, 0)
+
     def test_register_creates_event_without_personal_metadata(self):
         response = self.client.post(
             reverse("auth_register"),
