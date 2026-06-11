@@ -316,6 +316,33 @@ class StoreApiTests(APITestCase):
             EventLog.objects.filter(event_type="contact_invalid").exists()
         )
 
+    def test_contact_form_rejects_oversized_phone_and_message(self):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "email": "visitante@example.com",
+                "phone": "1234567890123456",
+                "message": "Necesito informacion.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone", response.data)
+
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "email": "visitante@example.com",
+                "phone": "3000000000",
+                "message": "x" * 1001,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("message", response.data)
+
     def test_order_endpoints_require_authentication(self):
         responses = [
             self.client.post(reverse("checkout"), {}, format="json"),

@@ -13,6 +13,10 @@ from rest_framework import serializers
 from .models import ContactLead, Customer, Product
 
 
+CONTACT_MESSAGE_MAX_LENGTH = 1000
+CONTACT_PHONE_MAX_DIGITS = 15
+
+
 class ProductSerializer(serializers.ModelSerializer):
     """
     Nombre: ProductSerializer
@@ -97,6 +101,9 @@ class ContactLeadSerializer(serializers.ModelSerializer):
         if digits_count < 7:
             raise serializers.ValidationError("El telefono debe tener al menos 7 digitos.")
 
+        if digits_count > CONTACT_PHONE_MAX_DIGITS:
+            raise serializers.ValidationError("El telefono no puede superar 15 digitos.")
+
         return phone
 
     def validate_message(self, value):
@@ -105,7 +112,14 @@ class ContactLeadSerializer(serializers.ModelSerializer):
         Descripcion: Normaliza el mensaje enviado desde contacto.
         Retorna: Mensaje sin espacios externos.
         """
-        return value.strip()
+        message = value.strip()
+
+        if len(message) > CONTACT_MESSAGE_MAX_LENGTH:
+            raise serializers.ValidationError(
+                "El mensaje no puede superar 1000 caracteres."
+            )
+
+        return message
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
