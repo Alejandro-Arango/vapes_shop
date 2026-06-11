@@ -4,6 +4,8 @@ Descripcion: Gestiona checkout, consulta de pedidos, detalle de orden y cancelac
 Dependencias: Django transaction, Django REST Framework, modelos Product, Customer, Order y OrderItem
 """
 
+import re
+
 from django.db import transaction
 
 from rest_framework import status
@@ -15,6 +17,16 @@ from .audit import log_event
 from .cart_utils import sync_cart_with_products
 from .models import Product, Customer, Order, OrderItem
 from .throttles import CheckoutUserRateThrottle
+
+
+PHONE_PATTERN = re.compile(r"^[0-9\s()+-]+$")
+SHIPPING_MAX_LENGTHS = {
+    "name": 150,
+    "phone": 30,
+    "address": 200,
+    "city": 100,
+    "notes": 500,
+}
 
 
 def parse_bool(value):
@@ -29,6 +41,42 @@ def parse_bool(value):
         return value.strip().lower() in ("1", "true", "yes", "on", "si")
 
     return value == 1
+
+
+def validate_shipping_data(name, phone, address, city, notes):
+    """
+    Nombre: validate_shipping_data
+    Descripcion: Valida datos de envio antes de crear una orden.
+    Retorna: Mensaje de error o None si los datos son validos.
+    """
+    if not name or not phone or not address or not city:
+        return "Debes completar los datos de envio"
+
+    if len(name) > SHIPPING_MAX_LENGTHS["name"]:
+        return "El nombre de envio es demasiado largo"
+
+    if len(phone) > SHIPPING_MAX_LENGTHS["phone"]:
+        return "El telefono de envio es demasiado largo"
+
+    if len(address) > SHIPPING_MAX_LENGTHS["address"]:
+        return "La direccion de envio es demasiado larga"
+
+    if len(city) > SHIPPING_MAX_LENGTHS["city"]:
+        return "La ciudad de envio es demasiado larga"
+
+    if len(notes) > SHIPPING_MAX_LENGTHS["notes"]:
+        return "Las notas de envio son demasiado largas"
+
+    phone_digits = re.sub(r"\D", "", phone)
+
+    if (
+        not PHONE_PATTERN.fullmatch(phone)
+        or len(phone_digits) < 7
+        or len(phone_digits) > 15
+    ):
+        return "El telefono de envio no es valido"
+
+    return None
 
 
 def serialize_order(order):
@@ -155,17 +203,25 @@ def checkout(request):
         or ""
     ).strip()
 
-    if not shipping_name or not shipping_phone or not shipping_address or not shipping_city:
+    shipping_error = validate_shipping_data(
+        shipping_name,
+        shipping_phone,
+        shipping_address,
+        shipping_city,
+        shipping_notes,
+    )
+
+    if shipping_error:
         log_event(
             "checkout_failed",
-            "Checkout rechazado por datos de envio incompletos.",
+            "Checkout rechazado por datos de envio invalidos.",
             request=request,
             severity="warning",
             metadata={"cart_items": len(cart)},
         )
 
         return Response(
-            {"error": "Debes completar los datos de envio"},
+            {"error": shipping_error},
             status=status.HTTP_400_BAD_REQUEST
         )
 
