@@ -101,6 +101,13 @@ class StoreApiTests(APITestCase):
             "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
         )
 
+    def test_health_check_reports_available_service(self):
+        response = self.client.get(reverse("health_check"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "ok")
+        self.assertEqual(response.data["database"], "available")
+
     def test_product_constraints_reject_negative_values(self):
         with self.assertRaises(IntegrityError):
             with transaction.atomic():

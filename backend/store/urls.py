@@ -20,6 +20,9 @@ urlpatterns = [
     # Vista principal
     path("", views.home, name="home"),
 
+    # Salud del servicio
+    path("api/health/", views_api.health_check, name="health_check"),
+
     # Productos
     path("api/products/", views_api.api_products, name="api_products"),
 
