@@ -31,6 +31,20 @@ def format_admin_datetime(value):
     return value.isoformat() if value else ""
 
 
+def escape_csv_formula(value):
+    """
+    Nombre: escape_csv_formula
+    Descripcion: Evita que hojas de calculo ejecuten valores exportados como formulas.
+    """
+    if not isinstance(value, str):
+        return value
+
+    if value.lstrip()[:1] in ("=", "+", "-", "@"):
+        return f"'{value}"
+
+    return value
+
+
 def build_csv_response(filename, headers, rows):
     """
     Nombre: build_csv_response
@@ -43,7 +57,10 @@ def build_csv_response(filename, headers, rows):
     writer.writerow(headers)
 
     for row in rows:
-        writer.writerow(row)
+        writer.writerow(
+            escape_csv_formula(value)
+            for value in row
+        )
 
     return response
 

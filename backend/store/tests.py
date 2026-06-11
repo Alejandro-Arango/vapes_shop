@@ -20,7 +20,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin
+from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
 from .audit import log_event
 from .models import ContactLead, Customer, EventLog, Order, OrderItem, Product
 from .throttles import (
@@ -1100,6 +1100,26 @@ class StoreApiTests(APITestCase):
         self.assertIn("contactos.csv", response["Content-Disposition"])
         self.assertIn("visitante@example.com", content)
         self.assertIn("Necesito informacion.", content)
+
+    def test_admin_csv_export_escapes_formula_values(self):
+        response = build_csv_response(
+            "seguro.csv",
+            ("Valor", "Normal"),
+            (
+                ("=IMPORTXML(\"http://example.com\")", "texto"),
+                ("+SUM(1,1)", "-10"),
+                ("@usuario", 100),
+                ("  =SUM(2,2)", "normal"),
+            ),
+        )
+
+        content = response.content.decode()
+
+        self.assertIn("'=IMPORTXML", content)
+        self.assertIn("'+SUM(1,1)", content)
+        self.assertIn("'-10", content)
+        self.assertIn("'@usuario", content)
+        self.assertIn("'  =SUM(2,2)", content)
 
     def test_admin_exports_orders_to_csv(self):
         user = self.create_user()
