@@ -4,6 +4,7 @@ Descripcion: Define pruebas automatizadas para los flujos principales de autenti
 Dependencias: Django test, Django auth, Django urls, Django REST Framework y modelos de store
 """
 
+import os
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -11,6 +12,7 @@ from django.conf import settings
 from django.contrib.admin.sites import AdminSite
 from django.core import mail
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
@@ -19,6 +21,8 @@ from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.test import APITestCase
+
+from mi_tienda.settings import env_bool
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
 from .audit import log_event
@@ -216,6 +220,17 @@ class StoreApiTests(APITestCase):
     def test_hsts_seconds_is_configured_as_non_negative_integer(self):
         self.assertIsInstance(settings.SECURE_HSTS_SECONDS, int)
         self.assertGreaterEqual(settings.SECURE_HSTS_SECONDS, 0)
+
+    def test_env_bool_rejects_invalid_values(self):
+        with patch.dict(os.environ, {"TEST_BOOL": "tru"}):
+            with self.assertRaises(ImproperlyConfigured):
+                env_bool("TEST_BOOL")
+
+        with patch.dict(os.environ, {"TEST_BOOL": "yes"}):
+            self.assertTrue(env_bool("TEST_BOOL"))
+
+        with patch.dict(os.environ, {"TEST_BOOL": "off"}):
+            self.assertFalse(env_bool("TEST_BOOL"))
 
     def test_register_creates_event_without_personal_metadata(self):
         response = self.client.post(

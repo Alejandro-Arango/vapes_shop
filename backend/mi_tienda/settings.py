@@ -21,13 +21,23 @@ load_dotenv(BASE_DIR / ".env")
 def env_bool(name, default=False):
     """
     Nombre: env_bool
-    Descripcion: Convierte variables de entorno comunes en valores booleanos.
+    Descripcion: Convierte variables de entorno comunes en booleanos y rechaza valores invalidos.
     """
-    return os.environ.get(name, str(default)).lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
+    raw_value = os.environ.get(name)
+
+    if raw_value is None:
+        return default
+
+    value = raw_value.strip().lower()
+
+    if value in ("1", "true", "yes", "on"):
+        return True
+
+    if value in ("0", "false", "no", "off"):
+        return False
+
+    raise ImproperlyConfigured(
+        f"{name} debe ser booleano: true/false, yes/no, on/off o 1/0."
     )
 
 
