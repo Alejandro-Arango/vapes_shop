@@ -33,6 +33,7 @@ from .throttles import (
     CheckoutUserRateThrottle,
     ContactAnonRateThrottle,
 )
+from .views_orders import build_cart_audit_metadata
 
 
 class StoreApiTests(APITestCase):
@@ -242,6 +243,22 @@ class StoreApiTests(APITestCase):
         with patch.dict(os.environ, {"TEST_LOG_LEVEL": "WARNNIG"}):
             with self.assertRaises(ImproperlyConfigured):
                 env_choice("TEST_LOG_LEVEL", "ERROR", LOG_LEVEL_CHOICES)
+
+    def test_cart_audit_metadata_summarizes_payload(self):
+        metadata = build_cart_audit_metadata(
+            {
+                "2": 1,
+                "invalid": "dato-controlado-por-sesion",
+                "1": 3,
+            }
+        )
+
+        self.assertEqual(metadata["cart_items"], 3)
+        self.assertEqual(metadata["invalid_items"], 1)
+        self.assertEqual(metadata["product_ids"], [1, 2])
+        self.assertFalse(metadata["product_ids_truncated"])
+        self.assertNotIn("cart", metadata)
+        self.assertNotIn("dato-controlado-por-sesion", str(metadata))
 
     def test_register_creates_event_without_personal_metadata(self):
         response = self.client.post(

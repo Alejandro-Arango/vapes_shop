@@ -28,6 +28,7 @@ SHIPPING_MAX_LENGTHS = {
     "city": 100,
     "notes": 500,
 }
+MAX_AUDIT_PRODUCT_IDS = 20
 
 
 def parse_bool(value):
@@ -42,6 +43,34 @@ def parse_bool(value):
         return value.strip().lower() in ("1", "true", "yes", "on", "si")
 
     return value == 1
+
+
+def build_cart_audit_metadata(cart):
+    """
+    Nombre: build_cart_audit_metadata
+    Descripcion: Resume el carrito para auditoria sin guardar el payload completo.
+    """
+    if not isinstance(cart, dict):
+        return {
+            "cart_items": 0,
+            "cart_payload_type": type(cart).__name__,
+        }
+
+    product_ids = []
+    invalid_items = 0
+
+    for product_id in cart.keys():
+        try:
+            product_ids.append(int(product_id))
+        except (TypeError, ValueError):
+            invalid_items += 1
+
+    return {
+        "cart_items": len(cart),
+        "invalid_items": invalid_items,
+        "product_ids": sorted(product_ids)[:MAX_AUDIT_PRODUCT_IDS],
+        "product_ids_truncated": len(product_ids) > MAX_AUDIT_PRODUCT_IDS,
+    }
 
 
 def validate_shipping_data(name, phone, address, city, notes):
@@ -254,7 +283,7 @@ def checkout(request):
             "Checkout rechazado por carrito invalido.",
             request=request,
             severity="warning",
-            metadata={"cart": cart},
+            metadata=build_cart_audit_metadata(cart),
         )
 
         return Response(
@@ -343,7 +372,7 @@ def checkout(request):
             "Checkout rechazado porque no se pudo procesar el carrito.",
             request=request,
             severity="warning",
-            metadata={"cart": cart},
+            metadata=build_cart_audit_metadata(cart),
         )
 
         return Response(
