@@ -316,6 +316,20 @@ class StoreApiTests(APITestCase):
             EventLog.objects.filter(event_type="contact_invalid").exists()
         )
 
+    def test_order_endpoints_require_authentication(self):
+        responses = [
+            self.client.post(reverse("checkout"), {}, format="json"),
+            self.client.get(reverse("my_orders")),
+            self.client.get(reverse("order_detail", args=[1])),
+            self.client.post(reverse("cancel_order", args=[1])),
+        ]
+
+        for response in responses:
+            self.assertIn(
+                response.status_code,
+                (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+            )
+
     def test_products_api_returns_only_active_products(self):
         inactive_product = Product.objects.create(
             name="Producto oculto",
