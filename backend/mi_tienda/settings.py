@@ -31,6 +31,28 @@ def env_bool(name, default=False):
     )
 
 
+def env_int(name, default, minimum=None):
+    """
+    Nombre: env_int
+    Descripcion: Convierte una variable de entorno en entero y valida su minimo opcional.
+    """
+    raw_value = os.environ.get(name, default)
+
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError) as exc:
+        raise ImproperlyConfigured(
+            f"{name} debe ser un numero entero."
+        ) from exc
+
+    if minimum is not None and value < minimum:
+        raise ImproperlyConfigured(
+            f"{name} debe ser mayor o igual a {minimum}."
+        )
+
+    return value
+
+
 def env_list(name, default=""):
     """
     Nombre: env_list
@@ -129,6 +151,32 @@ REST_FRAMEWORK = {
         "checkout_user": os.environ.get("CHECKOUT_THROTTLE_RATE", "20/min"),
     },
 }
+
+
+# =============================================================================
+# LIMITES DE REQUEST
+# =============================================================================
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = env_int(
+    "DJANGO_DATA_UPLOAD_MAX_MEMORY_SIZE",
+    1024 * 1024,
+    minimum=1,
+)
+FILE_UPLOAD_MAX_MEMORY_SIZE = env_int(
+    "DJANGO_FILE_UPLOAD_MAX_MEMORY_SIZE",
+    1024 * 1024,
+    minimum=1,
+)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = env_int(
+    "DJANGO_DATA_UPLOAD_MAX_NUMBER_FIELDS",
+    1000,
+    minimum=1,
+)
+DATA_UPLOAD_MAX_NUMBER_FILES = env_int(
+    "DJANGO_DATA_UPLOAD_MAX_NUMBER_FILES",
+    20,
+    minimum=1,
+)
 
 
 # =============================================================================

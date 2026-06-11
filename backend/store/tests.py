@@ -7,6 +7,7 @@ Dependencias: Django test, Django auth, Django urls, Django REST Framework y mod
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.admin.sites import AdminSite
 from django.core import mail
 from django.core.cache import cache
@@ -177,6 +178,16 @@ class StoreApiTests(APITestCase):
                     customer=customer,
                     status="estado_invalido",
                 )
+
+    def test_request_limits_are_configured(self):
+        self.assertIsInstance(settings.DATA_UPLOAD_MAX_MEMORY_SIZE, int)
+        self.assertIsInstance(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, int)
+        self.assertIsInstance(settings.DATA_UPLOAD_MAX_NUMBER_FIELDS, int)
+        self.assertIsInstance(settings.DATA_UPLOAD_MAX_NUMBER_FILES, int)
+        self.assertGreater(settings.DATA_UPLOAD_MAX_MEMORY_SIZE, 0)
+        self.assertGreater(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, 0)
+        self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FIELDS, 0)
+        self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FILES, 0)
 
     def test_register_creates_event_without_personal_metadata(self):
         response = self.client.post(
