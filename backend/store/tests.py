@@ -21,7 +21,11 @@ from rest_framework.test import APITestCase
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin
 from .models import ContactLead, Customer, EventLog, Order, OrderItem, Product
-from .throttles import AuthAnonRateThrottle, ContactAnonRateThrottle
+from .throttles import (
+    AuthAnonRateThrottle,
+    CheckoutUserRateThrottle,
+    ContactAnonRateThrottle,
+)
 
 
 class StoreApiTests(APITestCase):
@@ -414,6 +418,23 @@ class StoreApiTests(APITestCase):
                 response.status_code,
                 (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
             )
+
+    def test_checkout_is_rate_limited_for_authenticated_user(self):
+        cache.clear()
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        try:
+            with patch.object(CheckoutUserRateThrottle, "rate", "1/min", create=True):
+                response = self.client.post(reverse("checkout"), {}, format="json")
+
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+                response = self.client.post(reverse("checkout"), {}, format="json")
+
+                self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
 
     def test_products_api_returns_only_active_products(self):
         inactive_product = Product.objects.create(
