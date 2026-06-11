@@ -26,6 +26,16 @@ const api = {
     cancelOrder: (orderId) => `/api/orders/cancel/${orderId}/`,
 };
 
+const shippingLimits = {
+    name: 150,
+    phone: 30,
+    address: 200,
+    city: 100,
+    notes: 500,
+};
+
+const shippingPhonePattern = /^[0-9\s()+-]+$/;
+
 // =============================================================================
 //  UTILIDADES GENERALES
 // =============================================================================
@@ -77,6 +87,49 @@ function csrfHeaders() {
 
 function isEmpty(value) {
     return !value || value.trim() === "";
+}
+
+function getShippingValidationError(shippingData) {
+    const phoneDigits = shippingData.shippingPhone.replace(/\D/g, "");
+
+    if (
+        !shippingData.shippingName ||
+        !shippingData.shippingPhone ||
+        !shippingData.shippingAddress ||
+        !shippingData.shippingCity
+    ) {
+        return "Completa nombre, telefono, direccion y ciudad.";
+    }
+
+    if (shippingData.shippingName.length > shippingLimits.name) {
+        return "El nombre de envio es demasiado largo.";
+    }
+
+    if (shippingData.shippingPhone.length > shippingLimits.phone) {
+        return "El telefono de envio es demasiado largo.";
+    }
+
+    if (
+        !shippingPhonePattern.test(shippingData.shippingPhone) ||
+        phoneDigits.length < 7 ||
+        phoneDigits.length > 15
+    ) {
+        return "Ingresa un telefono de envio valido.";
+    }
+
+    if (shippingData.shippingAddress.length > shippingLimits.address) {
+        return "La direccion de envio es demasiado larga.";
+    }
+
+    if (shippingData.shippingCity.length > shippingLimits.city) {
+        return "La ciudad de envio es demasiado larga.";
+    }
+
+    if (shippingData.shippingNotes.length > shippingLimits.notes) {
+        return "Las notas de envio son demasiado largas.";
+    }
+
+    return "";
 }
 
 function isValidEmail(email) {
@@ -1619,21 +1672,23 @@ function getShippingFormData() {
     const shippingAddress = document.getElementById("shipping-address")?.value.trim() || "";
     const shippingCity = document.getElementById("shipping-city")?.value.trim() || "";
     const shippingNotes = document.getElementById("shipping-notes")?.value.trim() || "";
-
-    if (!shippingName || !shippingPhone || !shippingAddress || !shippingCity) {
-        showCartFeedback("Completa nombre, telefono, direccion y ciudad.", "error");
-        showToast("Faltan datos de envio.", "error");
-
-        return null;
-    }
-
-    return {
+    const shippingData = {
         shippingName,
         shippingPhone,
         shippingAddress,
         shippingCity,
         shippingNotes,
     };
+    const validationError = getShippingValidationError(shippingData);
+
+    if (validationError) {
+        showCartFeedback(validationError, "error");
+        showToast(validationError, "error");
+
+        return null;
+    }
+
+    return shippingData;
 }
 
 /*
