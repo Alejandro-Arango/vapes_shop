@@ -25,6 +25,15 @@ class ContactAnonRateThrottle(AnonRateThrottle):
     scope = "contact_anon"
 
 
+class CartRateThrottle(UserRateThrottle):
+    """
+    Nombre: CartRateThrottle
+    Descripcion: Limita modificaciones del carrito por usuario o IP.
+    """
+
+    scope = "cart"
+
+
 class CheckoutUserRateThrottle(UserRateThrottle):
     """
     Nombre: CheckoutUserRateThrottle

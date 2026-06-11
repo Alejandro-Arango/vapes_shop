@@ -24,6 +24,7 @@ from .audit import log_event
 from .models import ContactLead, Customer, EventLog, Order, OrderItem, Product
 from .throttles import (
     AuthAnonRateThrottle,
+    CartRateThrottle,
     CheckoutUserRateThrottle,
     ContactAnonRateThrottle,
 )
@@ -535,6 +536,33 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["cart"][str(self.product.id)], 2)
+
+    def test_cart_add_is_rate_limited(self):
+        cache.clear()
+        cart_data = {
+            "productId": self.product.id,
+            "quantity": 0,
+        }
+
+        try:
+            with patch.object(CartRateThrottle, "rate", "1/min", create=True):
+                response = self.client.post(
+                    reverse("api_cart_add"),
+                    cart_data,
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+                response = self.client.post(
+                    reverse("api_cart_add"),
+                    cart_data,
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
 
     def test_cart_rejects_inactive_product_and_cleans_existing_item(self):
         self.product.is_active = False

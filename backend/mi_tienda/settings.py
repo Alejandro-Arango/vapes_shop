@@ -125,6 +125,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "auth_anon": os.environ.get("AUTH_THROTTLE_RATE", "20/min"),
         "contact_anon": os.environ.get("CONTACT_THROTTLE_RATE", "10/hour"),
+        "cart": os.environ.get("CART_THROTTLE_RATE", "60/min"),
         "checkout_user": os.environ.get("CHECKOUT_THROTTLE_RATE", "20/min"),
     },
 }

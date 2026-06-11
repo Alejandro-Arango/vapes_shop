@@ -4,11 +4,12 @@ Descripcion: Gestiona las operaciones del carrito usando la sesion de Django.
 Dependencias: Django REST Framework, modelo Product
 """
 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 
 from .cart_utils import parse_positive_quantity, sync_cart_with_products
 from .models import Product
+from .throttles import CartRateThrottle
 
 
 @api_view(["GET"])
@@ -52,6 +53,7 @@ def api_cart(request):
 
 
 @api_view(["POST"])
+@throttle_classes([CartRateThrottle])
 def api_cart_add(request):
     """
     Nombre: api_cart_add
@@ -100,6 +102,7 @@ def api_cart_add(request):
 
 
 @api_view(["POST"])
+@throttle_classes([CartRateThrottle])
 def api_cart_remove(request):
     """
     Nombre: api_cart_remove
@@ -121,6 +124,7 @@ def api_cart_remove(request):
 
 
 @api_view(["POST"])
+@throttle_classes([CartRateThrottle])
 def api_cart_decrease(request):
     """
     Nombre: api_cart_decrease
@@ -152,7 +156,9 @@ def api_cart_decrease(request):
         "cart": cart,
     })
 
+
 @api_view(["POST"])
+@throttle_classes([CartRateThrottle])
 def api_cart_clear(request):
     """
     Nombre: api_cart_clear
