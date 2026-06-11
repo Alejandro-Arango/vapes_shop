@@ -15,6 +15,7 @@ from rest_framework.response import Response
 
 from .audit import log_event
 from .cart_utils import sync_cart_with_products
+from .customer_utils import ensure_customer_for_user
 from .models import Product, Customer, Order, OrderItem
 from .throttles import CheckoutUserRateThrottle
 
@@ -244,34 +245,7 @@ def checkout(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    user = request.user
-
-    customer, created = Customer.objects.get_or_create(
-        user=user,
-        defaults={
-            "email": user.email or f"{user.username}@example.com",
-            "first_name": user.first_name or user.username,
-            "last_name": user.last_name or "",
-            "phone": "",
-        },
-    )
-
-    changed = False
-
-    if not customer.email and user.email:
-        customer.email = user.email
-        changed = True
-
-    if not customer.first_name and user.first_name:
-        customer.first_name = user.first_name
-        changed = True
-
-    if not customer.last_name and user.last_name:
-        customer.last_name = user.last_name
-        changed = True
-
-    if changed:
-        customer.save()
+    customer = ensure_customer_for_user(request.user)
 
     try:
         product_ids = [int(pid) for pid in cart.keys()]

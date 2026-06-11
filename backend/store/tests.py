@@ -255,6 +255,29 @@ class StoreApiTests(APITestCase):
             EventLog.objects.filter(event_type="auth_login_success").exists()
         )
 
+    def test_login_links_existing_customer_by_email(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            first_name="Cliente",
+            last_name="Preexistente",
+            email=user.email,
+        )
+
+        response = self.client.post(
+            reverse("auth_login"),
+            {
+                "email": user.email,
+                "password": "ClaveSegura123",
+            },
+            format="json",
+        )
+
+        customer.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Customer.objects.count(), 1)
+        self.assertEqual(customer.user, user)
+
     def test_failed_login_creates_event_log(self):
         response = self.client.post(
             reverse("auth_login"),
@@ -657,6 +680,37 @@ class StoreApiTests(APITestCase):
 
         with self.assertRaises(ProtectedError):
             self.product.delete()
+
+    def test_checkout_links_existing_customer_by_email(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            first_name="Cliente",
+            last_name="Preexistente",
+            email=user.email,
+        )
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3000000000",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "",
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+
+        customer.refresh_from_db()
+        order = Order.objects.get(id=response.data["order_id"])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Customer.objects.count(), 1)
+        self.assertEqual(customer.user, user)
+        self.assertEqual(order.customer, customer)
 
     def test_user_cannot_access_or_cancel_other_user_order(self):
         owner = self.create_user()

@@ -13,44 +13,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .audit import log_event
-from .models import Customer
+from .customer_utils import ensure_customer_for_user
 from .serializers import UserRegisterSerializer, UserSerializer
 from .throttles import AuthAnonRateThrottle
-
-
-def ensure_customer_for_user(user: User) -> Customer:
-    """
-    Nombre: ensure_customer_for_user
-    Descripcion: Asegura que exista un Customer asociado al usuario y completa datos basicos si faltan.
-    """
-    customer, created = Customer.objects.get_or_create(
-        user=user,
-        defaults={
-            "email": user.email or f"{user.username}@example.com",
-            "first_name": user.first_name or user.username,
-            "last_name": user.last_name or "",
-            "phone": "",
-        }
-    )
-
-    changed = False
-
-    if not customer.email and user.email:
-        customer.email = user.email
-        changed = True
-
-    if not customer.first_name and user.first_name:
-        customer.first_name = user.first_name
-        changed = True
-
-    if not customer.last_name and user.last_name:
-        customer.last_name = user.last_name
-        changed = True
-
-    if changed:
-        customer.save()
-
-    return customer
 
 
 @api_view(["POST"])
