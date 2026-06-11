@@ -11,6 +11,7 @@ from django.contrib import admin
 from django.db import transaction
 from django.http import HttpResponse
 
+from .audit import log_event
 from .models import ContactLead, Customer, EventLog, Product, Order, OrderItem
 
 
@@ -494,6 +495,40 @@ class OrderAdmin(admin.ModelAdmin):
         return total
     get_total_order.short_description = "Total"
 
+    def apply_status_action(self, request, queryset, new_status, completed, event_type):
+        """
+        Nombre: apply_status_action
+        Descripcion: Cambia estados desde admin y registra un evento por cada orden afectada.
+        """
+        updated = 0
+
+        with transaction.atomic():
+            orders = (
+                queryset
+                .exclude(status__in=("cancelado", "reembolsado"))
+                .select_for_update()
+            )
+
+            for order in orders:
+                previous_status = order.status
+                order.status = new_status
+                order.completed = completed
+                order.save(update_fields=["status", "completed"])
+                updated += 1
+
+                log_event(
+                    event_type,
+                    "Estado de orden actualizado desde admin.",
+                    request=request,
+                    metadata={
+                        "order_id": order.id,
+                        "previous_status": previous_status,
+                        "new_status": new_status,
+                    },
+                )
+
+        return updated
+
     @admin.action(description="Exportar ordenes seleccionadas a CSV")
     def export_orders_csv(self, request, queryset):
         queryset = (
@@ -541,9 +576,12 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar ordenes seleccionadas como pagadas")
     def mark_as_paid(self, request, queryset):
-        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
-            status="pagado",
-            completed=True
+        updated = self.apply_status_action(
+            request,
+            queryset,
+            "pagado",
+            True,
+            "admin_order_paid",
         )
 
         self.message_user(
@@ -553,9 +591,12 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar ordenes seleccionadas en preparacion")
     def mark_as_preparing(self, request, queryset):
-        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
-            status="en_preparacion",
-            completed=True
+        updated = self.apply_status_action(
+            request,
+            queryset,
+            "en_preparacion",
+            True,
+            "admin_order_preparing",
         )
 
         self.message_user(
@@ -565,9 +606,12 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar ordenes seleccionadas como enviadas")
     def mark_as_sent(self, request, queryset):
-        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
-            status="enviado",
-            completed=True
+        updated = self.apply_status_action(
+            request,
+            queryset,
+            "enviado",
+            True,
+            "admin_order_sent",
         )
 
         self.message_user(
@@ -577,9 +621,12 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar ordenes seleccionadas como entregadas")
     def mark_as_delivered(self, request, queryset):
-        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
-            status="entregado",
-            completed=True
+        updated = self.apply_status_action(
+            request,
+            queryset,
+            "entregado",
+            True,
+            "admin_order_delivered",
         )
 
         self.message_user(
@@ -604,13 +651,25 @@ class OrderAdmin(admin.ModelAdmin):
                     skipped += 1
                     continue
 
-                if order.should_restore_stock_on_cancel():
+                restored_stock = order.should_restore_stock_on_cancel()
+
+                if restored_stock:
                     order.restore_items_stock()
 
                 order.status = "cancelado"
                 order.completed = False
                 order.save(update_fields=["status", "completed"])
                 updated += 1
+
+                log_event(
+                    "admin_order_cancelled",
+                    "Orden cancelada desde admin.",
+                    request=request,
+                    metadata={
+                        "order_id": order.id,
+                        "restored_stock": restored_stock,
+                    },
+                )
 
         self.message_user(
             request,
@@ -619,9 +678,12 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar ordenes seleccionadas como reembolsadas")
     def mark_as_refunded(self, request, queryset):
-        updated = queryset.exclude(status__in=("cancelado", "reembolsado")).update(
-            status="reembolsado",
-            completed=False
+        updated = self.apply_status_action(
+            request,
+            queryset,
+            "reembolsado",
+            False,
+            "admin_order_refunded",
         )
 
         self.message_user(

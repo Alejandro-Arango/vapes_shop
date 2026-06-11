@@ -770,6 +770,12 @@ class StoreApiTests(APITestCase):
         order.refresh_from_db()
         self.assertEqual(order.status, "en_preparacion")
         self.assertTrue(order.completed)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="admin_order_preparing",
+                metadata__order_id=order.id,
+            ).exists()
+        )
 
         admin_model.mark_as_refunded(
             self.create_admin_request(),
@@ -779,6 +785,12 @@ class StoreApiTests(APITestCase):
         order.refresh_from_db()
         self.assertEqual(order.status, "reembolsado")
         self.assertFalse(order.completed)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="admin_order_refunded",
+                metadata__order_id=order.id,
+            ).exists()
+        )
 
     def test_admin_exports_events_to_csv(self):
         user = self.create_user()
