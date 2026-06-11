@@ -108,6 +108,20 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.data["status"], "ok")
         self.assertEqual(response.data["database"], "available")
 
+    def test_sensitive_api_responses_are_not_cached(self):
+        response = self.client.get(reverse("api_cart"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.headers["Cache-Control"], "no-store, max-age=0")
+        self.assertEqual(response.headers["Pragma"], "no-cache")
+        self.assertEqual(response.headers["Expires"], "0")
+
+    def test_public_product_api_keeps_default_cache_headers(self):
+        response = self.client.get(reverse("api_products"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn("no-store", response.headers.get("Cache-Control", ""))
+
     def test_product_constraints_reject_negative_values(self):
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
