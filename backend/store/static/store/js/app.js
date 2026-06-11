@@ -2049,13 +2049,34 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             if (!res.ok) {
                 let msg = "Error en el pago. Intenta nuevamente.";
+                let data = null;
 
                 try {
-                    const data = await res.json();
+                    data = await res.json();
 
                     msg = data?.error || data?.detail || data?.message || msg;
                 } catch {
                     // Se conserva el mensaje por defecto.
+                }
+
+                if (data?.cart_updated) {
+                    localStorage.removeItem("cart");
+                    resetCheckoutSummary();
+                    setCheckoutStep("cart");
+
+                    try {
+                        await updateCartUI();
+                    } catch (err) {
+                        console.warn("Error actualizando carrito sincronizado:", err);
+                    }
+
+                    try {
+                        await refreshProductsUI();
+                    } catch (err) {
+                        console.warn("Error actualizando productos sincronizados:", err);
+                    }
+
+                    showToast("Actualizamos tu carrito. Revisalo antes de pagar.", "info");
                 }
 
                 if (res.status === 401 || res.status === 403) {
