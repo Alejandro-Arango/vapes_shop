@@ -14,6 +14,52 @@ from .models import EventLog
 logger = logging.getLogger(__name__)
 
 
+SENSITIVE_METADATA_KEYS = (
+    "password",
+    "token",
+    "secret",
+    "authorization",
+    "api_key",
+)
+REDACTED_VALUE = "[redacted]"
+
+
+def sanitize_metadata(value):
+    """
+    Nombre: sanitize_metadata
+    Descripcion: Redacta valores sensibles antes de guardarlos en auditoria.
+    Retorna: Metadata segura para almacenar en EventLog.
+    """
+    if isinstance(value, dict):
+        sanitized = {}
+
+        for key, item in value.items():
+            key_text = str(key)
+
+            has_sensitive_key = any(
+                secret_key in key_text.lower()
+                for secret_key in SENSITIVE_METADATA_KEYS
+            )
+
+            if has_sensitive_key:
+                sanitized[key_text] = REDACTED_VALUE
+            else:
+                sanitized[key_text] = sanitize_metadata(item)
+
+        return sanitized
+
+    if isinstance(value, (list, tuple)):
+        return [
+            sanitize_metadata(item)
+            for item in value
+        ]
+
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+
+    return str(value)
+
+
 def get_client_ip(request):
     """
     Nombre: get_client_ip
@@ -57,7 +103,7 @@ def log_event(event_type, message, request=None, user=None, severity="info", met
     Descripcion: Registra un evento en base de datos y consola sin romper la accion principal.
     Retorna: EventLog creado o None si no fue posible guardar.
     """
-    metadata = metadata or {}
+    metadata = sanitize_metadata(metadata or {})
     resolved_user = get_request_user(request, explicit_user=user)
     path = getattr(request, "path", "") if request else ""
     user_agent = ""

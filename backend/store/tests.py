@@ -20,6 +20,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin
+from .audit import log_event
 from .models import ContactLead, Customer, EventLog, Order, OrderItem, Product
 from .throttles import (
     AuthAnonRateThrottle,
@@ -1086,6 +1087,31 @@ class StoreApiTests(APITestCase):
                 metadata__order_id=order.id,
             ).exists()
         )
+
+    def test_log_event_redacts_sensitive_metadata(self):
+        event = log_event(
+            "security_test",
+            "Evento de prueba con metadata sensible.",
+            metadata={
+                "password": "ClaveSegura123",
+                "safe": "visible",
+                "nested": {
+                    "access_token": "token-secreto",
+                },
+                "items": [
+                    {
+                        "secret": "valor-secreto",
+                        "public": "ok",
+                    },
+                ],
+            },
+        )
+
+        self.assertEqual(event.metadata["password"], "[redacted]")
+        self.assertEqual(event.metadata["safe"], "visible")
+        self.assertEqual(event.metadata["nested"]["access_token"], "[redacted]")
+        self.assertEqual(event.metadata["items"][0]["secret"], "[redacted]")
+        self.assertEqual(event.metadata["items"][0]["public"], "ok")
 
     def test_admin_exports_events_to_csv(self):
         user = self.create_user()
