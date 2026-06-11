@@ -219,11 +219,13 @@ class StoreApiTests(APITestCase):
         self.assertIsInstance(settings.DATA_UPLOAD_MAX_NUMBER_FIELDS, int)
         self.assertIsInstance(settings.DATA_UPLOAD_MAX_NUMBER_FILES, int)
         self.assertIsInstance(settings.SESSION_COOKIE_AGE, int)
+        self.assertIsInstance(settings.EMAIL_TIMEOUT, int)
         self.assertGreater(settings.DATA_UPLOAD_MAX_MEMORY_SIZE, 0)
         self.assertGreater(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, 0)
         self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FIELDS, 0)
         self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FILES, 0)
         self.assertGreaterEqual(settings.SESSION_COOKIE_AGE, 300)
+        self.assertGreaterEqual(settings.EMAIL_TIMEOUT, 1)
 
     def test_hsts_seconds_is_configured_as_non_negative_integer(self):
         self.assertIsInstance(settings.SECURE_HSTS_SECONDS, int)

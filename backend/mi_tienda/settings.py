@@ -453,6 +453,11 @@ EMAIL_BACKEND = os.environ.get(
     "DJANGO_EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend",
 )
+EMAIL_TIMEOUT = env_int(
+    "DJANGO_EMAIL_TIMEOUT",
+    10,
+    minimum=1,
+)
 
 
 # =============================================================================
