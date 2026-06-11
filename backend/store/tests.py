@@ -437,6 +437,12 @@ class StoreApiTests(APITestCase):
             cache.clear()
 
     def test_products_api_returns_only_active_products(self):
+        newest_product = Product.objects.create(
+            name="Producto nuevo",
+            description="Debe aparecer primero en catalogo.",
+            price=Decimal("18.00"),
+            stock=3,
+        )
         inactive_product = Product.objects.create(
             name="Producto oculto",
             description="No debe aparecer en catalogo.",
@@ -450,6 +456,7 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn(self.product.id, product_ids)
+        self.assertEqual(product_ids[0], newest_product.id)
         self.assertNotIn(inactive_product.id, product_ids)
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
