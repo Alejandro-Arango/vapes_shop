@@ -5,9 +5,11 @@ Dependencias: Django test, Django auth, Django urls, Django REST Framework y mod
 """
 
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
 from django.core import mail
+from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
@@ -19,6 +21,7 @@ from rest_framework.test import APITestCase
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin
 from .models import ContactLead, Customer, EventLog, Order, OrderItem, Product
+from .throttles import AuthAnonRateThrottle, ContactAnonRateThrottle
 
 
 class StoreApiTests(APITestCase):
@@ -263,6 +266,34 @@ class StoreApiTests(APITestCase):
             EventLog.objects.filter(event_type="auth_login_failed").exists()
         )
 
+    def test_login_is_rate_limited(self):
+        cache.clear()
+        login_data = {
+            "email": "no-existe",
+            "password": "ClaveIncorrecta123",
+        }
+
+        try:
+            with patch.object(AuthAnonRateThrottle, "rate", "2/min", create=True):
+                for _ in range(2):
+                    response = self.client.post(
+                        reverse("auth_login"),
+                        login_data,
+                        format="json",
+                    )
+
+                    self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+                response = self.client.post(
+                    reverse("auth_login"),
+                    login_data,
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
+
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
         CONTACT_NOTIFICATION_EMAIL="admin@example.com",
@@ -315,6 +346,33 @@ class StoreApiTests(APITestCase):
         self.assertTrue(
             EventLog.objects.filter(event_type="contact_invalid").exists()
         )
+
+    def test_contact_form_is_rate_limited(self):
+        cache.clear()
+        contact_data = {
+            "email": "visitante@example.com",
+            "phone": "abc",
+        }
+
+        try:
+            with patch.object(ContactAnonRateThrottle, "rate", "1/min", create=True):
+                response = self.client.post(
+                    reverse("contact"),
+                    contact_data,
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+                response = self.client.post(
+                    reverse("contact"),
+                    contact_data,
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
 
     def test_contact_form_rejects_oversized_phone_and_message(self):
         response = self.client.post(
