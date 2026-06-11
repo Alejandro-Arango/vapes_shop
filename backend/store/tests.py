@@ -481,6 +481,7 @@ class StoreApiTests(APITestCase):
         self.assertIn(self.product.id, product_ids)
         self.assertEqual(product_ids[0], newest_product.id)
         self.assertNotIn(inactive_product.id, product_ids)
+        self.assertNotIn("is_active", response.data[0])
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         invalid_quantities = (0, "1.5", True, "abc")
