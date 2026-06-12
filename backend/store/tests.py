@@ -856,6 +856,93 @@ class StoreApiTests(APITestCase):
         self.assertEqual(first_category.slug, "pods-premium")
         self.assertEqual(second_category.slug, "pods-premium-2")
 
+    def test_products_api_filters_by_query_params(self):
+        pods_category = Category.objects.create(name="Pods", slug="pods")
+        disposables_category = Category.objects.create(
+            name="Desechables",
+            slug="desechables",
+        )
+        first_product = Product.objects.create(
+            name="Pod Economico",
+            category=pods_category,
+            description="Dispositivo recargable sencillo.",
+            price=Decimal("30.00"),
+            stock=2,
+        )
+        second_product = Product.objects.create(
+            name="Pod Premium",
+            category=pods_category,
+            description="Dispositivo recargable avanzado.",
+            price=Decimal("70.00"),
+            stock=8,
+        )
+        Product.objects.create(
+            name="Desechable Frutal",
+            category=disposables_category,
+            description="Producto listo para usar.",
+            price=Decimal("45.00"),
+            stock=5,
+        )
+
+        response = self.client.get(
+            reverse("api_products"),
+            {
+                "q": "recargable",
+                "category": "pods",
+                "stock": "available",
+                "ordering": "price-asc",
+            },
+        )
+        product_ids = [product["id"] for product in response.data]
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(product_ids, [first_product.id, second_product.id])
+
+    def test_products_api_filters_low_and_empty_stock(self):
+        Product.objects.create(
+            name="Producto bajo stock",
+            description="Debe aparecer como ultimas unidades.",
+            price=Decimal("20.00"),
+            stock=3,
+        )
+        Product.objects.create(
+            name="Producto sin stock",
+            description="Debe aparecer sin disponibilidad.",
+            price=Decimal("18.00"),
+            stock=0,
+        )
+
+        low_response = self.client.get(reverse("api_products"), {"stock": "low"})
+        empty_response = self.client.get(reverse("api_products"), {"stock": "empty"})
+
+        self.assertEqual(low_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            all(0 < product["stock"] <= 3 for product in low_response.data)
+        )
+        self.assertEqual(empty_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            all(product["stock"] == 0 for product in empty_response.data)
+        )
+
+    def test_products_api_rejects_invalid_query_params(self):
+        invalid_stock_response = self.client.get(
+            reverse("api_products"),
+            {"stock": "agotados"},
+        )
+        invalid_ordering_response = self.client.get(
+            reverse("api_products"),
+            {"ordering": "fecha-desc"},
+        )
+
+        self.assertEqual(
+            invalid_stock_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            invalid_ordering_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         invalid_quantities = (0, "1.5", True, "abc")
 
