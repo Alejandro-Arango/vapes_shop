@@ -93,6 +93,22 @@ def env_choice(name, default, choices):
     return value
 
 
+def env_lower_choice(name, default, choices):
+    """
+    Nombre: env_lower_choice
+    Descripcion: Valida una variable de entorno contra opciones permitidas en minuscula.
+    """
+    value = os.environ.get(name, default).strip().lower()
+
+    if value not in choices:
+        allowed_values = ", ".join(choices)
+        raise ImproperlyConfigured(
+            f"{name} debe ser uno de: {allowed_values}."
+        )
+
+    return value
+
+
 def env_digits(name, default, min_digits=1, max_digits=None):
     """
     Nombre: env_digits
@@ -410,13 +426,30 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool(
 )
 SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", False)
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_REFERRER_POLICY = os.environ.get(
+REFERRER_POLICY_CHOICES = (
+    "no-referrer",
+    "no-referrer-when-downgrade",
+    "origin",
+    "origin-when-cross-origin",
+    "same-origin",
+    "strict-origin",
+    "strict-origin-when-cross-origin",
+    "unsafe-url",
+)
+CROSS_ORIGIN_OPENER_POLICY_CHOICES = (
+    "same-origin",
+    "same-origin-allow-popups",
+    "unsafe-none",
+)
+SECURE_REFERRER_POLICY = env_lower_choice(
     "DJANGO_SECURE_REFERRER_POLICY",
     "same-origin",
+    REFERRER_POLICY_CHOICES,
 )
-SECURE_CROSS_ORIGIN_OPENER_POLICY = os.environ.get(
+SECURE_CROSS_ORIGIN_OPENER_POLICY = env_lower_choice(
     "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY",
     "same-origin",
+    CROSS_ORIGIN_OPENER_POLICY_CHOICES,
 )
 PERMISSIONS_POLICY = os.environ.get(
     "DJANGO_PERMISSIONS_POLICY",

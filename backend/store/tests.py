@@ -23,10 +23,13 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from mi_tienda.settings import (
+    CROSS_ORIGIN_OPENER_POLICY_CHOICES,
     LOG_LEVEL_CHOICES,
+    REFERRER_POLICY_CHOICES,
     env_bool,
     env_choice,
     env_digits,
+    env_lower_choice,
 )
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
@@ -252,6 +255,25 @@ class StoreApiTests(APITestCase):
         with patch.dict(os.environ, {"TEST_LOG_LEVEL": "WARNNIG"}):
             with self.assertRaises(ImproperlyConfigured):
                 env_choice("TEST_LOG_LEVEL", "ERROR", LOG_LEVEL_CHOICES)
+
+    def test_env_lower_choice_validates_security_headers(self):
+        with patch.dict(os.environ, {"TEST_REFERRER": "SAME-ORIGIN"}):
+            self.assertEqual(
+                env_lower_choice(
+                    "TEST_REFERRER",
+                    "no-referrer",
+                    REFERRER_POLICY_CHOICES,
+                ),
+                "same-origin",
+            )
+
+        with patch.dict(os.environ, {"TEST_COOP": "invalid-policy"}):
+            with self.assertRaises(ImproperlyConfigured):
+                env_lower_choice(
+                    "TEST_COOP",
+                    "same-origin",
+                    CROSS_ORIGIN_OPENER_POLICY_CHOICES,
+                )
 
     def test_env_digits_normalizes_whatsapp_number(self):
         with patch.dict(os.environ, {"TEST_PHONE": "+57 301-660-4375"}):
