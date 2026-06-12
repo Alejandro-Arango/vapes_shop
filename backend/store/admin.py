@@ -12,7 +12,7 @@ from django.db import transaction
 from django.http import HttpResponse
 
 from .audit import log_event
-from .models import ContactLead, Customer, EventLog, Product, Order, OrderItem
+from .models import Category, ContactLead, Customer, EventLog, Product, Order, OrderItem
 
 
 def format_admin_bool(value):
@@ -319,6 +319,41 @@ class EventLogAdmin(admin.ModelAdmin):
         )
 
 
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    """
+    Nombre: CategoryAdmin
+    Descripcion: Permite gestionar categorias del catalogo desde el panel administrativo.
+    """
+
+    list_display = (
+        "id",
+        "name",
+        "slug",
+        "is_active",
+        "created_at",
+    )
+
+    search_fields = (
+        "name",
+        "slug",
+        "description",
+    )
+
+    list_filter = (
+        "is_active",
+        "created_at",
+    )
+
+    prepopulated_fields = {
+        "slug": ("name",),
+    }
+
+    ordering = (
+        "name",
+    )
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     """
@@ -329,6 +364,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "name",
+        "category",
         "price",
         "stock",
         "is_active",
@@ -338,13 +374,19 @@ class ProductAdmin(admin.ModelAdmin):
 
     search_fields = (
         "name",
+        "category__name",
         "description",
     )
 
     list_filter = (
+        "category",
         "is_active",
         "created_at",
         "stock",
+    )
+
+    list_select_related = (
+        "category",
     )
 
     ordering = (

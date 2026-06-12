@@ -9,6 +9,7 @@
 // =============================================================================
 
 const api = {
+    categories: "/api/categories/",
     products: "/api/products/",
     authRegister: "/api/auth/register/",
     authLogin: "/api/auth/login/",
@@ -929,6 +930,37 @@ function renderMyOrders(data) {
 // =============================================================================
 
 let catalogProducts = [];
+let catalogCategories = [];
+
+function getProductCategory(product) {
+    return product?.category || null;
+}
+
+function getProductCategorySlug(product) {
+    return getProductCategory(product)?.slug || "";
+}
+
+function getProductCategoryName(product) {
+    return getProductCategory(product)?.name || "";
+}
+
+/*
+ * Nombre: fetchCategories
+ * Descripcion: Obtiene las categorias activas del catalogo desde el backend.
+ */
+async function fetchCategories() {
+    try {
+        const res = await fetch(api.categories);
+
+        if (!res.ok) throw new Error("No se pudieron cargar las categorias");
+
+        return await res.json();
+    } catch (err) {
+        console.error("fetchCategories:", err);
+
+        return [];
+    }
+}
 
 /*
  * Nombre: fetchProducts
@@ -995,6 +1027,10 @@ function renderProductDetail(product) {
     const addButton = stock > 0
         ? `<button class="btn product-detail-add" data-id="${product.id}">Agregar al carrito</button>`
         : `<button class="btn product-detail-add" disabled>Sin stock</button>`;
+    const categoryName = getProductCategoryName(product);
+    const categoryBadge = categoryName
+        ? `<span class="product-category-badge">${escapeHtml(categoryName)}</span>`
+        : "";
 
     body.innerHTML = `
         <div class="product-detail-grid">
@@ -1009,6 +1045,8 @@ function renderProductDetail(product) {
                 <span class="product-detail-tag">Detalle del producto</span>
 
                 <h2>${escapeHtml(product.name)}</h2>
+
+                ${categoryBadge}
 
                 <p class="muted product-detail-description">
                     ${escapeHtml(product.description || "Sin descripcion disponible.")}
@@ -1114,6 +1152,7 @@ function renderProducts(products, options = {}) {
                 renderProductsSkeleton();
 
                 catalogProducts = await fetchProducts();
+                populateCategoryFilter(catalogCategories, catalogProducts);
 
                 applyCatalogFilters();
             });
@@ -1131,6 +1170,10 @@ function renderProducts(products, options = {}) {
     container.innerHTML = products
         .map((product) => {
             const stock = Number(product.stock || 0);
+            const categoryName = getProductCategoryName(product);
+            const categoryBadge = categoryName
+                ? `<span class="product-category-badge">${escapeHtml(categoryName)}</span>`
+                : "";
 
             let stockLabel = "";
 
@@ -1154,6 +1197,8 @@ function renderProducts(products, options = {}) {
                     />
 
                     <div class="product-info">
+                        ${categoryBadge}
+
                         <h3>${escapeHtml(product.name)}</h3>
 
                         <p class="muted">${escapeHtml(product.description || "")}</p>
@@ -1200,10 +1245,12 @@ function renderProducts(products, options = {}) {
  */
 function getFilteredCatalogProducts() {
     const searchInput = document.getElementById("product-search");
+    const categoryFilter = document.getElementById("product-category-filter");
     const stockFilter = document.getElementById("product-stock-filter");
     const sortSelect = document.getElementById("product-sort");
 
     const searchValue = (searchInput?.value || "").toLowerCase().trim();
+    const categoryValue = categoryFilter?.value || "all";
     const stockValue = stockFilter?.value || "all";
     const sortValue = sortSelect?.value || "default";
 
@@ -1213,9 +1260,20 @@ function getFilteredCatalogProducts() {
         products = products.filter((product) => {
             const name = String(product.name || "").toLowerCase();
             const description = String(product.description || "").toLowerCase();
+            const category = getProductCategoryName(product).toLowerCase();
 
-            return name.includes(searchValue) || description.includes(searchValue);
+            return (
+                name.includes(searchValue) ||
+                description.includes(searchValue) ||
+                category.includes(searchValue)
+            );
         });
+    }
+
+    if (categoryValue !== "all") {
+        products = products.filter(
+            (product) => getProductCategorySlug(product) === categoryValue
+        );
     }
 
     if (stockValue === "available") {
@@ -1275,10 +1333,12 @@ function updateCatalogResultsInfo(filteredCount, totalCount) {
 
 function resetCatalogControls() {
     const searchInput = document.getElementById("product-search");
+    const categoryFilter = document.getElementById("product-category-filter");
     const stockFilter = document.getElementById("product-stock-filter");
     const sortSelect = document.getElementById("product-sort");
 
     if (searchInput) searchInput.value = "";
+    if (categoryFilter) categoryFilter.value = "all";
     if (stockFilter) stockFilter.value = "all";
     if (sortSelect) sortSelect.value = "default";
 
@@ -1301,16 +1361,68 @@ function applyCatalogFilters() {
     });
 }
 
+function getCategoryOptionsFromProducts(products) {
+    const options = new Map();
+
+    products.forEach((product) => {
+        const category = getProductCategory(product);
+
+        if (!category?.slug || !category?.name) return;
+
+        options.set(category.slug, {
+            slug: category.slug,
+            name: category.name,
+        });
+    });
+
+    return Array.from(options.values()).sort((a, b) =>
+        a.name.localeCompare(b.name)
+    );
+}
+
+function populateCategoryFilter(categories, products) {
+    const categoryFilter = document.getElementById("product-category-filter");
+
+    if (!categoryFilter) return;
+
+    const currentValue = categoryFilter.value || "all";
+    const options = categories.length
+        ? categories
+        : getCategoryOptionsFromProducts(products);
+
+    categoryFilter.innerHTML = `
+        <option value="all">Todas</option>
+        ${options
+            .map((category) => `
+                <option value="${escapeHtml(category.slug)}">
+                    ${escapeHtml(category.name)}
+                </option>
+            `)
+            .join("")}
+    `;
+
+    const hasCurrentValue = Array.from(categoryFilter.options).some(
+        (option) => option.value === currentValue
+    );
+
+    categoryFilter.value = hasCurrentValue ? currentValue : "all";
+}
+
 /*
  * Nombre: initCatalogControls
  * Descripcion: Conecta los controles del catalogo con el filtrado dinamico de productos.
  */
 function initCatalogControls() {
     const searchInput = document.getElementById("product-search");
+    const categoryFilter = document.getElementById("product-category-filter");
     const stockFilter = document.getElementById("product-stock-filter");
     const sortSelect = document.getElementById("product-sort");
 
     searchInput?.addEventListener("input", () => {
+        applyCatalogFilters();
+    });
+
+    categoryFilter?.addEventListener("change", () => {
         applyCatalogFilters();
     });
 
@@ -1338,7 +1450,15 @@ function initCatalogControls() {
 }
 
 async function refreshProductsUI() {
-    catalogProducts = await fetchProducts();
+    const [categories, products] = await Promise.all([
+        fetchCategories(),
+        fetchProducts(),
+    ]);
+
+    catalogCategories = categories;
+    catalogProducts = products;
+
+    populateCategoryFilter(catalogCategories, catalogProducts);
 
     applyCatalogFilters();
 }

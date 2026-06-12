@@ -10,11 +10,27 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from rest_framework import serializers
 
-from .models import ContactLead, Customer, Product
+from .models import Category, ContactLead, Customer, Product
 
 
 CONTACT_MESSAGE_MAX_LENGTH = 1000
 CONTACT_PHONE_MAX_DIGITS = 15
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    """
+    Nombre: CategorySerializer
+    Descripcion: Convierte categorias del catalogo en formato JSON para la API.
+    """
+
+    class Meta:
+        model = Category
+        fields = (
+            "id",
+            "name",
+            "slug",
+            "description",
+        )
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -23,16 +39,29 @@ class ProductSerializer(serializers.ModelSerializer):
     Descripcion: Convierte los datos del modelo Product en formato JSON para la API.
     """
 
+    category = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
         fields = (
             "id",
             "name",
+            "category",
             "description",
             "price",
             "image",
             "stock",
         )
+
+    def get_category(self, obj):
+        """
+        Nombre: get_category
+        Descripcion: Expone solo categorias activas asociadas al producto.
+        """
+        if not obj.category or not obj.category.is_active:
+            return None
+
+        return CategorySerializer(obj.category).data
 
 
 class ContactLeadSerializer(serializers.ModelSerializer):

@@ -189,6 +189,17 @@ body.light-mode .about {
     line-height: 1.35;
 }
 
+.product-category-badge {
+    display: inline-flex;
+    width: fit-content;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(18, 63, 53, 0.08);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+}
+
 .product-info .muted {
     font-size: 13px;
     color: var(--muted-light);

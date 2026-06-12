@@ -5,8 +5,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from .models import Product
-from .serializers import ProductSerializer
+from .models import Category, Product
+from .serializers import CategorySerializer, ProductSerializer
 
 
 @api_view(["GET"])
@@ -43,6 +43,24 @@ def api_products(request):
     Usa el serializer de Product. Si en el futuro agregas imagen al producto,
     se podrá incluir ahí.
     """
-    products = Product.objects.filter(is_active=True).order_by("-created_at", "-id")
+    products = (
+        Product.objects
+        .filter(is_active=True)
+        .select_related("category")
+        .order_by("-created_at", "-id")
+    )
     serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def api_categories(request):
+    """
+    Nombre: api_categories
+    Descripcion: Devuelve categorias activas para filtrar el catalogo del frontend.
+    """
+    categories = Category.objects.filter(is_active=True).order_by("name", "id")
+    serializer = CategorySerializer(categories, many=True)
+
     return Response(serializer.data)

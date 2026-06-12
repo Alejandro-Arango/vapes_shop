@@ -41,7 +41,7 @@ from mi_tienda.settings import (
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
 from .audit import get_client_ip, log_event
-from .models import ContactLead, Customer, EventLog, Order, OrderItem, Product
+from .models import Category, ContactLead, Customer, EventLog, Order, OrderItem, Product
 from .throttles import (
     AuthAnonRateThrottle,
     CartRateThrottle,
@@ -782,8 +782,14 @@ class StoreApiTests(APITestCase):
             cache.clear()
 
     def test_products_api_returns_only_active_products(self):
+        category = Category.objects.create(
+            name="Desechables",
+            slug="desechables",
+            description="Vapes listos para usar.",
+        )
         newest_product = Product.objects.create(
             name="Producto nuevo",
+            category=category,
             description="Debe aparecer primero en catalogo.",
             price=Decimal("18.00"),
             stock=3,
@@ -804,6 +810,51 @@ class StoreApiTests(APITestCase):
         self.assertEqual(product_ids[0], newest_product.id)
         self.assertNotIn(inactive_product.id, product_ids)
         self.assertNotIn("is_active", response.data[0])
+        self.assertEqual(response.data[0]["category"]["slug"], "desechables")
+        self.assertEqual(response.data[0]["category"]["name"], "Desechables")
+
+    def test_categories_api_returns_only_active_categories(self):
+        active_category = Category.objects.create(
+            name="Pods",
+            slug="pods",
+            description="Pods y dispositivos recargables.",
+        )
+        inactive_category = Category.objects.create(
+            name="Oculta",
+            slug="oculta",
+            is_active=False,
+        )
+        hidden_category_product = Product.objects.create(
+            name="Producto con categoria oculta",
+            category=inactive_category,
+            description="Debe mostrarse sin categoria.",
+            price=Decimal("12.00"),
+            stock=2,
+        )
+
+        response = self.client.get(reverse("api_categories"))
+        category_ids = [category["id"] for category in response.data]
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(active_category.id, category_ids)
+        self.assertNotIn(inactive_category.id, category_ids)
+        self.assertNotIn("is_active", response.data[0])
+
+        products_response = self.client.get(reverse("api_products"))
+        hidden_product = next(
+            product
+            for product in products_response.data
+            if product["id"] == hidden_category_product.id
+        )
+
+        self.assertIsNone(hidden_product["category"])
+
+    def test_category_generates_unique_slug_when_missing(self):
+        first_category = Category.objects.create(name="Pods Premium")
+        second_category = Category.objects.create(name="Pods-Premium")
+
+        self.assertEqual(first_category.slug, "pods-premium")
+        self.assertEqual(second_category.slug, "pods-premium-2")
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         invalid_quantities = (0, "1.5", True, "abc")

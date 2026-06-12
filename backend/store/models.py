@@ -6,6 +6,7 @@ Dependencias: Django settings y Django models
 
 from django.conf import settings
 from django.db import models
+from django.utils.text import slugify
 
 
 class Customer(models.Model):
@@ -34,6 +35,46 @@ class Customer(models.Model):
         )
 
 
+class Category(models.Model):
+    """
+    Nombre: Category
+    Descripcion: Agrupa productos del catalogo para facilitar administracion y filtrado.
+    """
+
+    name = models.CharField(max_length=80, unique=True)
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("name",)
+        indexes = [
+            models.Index(fields=["is_active", "name"], name="category_active_name_idx"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        """
+        Nombre: save
+        Descripcion: Genera un slug estable cuando la categoria no lo tiene.
+        """
+        if not self.slug:
+            base_slug = slugify(self.name) or "categoria"
+            slug = base_slug
+            counter = 2
+
+            while Category.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
+            self.slug = slug
+
+        super().save(*args, **kwargs)
+
+
 class Product(models.Model):
     """
     Nombre: Product
@@ -41,6 +82,13 @@ class Product(models.Model):
     """
 
     name = models.CharField(max_length=150)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products",
+    )
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     image = models.ImageField(
@@ -66,6 +114,10 @@ class Product(models.Model):
             models.Index(
                 fields=["is_active", "stock"],
                 name="product_active_stock_idx",
+            ),
+            models.Index(
+                fields=["category", "is_active"],
+                name="product_category_active_idx",
             ),
         ]
         constraints = [

@@ -22,7 +22,7 @@
 
 .catalog-controls {
     display: grid;
-    grid-template-columns: 1.4fr 0.9fr 0.9fr;
+    grid-template-columns: 1.4fr 0.85fr 0.85fr 0.9fr;
     gap: 18px;
     align-items: end;
     margin: 22px 0 16px;
@@ -34,6 +34,7 @@
 }
 
 .catalog-search,
+.catalog-category,
 .catalog-filter,
 .catalog-sort {
     display: flex;
@@ -42,6 +43,7 @@
 }
 
 .catalog-search label,
+.catalog-category label,
 .catalog-filter label,
 .catalog-sort label {
     font-size: 13px;
@@ -50,6 +52,7 @@
 }
 
 .catalog-search input,
+.catalog-category select,
 .catalog-filter select,
 .catalog-sort select {
     width: 100%;
@@ -64,11 +67,13 @@
     outline: none;
 }
 
+.catalog-category select,
 .catalog-filter select,
 .catalog-sort select {
     cursor: pointer;
 }
 
+.catalog-category option,
 .catalog-filter option,
 .catalog-sort option {
     color: #222;
@@ -79,6 +84,7 @@
 }
 
 .catalog-search input:focus,
+.catalog-category select:focus,
 .catalog-filter select:focus,
 .catalog-sort select:focus {
     border-color: var(--accent);
@@ -96,12 +102,14 @@ body.light-mode .catalog-controls {
 }
 
 body.light-mode .catalog-search label,
+body.light-mode .catalog-category label,
 body.light-mode .catalog-filter label,
 body.light-mode .catalog-sort label {
     color: var(--muted-light);
 }
 
 body.light-mode .catalog-search input,
+body.light-mode .catalog-category select,
 body.light-mode .catalog-filter select,
 body.light-mode .catalog-sort select {
     background: #fff;

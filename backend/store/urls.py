@@ -24,6 +24,7 @@ urlpatterns = [
     path("api/health/", views_api.health_check, name="health_check"),
 
     # Productos
+    path("api/categories/", views_api.api_categories, name="api_categories"),
     path("api/products/", views_api.api_products, name="api_products"),
 
     # Contacto
