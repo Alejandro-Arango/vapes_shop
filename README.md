@@ -234,18 +234,34 @@ python manage.py test store
 Resultado:
 
 - `System check identified no issues`.
-- `20 tests` ejecutados correctamente.
+- `69 tests` ejecutados correctamente.
 - Resultado final: `OK`.
 
 ## Seguridad y Producción
 
-Aspectos aceptables para desarrollo:
+El proyecto ya incluye una base de endurecimiento para preproduccion:
 
-- SQLite local.
-- `DEBUG=True` por defecto.
-- Email por consola.
-- Archivos media locales.
-- Sesiones de Django.
+- Validacion estricta de variables de entorno.
+- Cookies seguras configurables.
+- HSTS, SSL redirect, Referrer-Policy, COOP y Permissions-Policy.
+- No-cache para APIs sensibles.
+- Rate limits en autenticacion, contacto, carrito y checkout.
+- Auditoria interna con redaccion de datos sensibles.
+- Validacion de IP en auditoria.
+- Ruta de admin configurable.
+- Restriccion opcional del admin por IP.
+- Cache configurable para evitar `LocMemCache` en produccion.
+- Comando `production_check` para bloquear configuraciones inseguras.
+- CI con validaciones, pruebas y simulacion de configuracion productiva.
+
+Aspectos que siguen dependiendo del proveedor de despliegue:
+
+- Dominio real y certificado HTTPS.
+- Proxy correctamente configurado.
+- Base de datos productiva, backups y usuario limitado.
+- Servidor de correo transaccional real.
+- Monitoreo externo de errores y disponibilidad.
+- Politicas legales para venta de productos de vapeo y verificacion de edad fuerte.
 
 ## Variables de Entorno Relevantes
 
@@ -253,7 +269,32 @@ Aspectos aceptables para desarrollo:
 DJANGO_DEBUG
 DJANGO_SECRET_KEY
 DJANGO_ALLOWED_HOSTS
+DJANGO_CSRF_TRUSTED_ORIGINS
+DJANGO_ADMIN_URL_PATH
+DJANGO_ADMIN_ALLOWED_IPS
+DJANGO_DB_ENGINE
+DJANGO_DB_NAME
+DJANGO_DB_USER
+DJANGO_DB_PASSWORD
+DJANGO_DB_HOST
+DJANGO_DB_PORT
+DJANGO_CACHE_BACKEND
+DJANGO_CACHE_TABLE
+DJANGO_SESSION_COOKIE_SECURE
+DJANGO_CSRF_COOKIE_SECURE
+DJANGO_SECURE_SSL_REDIRECT
+DJANGO_SECURE_HSTS_SECONDS
+DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS
+DJANGO_SECURE_HSTS_PRELOAD
+DJANGO_USE_X_FORWARDED_PROTO
+DJANGO_TRUST_X_FORWARDED_FOR
 DJANGO_EMAIL_BACKEND
+DJANGO_EMAIL_HOST
+DJANGO_EMAIL_PORT
+DJANGO_EMAIL_HOST_USER
+DJANGO_EMAIL_HOST_PASSWORD
+DJANGO_EMAIL_USE_TLS
+DJANGO_EMAIL_USE_SSL
 DJANGO_EMAIL_TIMEOUT
 DEFAULT_FROM_EMAIL
 CONTACT_NOTIFICATION_EMAIL
@@ -273,10 +314,8 @@ CONTACT_WHATSAPP_NUMBER
 - Notificaciones transaccionales por correo.
 - Facturación.
 - Docker.
-- CI/CD.
 - Pruebas frontend.
 - Optimización responsive adicional.
-- Seguridad avanzada para formularios públicos.
 
 ## Actualizacion Operativa
 
@@ -290,6 +329,8 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Archivo `.env.example` como referencia segura.
 - Soporte configurable para base de datos `sqlite` o `mysql`.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
+- Validacion de preproduccion: `python manage.py production_check`.
+- Script local de validacion: `scripts\validate-backend.ps1`.
 
 ## Preparacion Produccion
 
@@ -298,18 +339,39 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 3. Definir `DJANGO_ALLOWED_HOSTS`.
 4. Definir `DJANGO_CSRF_TRUSTED_ORIGINS`.
 5. Configurar base de datos.
-6. Ejecutar migraciones.
-7. Ejecutar `collectstatic`.
-8. Crear superusuario.
-9. Verificar `python manage.py check --deploy`.
+6. Configurar cache compartido o cache de base de datos.
+7. Cambiar la ruta del admin con `DJANGO_ADMIN_URL_PATH`.
+8. Restringir el admin con `DJANGO_ADMIN_ALLOWED_IPS`.
+9. Si usas cache de base de datos, ejecutar `python manage.py createcachetable`.
+10. Ejecutar migraciones.
+11. Ejecutar `collectstatic`.
+12. Crear superusuario.
+13. Verificar `python manage.py check --deploy`.
+14. Verificar `python manage.py production_check`.
 
 Comandos recomendados:
 
 ```powershell
 cd C:\dev\vapes_shop\backend
 python manage.py check --deploy
+python manage.py production_check
 python manage.py migrate
+python manage.py createcachetable
 python manage.py collectstatic --noinput
+```
+
+Validacion automatizada local:
+
+```powershell
+cd C:\dev\vapes_shop
+.\scripts\validate-backend.ps1
+```
+
+Validacion local con checks de produccion, despues de cargar un `.env` productivo:
+
+```powershell
+cd C:\dev\vapes_shop
+.\scripts\validate-backend.ps1 -Production
 ```
 
 Variables principales:
@@ -319,12 +381,16 @@ DJANGO_DEBUG
 DJANGO_SECRET_KEY
 DJANGO_ALLOWED_HOSTS
 DJANGO_CSRF_TRUSTED_ORIGINS
+DJANGO_ADMIN_URL_PATH
+DJANGO_ADMIN_ALLOWED_IPS
 DJANGO_DB_ENGINE
 DJANGO_DB_NAME
 DJANGO_DB_USER
 DJANGO_DB_PASSWORD
 DJANGO_DB_HOST
 DJANGO_DB_PORT
+DJANGO_CACHE_BACKEND
+DJANGO_CACHE_TABLE
 DJANGO_SESSION_COOKIE_SECURE
 DJANGO_SESSION_COOKIE_AGE
 DJANGO_CSRF_COOKIE_SECURE
@@ -335,11 +401,18 @@ DJANGO_SECURE_HSTS_PRELOAD
 DJANGO_SECURE_REFERRER_POLICY
 DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY
 DJANGO_USE_X_FORWARDED_PROTO
+DJANGO_TRUST_X_FORWARDED_FOR
 AUTH_THROTTLE_RATE
 CONTACT_THROTTLE_RATE
 CART_THROTTLE_RATE
 CHECKOUT_THROTTLE_RATE
 DJANGO_EMAIL_BACKEND
+DJANGO_EMAIL_HOST
+DJANGO_EMAIL_PORT
+DJANGO_EMAIL_HOST_USER
+DJANGO_EMAIL_HOST_PASSWORD
+DJANGO_EMAIL_USE_TLS
+DJANGO_EMAIL_USE_SSL
 DJANGO_EMAIL_TIMEOUT
 DEFAULT_FROM_EMAIL
 CONTACT_NOTIFICATION_EMAIL

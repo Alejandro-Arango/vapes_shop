@@ -5,6 +5,7 @@ Dependencias: os, pathlib, Django, WhiteNoise, Django REST Framework y aplicacio
 """
 
 import os
+from ipaddress import ip_address
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -194,6 +195,37 @@ def env_throttle_rate(name, default):
     return value
 
 
+def env_ip_list(name, default=""):
+    """
+    Nombre: env_ip_list
+    Descripcion: Convierte una lista de IPs separadas por comas y rechaza valores invalidos.
+    """
+    ip_values = []
+
+    for value in env_list(name, default):
+        try:
+            ip_values.append(str(ip_address(value)))
+        except ValueError as exc:
+            raise ImproperlyConfigured(
+                f"{name} contiene una IP invalida: {value}."
+            ) from exc
+
+    return ip_values
+
+
+def env_admin_url_path(name, default):
+    """
+    Nombre: env_admin_url_path
+    Descripcion: Normaliza la ruta del panel administrativo.
+    """
+    value = os.environ.get(name, default).strip().strip("/")
+
+    if not value:
+        raise ImproperlyConfigured(f"{name} no puede estar vacia.")
+
+    return f"{value}/"
+
+
 def required_env(name):
     """
     Nombre: required_env
@@ -281,6 +313,33 @@ REST_FRAMEWORK = {
 
 
 # =============================================================================
+# CACHE
+# =============================================================================
+
+CACHE_BACKEND_CHOICES = ("locmem", "database")
+CACHE_BACKEND = env_lower_choice(
+    "DJANGO_CACHE_BACKEND",
+    "locmem",
+    CACHE_BACKEND_CHOICES,
+)
+
+if CACHE_BACKEND == "database":
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": os.environ.get("DJANGO_CACHE_TABLE", "django_cache"),
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "vapes-shop-local-cache",
+        }
+    }
+
+
+# =============================================================================
 # LIMITES DE REQUEST
 # =============================================================================
 
@@ -312,6 +371,7 @@ DATA_UPLOAD_MAX_NUMBER_FILES = env_int(
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "store.middleware.AdminAccessMiddleware",
     "store.middleware.PermissionsPolicyMiddleware",
     "store.middleware.ApiCacheControlMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -331,6 +391,9 @@ MIDDLEWARE = [
 ROOT_URLCONF = "mi_tienda.urls"
 
 WSGI_APPLICATION = "mi_tienda.wsgi.application"
+
+ADMIN_URL_PATH = env_admin_url_path("DJANGO_ADMIN_URL_PATH", "admin")
+ADMIN_ALLOWED_IPS = tuple(env_ip_list("DJANGO_ADMIN_ALLOWED_IPS", ""))
 
 
 # =============================================================================
@@ -521,6 +584,8 @@ X_FRAME_OPTIONS = "DENY"
 if env_bool("DJANGO_USE_X_FORWARDED_PROTO", False):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+TRUST_X_FORWARDED_FOR = env_bool("DJANGO_TRUST_X_FORWARDED_FOR", False)
+
 
 # =============================================================================
 # CONFIGURACION DE CONTACTO Y CORREO
@@ -547,11 +612,22 @@ EMAIL_BACKEND = os.environ.get(
     "DJANGO_EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend",
 )
+EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "")
+EMAIL_PORT = env_int("DJANGO_EMAIL_PORT", 587, minimum=1)
+EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", True)
+EMAIL_USE_SSL = env_bool("DJANGO_EMAIL_USE_SSL", False)
 EMAIL_TIMEOUT = env_int(
     "DJANGO_EMAIL_TIMEOUT",
     10,
     minimum=1,
 )
+
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    raise ImproperlyConfigured(
+        "DJANGO_EMAIL_USE_TLS y DJANGO_EMAIL_USE_SSL no pueden estar activos al mismo tiempo."
+    )
 
 
 # =============================================================================

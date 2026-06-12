@@ -5,7 +5,9 @@ Dependencias: logging y modelo EventLog
 """
 
 import logging
+from ipaddress import ip_address
 
+from django.conf import settings
 from django.db import DatabaseError
 
 from .models import EventLog
@@ -22,6 +24,21 @@ SENSITIVE_METADATA_KEYS = (
     "api_key",
 )
 REDACTED_VALUE = "[redacted]"
+
+
+def normalize_ip_address(value):
+    """
+    Nombre: normalize_ip_address
+    Descripcion: Valida una IP antes de guardarla en auditoria.
+    Retorna: IP normalizada o None si el valor no es valido.
+    """
+    if not value:
+        return None
+
+    try:
+        return str(ip_address(str(value).strip()))
+    except ValueError:
+        return None
 
 
 def sanitize_metadata(value):
@@ -71,10 +88,10 @@ def get_client_ip(request):
 
     forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
 
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip() or None
+    if getattr(settings, "TRUST_X_FORWARDED_FOR", False) and forwarded_for:
+        return normalize_ip_address(forwarded_for.split(",")[0])
 
-    return request.META.get("REMOTE_ADDR")
+    return normalize_ip_address(request.META.get("REMOTE_ADDR"))
 
 
 def get_request_user(request, explicit_user=None):

@@ -181,15 +181,21 @@ def checkout(request):
         request.session["cart"] = synced_cart
         request.session.modified = True
 
+        metadata = {
+            "cart_items_after": len(synced_cart),
+        }
+
+        if isinstance(cart, dict):
+            metadata["cart_items_before"] = len(cart)
+        else:
+            metadata["cart_payload_type"] = type(cart).__name__
+
         log_event(
             "checkout_failed",
             "Checkout detenido porque el carrito fue sincronizado.",
             request=request,
             severity="warning",
-            metadata={
-                "cart_items_before": len(cart),
-                "cart_items_after": len(synced_cart),
-            },
+            metadata=metadata,
         )
 
         return Response(

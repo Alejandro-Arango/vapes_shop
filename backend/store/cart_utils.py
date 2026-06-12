@@ -34,6 +34,33 @@ def parse_positive_quantity(value):
     return quantity
 
 
+def parse_product_id(value):
+    """
+    Nombre: parse_product_id
+    Descripcion: Convierte un identificador de producto recibido desde sesion en entero valido.
+    Retorna: ID valido o None si el valor no es aceptable.
+    """
+    if isinstance(value, bool):
+        return None
+
+    if isinstance(value, int):
+        product_id = value
+    elif isinstance(value, str):
+        normalized_value = value.strip()
+
+        if not normalized_value.isdigit():
+            return None
+
+        product_id = int(normalized_value)
+    else:
+        return None
+
+    if product_id <= 0:
+        return None
+
+    return product_id
+
+
 def sync_cart_with_products(cart):
     """
     Nombre: sync_cart_with_products
@@ -44,10 +71,13 @@ def sync_cart_with_products(cart):
     items = []
     cart_changed = False
 
+    if not isinstance(cart, dict):
+        return synced_cart, items, True
+
     for pid, qty in list(cart.items()):
-        try:
-            product_id = int(pid)
-        except (TypeError, ValueError):
+        product_id = parse_product_id(pid)
+
+        if product_id is None:
             cart_changed = True
             continue
 
@@ -69,6 +99,9 @@ def sync_cart_with_products(cart):
 
         if quantity > product.stock:
             quantity = product.stock
+            cart_changed = True
+
+        if pid != str(product.id) or qty != quantity:
             cart_changed = True
 
         synced_cart[str(product.id)] = quantity

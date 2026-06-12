@@ -5,6 +5,31 @@ Dependencias: Django settings
 """
 
 from django.conf import settings
+from django.http import HttpResponseForbidden
+
+from .audit import get_client_ip
+
+
+class AdminAccessMiddleware:
+    """
+    Nombre: AdminAccessMiddleware
+    Descripcion: Restringe el panel administrativo por IP cuando existe allowlist configurada.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        admin_path = f"/{settings.ADMIN_URL_PATH}"
+        allowed_ips = getattr(settings, "ADMIN_ALLOWED_IPS", ())
+
+        if allowed_ips and request.path_info.startswith(admin_path):
+            client_ip = get_client_ip(request)
+
+            if client_ip not in allowed_ips:
+                return HttpResponseForbidden("Acceso no permitido.")
+
+        return self.get_response(request)
 
 
 class PermissionsPolicyMiddleware:

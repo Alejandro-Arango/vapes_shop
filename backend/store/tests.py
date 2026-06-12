@@ -5,6 +5,7 @@ Dependencias: Django test, Django auth, Django urls, Django REST Framework y mod
 """
 
 import os
+from io import StringIO
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -13,6 +14,8 @@ from django.contrib.admin.sites import AdminSite
 from django.core import mail
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
@@ -26,16 +29,18 @@ from mi_tienda.settings import (
     CROSS_ORIGIN_OPENER_POLICY_CHOICES,
     LOG_LEVEL_CHOICES,
     REFERRER_POLICY_CHOICES,
+    env_admin_url_path,
     env_bool,
     env_choice,
     env_digits,
+    env_ip_list,
     env_lower_choice,
     env_port,
     env_throttle_rate,
 )
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
-from .audit import log_event
+from .audit import get_client_ip, log_event
 from .models import ContactLead, Customer, EventLog, Order, OrderItem, Product
 from .throttles import (
     AuthAnonRateThrottle,
@@ -140,6 +145,18 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertNotIn("no-store", response.headers.get("Cache-Control", ""))
 
+    @override_settings(ADMIN_ALLOWED_IPS=("127.0.0.1",), ADMIN_URL_PATH="admin/")
+    def test_admin_access_rejects_disallowed_ip(self):
+        response = self.client.get("/admin/", REMOTE_ADDR="203.0.113.10")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @override_settings(ADMIN_ALLOWED_IPS=("127.0.0.1",), ADMIN_URL_PATH="admin/")
+    def test_admin_access_allows_configured_ip(self):
+        response = self.client.get("/admin/", REMOTE_ADDR="127.0.0.1")
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+
     def test_product_constraints_reject_negative_values(self):
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
@@ -225,6 +242,14 @@ class StoreApiTests(APITestCase):
         self.assertIsInstance(settings.DATA_UPLOAD_MAX_NUMBER_FILES, int)
         self.assertIsInstance(settings.SESSION_COOKIE_AGE, int)
         self.assertIsInstance(settings.EMAIL_TIMEOUT, int)
+        self.assertIsInstance(settings.EMAIL_PORT, int)
+        self.assertIn(
+            settings.CACHES["default"]["BACKEND"],
+            (
+                "django.core.cache.backends.locmem.LocMemCache",
+                "django.core.cache.backends.db.DatabaseCache",
+            ),
+        )
         self.assertGreater(settings.DATA_UPLOAD_MAX_MEMORY_SIZE, 0)
         self.assertGreater(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, 0)
         self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FIELDS, 0)
@@ -312,6 +337,81 @@ class StoreApiTests(APITestCase):
             with patch.dict(os.environ, {"TEST_PORT": invalid_port}):
                 with self.assertRaises(ImproperlyConfigured):
                     env_port("TEST_PORT", "5432")
+
+    def test_env_ip_list_rejects_invalid_values(self):
+        with patch.dict(os.environ, {"TEST_ALLOWED_IPS": "127.0.0.1,192.0.2.10"}):
+            self.assertEqual(
+                env_ip_list("TEST_ALLOWED_IPS"),
+                ["127.0.0.1", "192.0.2.10"],
+            )
+
+        with patch.dict(os.environ, {"TEST_ALLOWED_IPS": "127.0.0.1,ip-invalida"}):
+            with self.assertRaises(ImproperlyConfigured):
+                env_ip_list("TEST_ALLOWED_IPS")
+
+    def test_env_admin_url_path_normalizes_path(self):
+        with patch.dict(os.environ, {"TEST_ADMIN_PATH": "/panel-seguro/"}):
+            self.assertEqual(
+                env_admin_url_path("TEST_ADMIN_PATH", "admin"),
+                "panel-seguro/",
+            )
+
+        with patch.dict(os.environ, {"TEST_ADMIN_PATH": "/"}):
+            with self.assertRaises(ImproperlyConfigured):
+                env_admin_url_path("TEST_ADMIN_PATH", "admin")
+
+    def test_production_check_rejects_insecure_configuration(self):
+        with self.assertRaises(CommandError):
+            call_command(
+                "production_check",
+                stdout=StringIO(),
+                stderr=StringIO(),
+            )
+
+    @override_settings(
+        DEBUG=False,
+        SECRET_KEY="prod-ready-value-with-more-than-fifty-characters-1234567890",
+        ALLOWED_HOSTS=["example.com", "www.example.com"],
+        CSRF_TRUSTED_ORIGINS=["https://example.com", "https://www.example.com"],
+        SESSION_COOKIE_SECURE=True,
+        CSRF_COOKIE_SECURE=True,
+        SECURE_SSL_REDIRECT=True,
+        SECURE_HSTS_SECONDS=31536000,
+        SECURE_HSTS_INCLUDE_SUBDOMAINS=True,
+        SECURE_HSTS_PRELOAD=True,
+        DATABASES={
+            "default": {
+                "ENGINE": "django.db.backends.mysql",
+                "NAME": "vapes_shop",
+                "USER": "vapes_user",
+                "PASSWORD": "valor-seguro-db-123",
+                "HOST": "127.0.0.1",
+                "PORT": "3306",
+            }
+        },
+        CACHES={
+            "default": {
+                "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+                "LOCATION": "django_cache",
+            }
+        },
+        ADMIN_URL_PATH="panel-seguro/",
+        ADMIN_ALLOWED_IPS=("127.0.0.1",),
+        TRUST_X_FORWARDED_FOR=True,
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        EMAIL_HOST="smtp.example.com",
+        EMAIL_USE_TLS=True,
+        EMAIL_USE_SSL=False,
+        DEFAULT_FROM_EMAIL="Vape Shop <no-reply@example.com>",
+        CONTACT_NOTIFICATION_EMAIL="admin@example.com",
+        CONTACT_WHATSAPP_NUMBER="573016604375",
+    )
+    def test_production_check_accepts_hardened_configuration(self):
+        output = StringIO()
+
+        call_command("production_check", stdout=output)
+
+        self.assertIn("Configuracion de produccion validada", output.getvalue())
 
     def test_cart_audit_metadata_summarizes_payload(self):
         metadata = build_cart_audit_metadata(
@@ -478,6 +578,40 @@ class StoreApiTests(APITestCase):
         self.assertEqual(event.metadata["identifier_type"], "username")
         self.assertNotIn("identifier", event.metadata)
         self.assertNotIn("no-existe", str(event.metadata))
+
+    def test_login_rejects_malformed_identifier_without_error(self):
+        response = self.client.post(
+            reverse("auth_login"),
+            {
+                "email": {"valor": "no-valido"},
+                "password": "ClaveIncorrecta123",
+            },
+            format="json",
+        )
+
+        event = EventLog.objects.get(event_type="auth_login_failed")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["error"], "Credenciales invalidas")
+        self.assertEqual(event.metadata["identifier_type"], "username")
+
+    def test_login_rejects_malformed_password_without_error(self):
+        self.create_user()
+
+        response = self.client.post(
+            reverse("auth_login"),
+            {
+                "email": "cliente",
+                "password": {"valor": "no-valido"},
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["error"], "Faltan campos")
+        self.assertTrue(
+            EventLog.objects.filter(event_type="auth_login_failed").exists()
+        )
 
     def test_login_is_rate_limited(self):
         cache.clear()
@@ -779,6 +913,25 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.data["items"], [])
         self.assertEqual(self.client.session.get("cart"), {})
 
+    def test_cart_cleans_malformed_session_payload(self):
+        self.set_session_cart(["carrito", "invalido"])
+
+        response = self.client.get(reverse("api_cart"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["items"], [])
+        self.assertEqual(response.data["total"], 0)
+        self.assertEqual(self.client.session.get("cart"), {})
+
+    def test_cart_normalizes_legacy_session_item(self):
+        self.set_session_cart({self.product.id: "2"})
+
+        response = self.client.get(reverse("api_cart"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["items"][0]["quantity"], 2)
+        self.assertEqual(self.client.session.get("cart"), {str(self.product.id): 2})
+
     def test_checkout_syncs_cart_before_payment_when_stock_changes(self):
         user = self.create_user()
         self.client.login(username=user.username, password="ClaveSegura123")
@@ -805,6 +958,32 @@ class StoreApiTests(APITestCase):
         self.assertEqual(Order.objects.count(), 0)
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 2)
+
+    def test_checkout_rejects_malformed_session_cart_without_error(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart(123)
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3000000000",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "",
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+
+        event = EventLog.objects.get(event_type="checkout_failed")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(response.data["cart_updated"])
+        self.assertEqual(self.client.session.get("cart"), {})
+        self.assertEqual(Order.objects.count(), 0)
+        self.assertEqual(event.metadata["cart_payload_type"], "int")
 
     def test_checkout_rejects_inactive_product(self):
         user = self.create_user()
@@ -1346,6 +1525,41 @@ class StoreApiTests(APITestCase):
         self.assertEqual(event.metadata["nested"]["access_token"], "[redacted]")
         self.assertEqual(event.metadata["items"][0]["secret"], "[redacted]")
         self.assertEqual(event.metadata["items"][0]["public"], "ok")
+
+    @override_settings(TRUST_X_FORWARDED_FOR=True)
+    def test_log_event_ignores_invalid_client_ip(self):
+        request = self.request_factory.get(
+            "/api/contact/",
+            HTTP_X_FORWARDED_FOR="ip-invalida, 127.0.0.1",
+        )
+
+        event = log_event(
+            "security_test",
+            "Evento con IP invalida.",
+            request=request,
+        )
+
+        self.assertIsNotNone(event)
+        self.assertIsNone(event.ip_address)
+
+    @override_settings(TRUST_X_FORWARDED_FOR=True)
+    def test_get_client_ip_uses_first_valid_forwarded_ip(self):
+        request = self.request_factory.get(
+            "/api/contact/",
+            HTTP_X_FORWARDED_FOR="192.0.2.10, 127.0.0.1",
+        )
+
+        self.assertEqual(get_client_ip(request), "192.0.2.10")
+
+    @override_settings(TRUST_X_FORWARDED_FOR=False)
+    def test_get_client_ip_ignores_forwarded_ip_by_default(self):
+        request = self.request_factory.get(
+            "/api/contact/",
+            HTTP_X_FORWARDED_FOR="192.0.2.10",
+            REMOTE_ADDR="127.0.0.1",
+        )
+
+        self.assertEqual(get_client_ip(request), "127.0.0.1")
 
     def test_admin_exports_events_to_csv(self):
         user = self.create_user()

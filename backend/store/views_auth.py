@@ -18,6 +18,29 @@ from .serializers import UserRegisterSerializer, UserSerializer
 from .throttles import AuthAnonRateThrottle
 
 
+def normalize_login_identifier(data):
+    """
+    Nombre: normalize_login_identifier
+    Descripcion: Normaliza el correo o usuario recibido en login sin asumir el tipo de dato.
+    Retorna: Texto limpio o cadena vacia si no existe.
+    """
+    identifier = data.get("email") or data.get("username") or ""
+
+    return str(identifier).strip()
+
+
+def normalize_login_password(value):
+    """
+    Nombre: normalize_login_password
+    Descripcion: Acepta solo contrasenas de texto para evitar errores con payloads mal formados.
+    Retorna: Contrasena recibida o cadena vacia si el tipo no es valido.
+    """
+    if not isinstance(value, str):
+        return ""
+
+    return value
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @throttle_classes([AuthAnonRateThrottle])
@@ -69,12 +92,8 @@ def login_view(request):
     Nombre: login_view
     Descripcion: Inicia sesion usando nombre de usuario o correo electronico.
     """
-    email_or_username = (
-        request.data.get("email")
-        or request.data.get("username")
-        or ""
-    ).strip()
-    password = request.data.get("password")
+    email_or_username = normalize_login_identifier(request.data)
+    password = normalize_login_password(request.data.get("password"))
 
     if not email_or_username or not password:
         log_event(
