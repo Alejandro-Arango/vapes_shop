@@ -931,17 +931,51 @@ function renderMyOrders(data) {
 
 let catalogProducts = [];
 let catalogCategories = [];
+let catalogTotalCount = 0;
+let catalogFilterRequestId = 0;
+let catalogSearchTimeout = null;
+const catalogSearchDelayMs = 300;
 
 function getProductCategory(product) {
     return product?.category || null;
 }
 
-function getProductCategorySlug(product) {
-    return getProductCategory(product)?.slug || "";
-}
-
 function getProductCategoryName(product) {
     return getProductCategory(product)?.name || "";
+}
+
+function getCatalogControlValues() {
+    const searchInput = document.getElementById("product-search");
+    const categoryFilter = document.getElementById("product-category-filter");
+    const stockFilter = document.getElementById("product-stock-filter");
+    const sortSelect = document.getElementById("product-sort");
+
+    return {
+        q: (searchInput?.value || "").trim(),
+        category: categoryFilter?.value || "all",
+        stock: stockFilter?.value || "all",
+        ordering: sortSelect?.value || "default",
+    };
+}
+
+function getCatalogProductQuery(values) {
+    const query = {};
+
+    if (values.q) query.q = values.q;
+    if (values.category !== "all") query.category = values.category;
+    if (values.stock !== "all") query.stock = values.stock;
+    if (values.ordering !== "default") query.ordering = values.ordering;
+
+    return query;
+}
+
+function hasActiveCatalogFilters(values) {
+    return Boolean(
+        values.q ||
+        values.category !== "all" ||
+        values.stock !== "all" ||
+        values.ordering !== "default"
+    );
 }
 
 /*
@@ -964,11 +998,23 @@ async function fetchCategories() {
 
 /*
  * Nombre: fetchProducts
- * Descripcion: Obtiene el listado de productos desde el backend.
+ * Descripcion: Obtiene productos desde el backend y envia filtros por query params cuando aplica.
  */
-async function fetchProducts() {
+async function fetchProducts(query = {}) {
     try {
-        const res = await fetch(api.products);
+        const params = new URLSearchParams();
+
+        Object.entries(query).forEach(([key, value]) => {
+            const cleanValue = String(value || "").trim();
+
+            if (cleanValue) params.set(key, cleanValue);
+        });
+
+        const endpoint = params.toString()
+            ? `${api.products}?${params.toString()}`
+            : api.products;
+
+        const res = await fetch(endpoint);
 
         if (!res.ok) throw new Error("No se pudieron cargar los productos");
 
@@ -1151,17 +1197,14 @@ function renderProducts(products, options = {}) {
             ?.addEventListener("click", async () => {
                 renderProductsSkeleton();
 
-                catalogProducts = await fetchProducts();
-                populateCategoryFilter(catalogCategories, catalogProducts);
-
-                applyCatalogFilters();
+                await refreshProductsUI();
             });
 
         document
             .querySelector(".clear-catalog-filters")
-            ?.addEventListener("click", () => {
+            ?.addEventListener("click", async () => {
                 resetCatalogControls();
-                applyCatalogFilters();
+                await applyCatalogFilters();
             });
 
         return;
@@ -1239,96 +1282,22 @@ function renderProducts(products, options = {}) {
     });
 }
 
-/*
- * Nombre: getFilteredCatalogProducts
- * Descripcion: Aplica busqueda, disponibilidad y ordenamiento sobre el catalogo cargado.
- */
-function getFilteredCatalogProducts() {
-    const searchInput = document.getElementById("product-search");
-    const categoryFilter = document.getElementById("product-category-filter");
-    const stockFilter = document.getElementById("product-stock-filter");
-    const sortSelect = document.getElementById("product-sort");
-
-    const searchValue = (searchInput?.value || "").toLowerCase().trim();
-    const categoryValue = categoryFilter?.value || "all";
-    const stockValue = stockFilter?.value || "all";
-    const sortValue = sortSelect?.value || "default";
-
-    let products = [...catalogProducts];
-
-    if (searchValue) {
-        products = products.filter((product) => {
-            const name = String(product.name || "").toLowerCase();
-            const description = String(product.description || "").toLowerCase();
-            const category = getProductCategoryName(product).toLowerCase();
-
-            return (
-                name.includes(searchValue) ||
-                description.includes(searchValue) ||
-                category.includes(searchValue)
-            );
-        });
-    }
-
-    if (categoryValue !== "all") {
-        products = products.filter(
-            (product) => getProductCategorySlug(product) === categoryValue
-        );
-    }
-
-    if (stockValue === "available") {
-        products = products.filter((product) => Number(product.stock || 0) > 0);
-    }
-
-    if (stockValue === "low") {
-        products = products.filter((product) => {
-            const stock = Number(product.stock || 0);
-
-            return stock > 0 && stock <= 3;
-        });
-    }
-
-    if (stockValue === "empty") {
-        products = products.filter((product) => Number(product.stock || 0) === 0);
-    }
-
-    if (sortValue === "price-asc") {
-        products.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
-    }
-
-    if (sortValue === "price-desc") {
-        products.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
-    }
-
-    if (sortValue === "stock-desc") {
-        products.sort((a, b) => Number(b.stock || 0) - Number(a.stock || 0));
-    }
-
-    if (sortValue === "name-asc") {
-        products.sort((a, b) =>
-            String(a.name || "").localeCompare(String(b.name || ""))
-        );
-    }
-
-    return products;
-}
-
-function updateCatalogResultsInfo(filteredCount, totalCount) {
+function updateCatalogResultsInfo(filteredCount, totalCount, isFiltered = false) {
     const resultsInfo = document.getElementById("catalog-results-info");
 
     if (!resultsInfo) return;
 
-    if (!totalCount) {
+    if (!filteredCount && !totalCount) {
         resultsInfo.textContent = "No hay productos cargados.";
         return;
     }
 
-    if (filteredCount === totalCount) {
-        resultsInfo.textContent = `Mostrando ${totalCount} producto(s).`;
+    if (isFiltered && totalCount && filteredCount !== totalCount) {
+        resultsInfo.textContent = `Mostrando ${filteredCount} de ${totalCount} producto(s).`;
         return;
     }
 
-    resultsInfo.textContent = `Mostrando ${filteredCount} de ${totalCount} producto(s).`;
+    resultsInfo.textContent = `Mostrando ${filteredCount} producto(s).`;
 }
 
 function resetCatalogControls() {
@@ -1351,13 +1320,46 @@ function setActiveQuickFilter(filterValue) {
     });
 }
 
-function applyCatalogFilters() {
-    const filteredProducts = getFilteredCatalogProducts();
+function scheduleCatalogFilters() {
+    clearTimeout(catalogSearchTimeout);
 
-    updateCatalogResultsInfo(filteredProducts.length, catalogProducts.length);
+    catalogSearchTimeout = setTimeout(() => {
+        applyCatalogFilters();
+    }, catalogSearchDelayMs);
+}
 
-    renderProducts(filteredProducts, {
-        isFiltered: filteredProducts.length !== catalogProducts.length,
+function applyCatalogFiltersNow() {
+    clearTimeout(catalogSearchTimeout);
+    applyCatalogFilters();
+}
+
+async function applyCatalogFilters() {
+    const values = getCatalogControlValues();
+    const query = getCatalogProductQuery(values);
+    const isFiltered = hasActiveCatalogFilters(values);
+    const requestId = catalogFilterRequestId + 1;
+
+    catalogFilterRequestId = requestId;
+    renderProductsSkeleton();
+
+    const products = await fetchProducts(query);
+
+    if (requestId !== catalogFilterRequestId) return;
+
+    catalogProducts = products;
+
+    if (!isFiltered) {
+        catalogTotalCount = products.length;
+    }
+
+    updateCatalogResultsInfo(
+        catalogProducts.length,
+        catalogTotalCount || catalogProducts.length,
+        isFiltered
+    );
+
+    renderProducts(catalogProducts, {
+        isFiltered,
     });
 }
 
@@ -1410,7 +1412,7 @@ function populateCategoryFilter(categories, products) {
 
 /*
  * Nombre: initCatalogControls
- * Descripcion: Conecta los controles del catalogo con el filtrado dinamico de productos.
+ * Descripcion: Conecta los controles del catalogo con los filtros del backend.
  */
 function initCatalogControls() {
     const searchInput = document.getElementById("product-search");
@@ -1419,20 +1421,20 @@ function initCatalogControls() {
     const sortSelect = document.getElementById("product-sort");
 
     searchInput?.addEventListener("input", () => {
-        applyCatalogFilters();
+        scheduleCatalogFilters();
     });
 
     categoryFilter?.addEventListener("change", () => {
-        applyCatalogFilters();
+        applyCatalogFiltersNow();
     });
 
     stockFilter?.addEventListener("change", () => {
         setActiveQuickFilter(stockFilter.value);
-        applyCatalogFilters();
+        applyCatalogFiltersNow();
     });
 
     sortSelect?.addEventListener("change", () => {
-        applyCatalogFilters();
+        applyCatalogFiltersNow();
     });
 
     document.querySelectorAll(".quick-filter").forEach((btn) => {
@@ -1444,23 +1446,17 @@ function initCatalogControls() {
             }
 
             setActiveQuickFilter(filterValue);
-            applyCatalogFilters();
+            applyCatalogFiltersNow();
         });
     });
 }
 
 async function refreshProductsUI() {
-    const [categories, products] = await Promise.all([
-        fetchCategories(),
-        fetchProducts(),
-    ]);
-
-    catalogCategories = categories;
-    catalogProducts = products;
+    catalogCategories = await fetchCategories();
 
     populateCategoryFilter(catalogCategories, catalogProducts);
 
-    applyCatalogFilters();
+    await applyCatalogFilters();
 }
 
 // =============================================================================
