@@ -63,6 +63,21 @@ def env_int(name, default, minimum=None):
     return value
 
 
+def env_port(name, default):
+    """
+    Nombre: env_port
+    Descripcion: Valida un puerto TCP y lo retorna como texto para Django.
+    """
+    value = env_int(name, default, minimum=1)
+
+    if value > 65535:
+        raise ImproperlyConfigured(
+            f"{name} debe estar entre 1 y 65535."
+        )
+
+    return str(value)
+
+
 def env_list(name, default=""):
     """
     Nombre: env_list
@@ -345,7 +360,12 @@ TEMPLATES = [
 # BASE DE DATOS
 # =============================================================================
 
-DB_ENGINE = os.environ.get("DJANGO_DB_ENGINE", "sqlite").lower().strip()
+DB_ENGINE_CHOICES = ("sqlite", "mysql")
+DB_ENGINE = env_lower_choice(
+    "DJANGO_DB_ENGINE",
+    "sqlite",
+    DB_ENGINE_CHOICES,
+)
 
 if DB_ENGINE == "sqlite":
     DATABASES = {
@@ -362,16 +382,12 @@ elif DB_ENGINE == "mysql":
             "USER": required_env("DJANGO_DB_USER"),
             "PASSWORD": os.environ.get("DJANGO_DB_PASSWORD", ""),
             "HOST": os.environ.get("DJANGO_DB_HOST", "127.0.0.1"),
-            "PORT": os.environ.get("DJANGO_DB_PORT", "3306"),
+            "PORT": env_port("DJANGO_DB_PORT", "3306"),
             "OPTIONS": {
                 "charset": "utf8mb4",
             },
         }
     }
-else:
-    raise ImproperlyConfigured(
-        "DJANGO_DB_ENGINE debe ser 'sqlite' o 'mysql'."
-    )
 
 
 # =============================================================================
