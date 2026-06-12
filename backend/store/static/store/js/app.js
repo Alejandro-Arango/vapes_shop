@@ -1876,11 +1876,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     renderProductsSkeleton();
 
-    catalogProducts = await fetchProducts();
-
     initCatalogControls();
-
-    applyCatalogFilters();
+    await refreshProductsUI();
 
     await updateCartUI();
 
