@@ -134,6 +134,51 @@ def env_digits(name, default, min_digits=1, max_digits=None):
     return digits
 
 
+def env_throttle_rate(name, default):
+    """
+    Nombre: env_throttle_rate
+    Descripcion: Valida tasas de uso para Django REST Framework.
+    """
+    value = os.environ.get(name, default).strip().lower()
+    valid_periods = (
+        "s",
+        "sec",
+        "second",
+        "seconds",
+        "m",
+        "min",
+        "minute",
+        "minutes",
+        "h",
+        "hour",
+        "hours",
+        "d",
+        "day",
+        "days",
+    )
+
+    parts = value.split("/")
+
+    if len(parts) != 2:
+        raise ImproperlyConfigured(
+            f"{name} debe tener formato cantidad/periodo, por ejemplo 20/min."
+        )
+
+    quantity, period = parts
+
+    if not quantity.isdigit() or int(quantity) <= 0:
+        raise ImproperlyConfigured(
+            f"{name} debe iniciar con una cantidad positiva."
+        )
+
+    if period not in valid_periods:
+        raise ImproperlyConfigured(
+            f"{name} debe usar un periodo valido: s, m, h, d, second, minute, hour o day."
+        )
+
+    return value
+
+
 def required_env(name):
     """
     Nombre: required_env
@@ -212,10 +257,10 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
-        "auth_anon": os.environ.get("AUTH_THROTTLE_RATE", "20/min"),
-        "contact_anon": os.environ.get("CONTACT_THROTTLE_RATE", "10/hour"),
-        "cart": os.environ.get("CART_THROTTLE_RATE", "60/min"),
-        "checkout_user": os.environ.get("CHECKOUT_THROTTLE_RATE", "20/min"),
+        "auth_anon": env_throttle_rate("AUTH_THROTTLE_RATE", "20/min"),
+        "contact_anon": env_throttle_rate("CONTACT_THROTTLE_RATE", "10/hour"),
+        "cart": env_throttle_rate("CART_THROTTLE_RATE", "60/min"),
+        "checkout_user": env_throttle_rate("CHECKOUT_THROTTLE_RATE", "20/min"),
     },
 }
 

@@ -30,6 +30,7 @@ from mi_tienda.settings import (
     env_choice,
     env_digits,
     env_lower_choice,
+    env_throttle_rate,
 )
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
@@ -285,6 +286,20 @@ class StoreApiTests(APITestCase):
         with patch.dict(os.environ, {"TEST_PHONE": "abc"}):
             with self.assertRaises(ImproperlyConfigured):
                 env_digits("TEST_PHONE", "", min_digits=7, max_digits=15)
+
+    def test_env_throttle_rate_validates_format(self):
+        with patch.dict(os.environ, {"TEST_THROTTLE": "20/MIN"}):
+            self.assertEqual(
+                env_throttle_rate("TEST_THROTTLE", "10/hour"),
+                "20/min",
+            )
+
+        invalid_rates = ("0/min", "20", "abc/min", "20/week")
+
+        for invalid_rate in invalid_rates:
+            with patch.dict(os.environ, {"TEST_THROTTLE": invalid_rate}):
+                with self.assertRaises(ImproperlyConfigured):
+                    env_throttle_rate("TEST_THROTTLE", "10/hour")
 
     def test_cart_audit_metadata_summarizes_payload(self):
         metadata = build_cart_audit_metadata(
