@@ -17,6 +17,7 @@ const api = {
     me: "/api/auth/me/",
     cartGet: "/api/cart/",
     cartAdd: "/api/cart/add/",
+    cartUpdate: "/api/cart/update/",
     cartDecrease: "/api/cart/decrease/",
     cartRemove: "/api/cart/remove/",
     cartClear: "/api/cart/clear/",
@@ -1824,6 +1825,25 @@ async function decreaseCartItem(productId) {
     }
 }
 
+async function updateCartItemQuantity(productId, quantity) {
+    const res = await fetch(api.cartUpdate, {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ productId, quantity }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.error || "No se pudo actualizar la cantidad");
+    }
+
+    await updateCartUI();
+
+    return data;
+}
+
 async function removeFromCart(productId) {
     try {
         const res = await fetch(api.cartRemove, {
@@ -2007,7 +2027,16 @@ async function updateCartUI() {
                             -
                         </button>
 
-                        <span class="cart-qty">${quantity}</span>
+                        <input
+                            class="cart-qty-input"
+                            type="number"
+                            min="1"
+                            max="${stock}"
+                            value="${quantity}"
+                            data-id="${item.product.id}"
+                            data-current="${quantity}"
+                            aria-label="Cantidad de ${escapeHtml(item.product.name)}"
+                        />
 
                         <button
                             class="btn small increase-item"
@@ -2042,6 +2071,49 @@ async function updateCartUI() {
     document.querySelectorAll(".decrease-item").forEach((btn) => {
         btn.addEventListener("click", async () => {
             await decreaseCartItem(Number(btn.dataset.id));
+        });
+    });
+
+    document.querySelectorAll(".cart-qty-input").forEach((input) => {
+        input.addEventListener("change", async () => {
+            const productId = Number(input.dataset.id);
+            const previousValue = Number(input.dataset.current || 1);
+            const stock = Number(input.max || 0);
+            const quantity = Number(input.value);
+
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                input.value = String(previousValue);
+                showCartFeedback("Ingresa una cantidad valida.", "error");
+                return;
+            }
+
+            if (stock > 0 && quantity > stock) {
+                input.value = String(previousValue);
+                showCartFeedback("La cantidad supera el stock disponible.", "error");
+                return;
+            }
+
+            try {
+                input.disabled = true;
+                await updateCartItemQuantity(productId, quantity);
+                clearCartFeedback();
+            } catch (err) {
+                input.value = String(previousValue);
+                showCartFeedback(
+                    err.message || "No se pudo actualizar la cantidad.",
+                    "error"
+                );
+                await updateCartUI();
+            } finally {
+                input.disabled = false;
+            }
+        });
+
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                input.blur();
+            }
         });
     });
 

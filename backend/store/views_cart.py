@@ -12,6 +12,32 @@ from .models import Product
 from .throttles import CartRateThrottle
 
 
+def parse_cart_update_quantity(value):
+    """
+    Nombre: parse_cart_update_quantity
+    Descripcion: Convierte una cantidad de actualizacion permitiendo cero para eliminar el item.
+    """
+    if isinstance(value, bool):
+        return None
+
+    if isinstance(value, int):
+        quantity = value
+    elif isinstance(value, str):
+        normalized_value = value.strip()
+
+        if not normalized_value.isdigit():
+            return None
+
+        quantity = int(normalized_value)
+    else:
+        return None
+
+    if quantity < 0:
+        return None
+
+    return quantity
+
+
 @api_view(["GET"])
 def api_cart(request):
     """
@@ -92,6 +118,58 @@ def api_cart_add(request):
 
     cart[product_id] = new_quantity
 
+    request.session["cart"] = cart
+    request.session.modified = True
+
+    return Response({
+        "ok": True,
+        "cart": cart,
+    })
+
+
+@api_view(["POST"])
+@throttle_classes([CartRateThrottle])
+def api_cart_update(request):
+    """
+    Nombre: api_cart_update
+    Descripcion: Define la cantidad exacta de un producto en el carrito.
+    """
+    product_id = str(request.data.get("productId", "")).strip()
+    quantity = parse_cart_update_quantity(request.data.get("quantity"))
+
+    if not product_id.isdigit():
+        return Response({"error": "productId invalido"}, status=400)
+
+    if quantity is None:
+        return Response({"error": "Cantidad invalida"}, status=400)
+
+    cart = request.session.get("cart", {})
+
+    if not isinstance(cart, dict):
+        cart = {}
+
+    if quantity == 0:
+        cart.pop(product_id, None)
+        request.session["cart"] = cart
+        request.session.modified = True
+
+        return Response({
+            "ok": True,
+            "cart": cart,
+        })
+
+    try:
+        product = Product.objects.get(id=int(product_id), is_active=True)
+    except Product.DoesNotExist:
+        return Response({"error": "Producto no disponible"}, status=404)
+
+    if quantity > product.stock:
+        return Response(
+            {"error": f"Stock insuficiente para {product.name}"},
+            status=400
+        )
+
+    cart[str(product.id)] = quantity
     request.session["cart"] = cart
     request.session.modified = True
 

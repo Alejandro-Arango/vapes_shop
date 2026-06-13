@@ -1049,6 +1049,64 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["cart"][str(self.product.id)], 2)
 
+    def test_cart_update_sets_exact_quantity(self):
+        self.set_session_cart({str(self.product.id): 1})
+
+        response = self.client.post(
+            reverse("api_cart_update"),
+            {
+                "productId": self.product.id,
+                "quantity": 3,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["cart"][str(self.product.id)], 3)
+        self.assertEqual(self.client.session.get("cart")[str(self.product.id)], 3)
+
+    def test_cart_update_removes_item_when_quantity_is_zero(self):
+        self.set_session_cart({str(self.product.id): 2})
+
+        response = self.client.post(
+            reverse("api_cart_update"),
+            {
+                "productId": self.product.id,
+                "quantity": 0,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["cart"], {})
+        self.assertEqual(self.client.session.get("cart"), {})
+
+    def test_cart_update_rejects_invalid_quantity_and_stock_excess(self):
+        invalid_quantities = (-1, "2.5", True, "abc")
+
+        for invalid_quantity in invalid_quantities:
+            response = self.client.post(
+                reverse("api_cart_update"),
+                {
+                    "productId": self.product.id,
+                    "quantity": invalid_quantity,
+                },
+                format="json",
+            )
+
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.post(
+            reverse("api_cart_update"),
+            {
+                "productId": self.product.id,
+                "quantity": 6,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_cart_add_is_rate_limited(self):
         cache.clear()
         cart_data = {

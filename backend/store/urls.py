@@ -33,6 +33,7 @@ urlpatterns = [
     # Carrito
     path("api/cart/", views_cart.api_cart, name="api_cart"),
     path("api/cart/add/", views_cart.api_cart_add, name="api_cart_add"),
+    path("api/cart/update/", views_cart.api_cart_update, name="api_cart_update"),
     path("api/cart/remove/", views_cart.api_cart_remove, name="api_cart_remove"),
     path("api/cart/decrease/", views_cart.api_cart_decrease, name="api_cart_decrease"),
     path("api/cart/clear/", views_cart.api_cart_clear, name="api_cart_clear"),

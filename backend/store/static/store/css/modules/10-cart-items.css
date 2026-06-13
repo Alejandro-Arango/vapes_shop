@@ -94,7 +94,7 @@ body.light-mode .cart-stock-limit {
 .cart-item-actions {
     grid-area: actions;
     display: grid;
-    grid-template-columns: 34px 34px 34px 1fr;
+    grid-template-columns: 34px 48px 34px 1fr;
     gap: 8px;
     align-items: center;
     margin-top: 4px;
@@ -124,6 +124,32 @@ body.light-mode .cart-stock-limit {
     font-weight: 700;
 }
 
+.cart-qty-input {
+    width: 48px;
+    height: 34px;
+    padding: 0 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+}
+
+.cart-qty-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255, 90, 44, 0.16);
+}
+
+body.light-mode .cart-qty-input {
+    background: #fff;
+    color: #222;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
 body.light-mode .cart-line-subtotal {
     color: var(--accent);
 }
@@ -144,15 +170,22 @@ body.light-mode .cart-stock-limit {
     }
 
     .cart-item-actions {
-        grid-template-columns: 30px 30px 30px 1fr;
+        grid-template-columns: 30px 40px 30px 1fr;
         gap: 6px;
     }
 
     .cart-item-actions .btn.small,
-    .cart-qty {
+    .cart-qty,
+    .cart-qty-input {
         width: 30px;
         height: 30px;
         min-width: 30px;
+        font-size: 12px;
+    }
+
+    .cart-qty-input {
+        width: 40px;
+        min-width: 40px;
     }
 
     .cart-item-actions .remove-item {
