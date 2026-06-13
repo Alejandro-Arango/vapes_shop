@@ -29,6 +29,9 @@ SHIPPING_MAX_LENGTHS = {
     "notes": 500,
 }
 MAX_AUDIT_PRODUCT_IDS = 20
+ORDER_DEFAULT_PAGE = 1
+ORDER_DEFAULT_PAGE_SIZE = 4
+ORDER_MAX_PAGE_SIZE = 20
 
 
 def parse_bool(value):
@@ -150,6 +153,66 @@ def serialize_order(order):
         },
         "items": items,
     }
+
+
+def get_order_pagination_error(request):
+    """
+    Nombre: get_order_pagination_error
+    Descripcion: Valida parametros de paginacion del historial de pedidos.
+    """
+    page = request.query_params.get("page")
+    page_size = request.query_params.get("page_size")
+
+    if page is not None and not page.strip().isdigit():
+        return "Pagina invalida."
+
+    if page is not None and int(page) < 1:
+        return "Pagina invalida."
+
+    if page_size is not None and not page_size.strip().isdigit():
+        return "Tamano de pagina invalido."
+
+    if page_size is not None:
+        clean_page_size = int(page_size)
+
+        if clean_page_size < 1 or clean_page_size > ORDER_MAX_PAGE_SIZE:
+            return "Tamano de pagina invalido."
+
+    return ""
+
+
+def get_order_pagination_params(request):
+    """
+    Nombre: get_order_pagination_params
+    Descripcion: Obtiene pagina y tamano de pagina para el historial de pedidos.
+    """
+    page = int(request.query_params.get("page", ORDER_DEFAULT_PAGE))
+    page_size = int(request.query_params.get("page_size", ORDER_DEFAULT_PAGE_SIZE))
+
+    return page, page_size
+
+
+def paginate_orders(orders, request):
+    """
+    Nombre: paginate_orders
+    Descripcion: Recorta el queryset de pedidos y construye metadatos de paginacion.
+    """
+    page, page_size = get_order_pagination_params(request)
+    total = orders.count()
+    total_pages = (total + page_size - 1) // page_size if total else 0
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    pagination = {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1 and total_pages > 0,
+    }
+
+    return orders[start:end], pagination
 
 
 @api_view(["POST"])
@@ -494,11 +557,29 @@ def my_orders(request):
     Nombre: my_orders
     Descripcion: Devuelve el historial de pedidos del usuario autenticado con productos, total y datos de envio.
     """
+    pagination_error = get_order_pagination_error(request)
+
+    if pagination_error:
+        return Response(
+            {"error": pagination_error},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     try:
         customer = request.user.customer
     except Customer.DoesNotExist:
         return Response(
-            {"orders": []},
+            {
+                "orders": [],
+                "pagination": {
+                    "page": ORDER_DEFAULT_PAGE,
+                    "page_size": ORDER_DEFAULT_PAGE_SIZE,
+                    "total": 0,
+                    "total_pages": 0,
+                    "has_next": False,
+                    "has_previous": False,
+                },
+            },
             status=status.HTTP_200_OK
         )
 
@@ -508,6 +589,7 @@ def my_orders(request):
         .prefetch_related("orderitem_set__product")
         .order_by("-date_ordered")
     )
+    user_orders, pagination = paginate_orders(user_orders, request)
 
     orders = [
         serialize_order(order)
@@ -515,7 +597,10 @@ def my_orders(request):
     ]
 
     return Response(
-        {"orders": orders},
+        {
+            "orders": orders,
+            "pagination": pagination,
+        },
         status=status.HTTP_200_OK
     )
 

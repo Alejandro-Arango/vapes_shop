@@ -1374,6 +1374,75 @@ class StoreApiTests(APITestCase):
             ).exists()
         )
 
+    def test_my_orders_paginates_results(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Paginado",
+            email=user.email,
+        )
+
+        for _ in range(6):
+            order = Order.objects.create(
+                customer=customer,
+                status="pagado",
+                completed=True,
+            )
+            OrderItem.objects.create(
+                order=order,
+                product=self.product,
+                quantity=1,
+            )
+
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.get(
+            reverse("my_orders"),
+            {
+                "page": "2",
+                "page_size": "2",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["orders"]), 2)
+        self.assertEqual(response.data["pagination"]["page"], 2)
+        self.assertEqual(response.data["pagination"]["page_size"], 2)
+        self.assertEqual(response.data["pagination"]["total"], 6)
+        self.assertEqual(response.data["pagination"]["total_pages"], 3)
+        self.assertTrue(response.data["pagination"]["has_next"])
+        self.assertTrue(response.data["pagination"]["has_previous"])
+
+    def test_my_orders_rejects_invalid_pagination(self):
+        user = self.create_user()
+        Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Paginado",
+            email=user.email,
+        )
+
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        invalid_page_response = self.client.get(
+            reverse("my_orders"),
+            {"page": "0"},
+        )
+        invalid_page_size_response = self.client.get(
+            reverse("my_orders"),
+            {"page_size": "100"},
+        )
+
+        self.assertEqual(
+            invalid_page_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            invalid_page_size_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
     def test_checkout_rejects_missing_age_confirmation(self):
         user = self.create_user()
         self.client.login(username=user.username, password="ClaveSegura123")

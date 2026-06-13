@@ -632,12 +632,27 @@ async function submitContactLead(contactData) {
 //  PEDIDOS
 // =============================================================================
 
+const ordersPageSize = 4;
+
+let ordersPagination = {
+    page: 1,
+    page_size: ordersPageSize,
+    total: 0,
+    total_pages: 0,
+    has_next: false,
+    has_previous: false,
+};
+
 /*
  * Nombre: fetchMyOrders
  * Descripcion: Obtiene los pedidos del usuario autenticado.
  */
-async function fetchMyOrders() {
-    const res = await fetch(api.myOrders, {
+async function fetchMyOrders(page = ordersPagination.page) {
+    const params = new URLSearchParams({
+        page: String(Math.max(1, Number(page || 1))),
+        page_size: String(ordersPageSize),
+    });
+    const res = await fetch(`${api.myOrders}?${params.toString()}`, {
         credentials: "include",
     });
 
@@ -797,16 +812,95 @@ function renderOrderTimeline(order) {
     `;
 }
 
+async function loadAndRenderOrders(page = ordersPagination.page) {
+    const data = await fetchMyOrders(page);
+    const pagination = data?.pagination || {};
+
+    ordersPagination = {
+        page: Number(pagination.page || page || 1),
+        page_size: Number(pagination.page_size || ordersPageSize),
+        total: Number(pagination.total || 0),
+        total_pages: Number(pagination.total_pages || 0),
+        has_next: Boolean(pagination.has_next),
+        has_previous: Boolean(pagination.has_previous),
+    };
+
+    if (
+        ordersPagination.total_pages > 0 &&
+        ordersPagination.page > ordersPagination.total_pages
+    ) {
+        return await loadAndRenderOrders(ordersPagination.total_pages);
+    }
+
+    renderMyOrders(data);
+    renderOrdersPagination(ordersPagination);
+
+    return data;
+}
+
+async function goToOrdersPage(page) {
+    ordersPagination.page = Math.max(1, Number(page || 1));
+    await loadAndRenderOrders(ordersPagination.page);
+}
+
+function renderOrdersPagination(pagination) {
+    const paginationEl = document.getElementById("orders-pagination");
+
+    if (!paginationEl) return;
+
+    const totalPages = Number(pagination.total_pages || 0);
+    const currentPage = Number(pagination.page || 1);
+
+    if (totalPages <= 1) {
+        paginationEl.innerHTML = "";
+        paginationEl.setAttribute("hidden", "hidden");
+        return;
+    }
+
+    paginationEl.removeAttribute("hidden");
+    paginationEl.innerHTML = `
+        <button
+            class="orders-page-btn"
+            type="button"
+            data-page="${currentPage - 1}"
+            ${pagination.has_previous ? "" : "disabled"}
+        >
+            Anterior
+        </button>
+
+        <span class="orders-page-status">
+            Pagina ${currentPage} de ${totalPages}
+        </span>
+
+        <button
+            class="orders-page-btn"
+            type="button"
+            data-page="${currentPage + 1}"
+            ${pagination.has_next ? "" : "disabled"}
+        >
+            Siguiente
+        </button>
+    `;
+
+    paginationEl.querySelectorAll(".orders-page-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            await goToOrdersPage(btn.dataset.page);
+        });
+    });
+}
+
 /*
  * Nombre: renderMyOrders
  * Descripcion: Renderiza el historial de pedidos, estados, productos, totales y acciones disponibles.
  */
 function renderMyOrders(data) {
     const body = document.getElementById("orders-body");
+    const paginationEl = document.getElementById("orders-pagination");
 
     if (!body) return;
 
     if (data?.notLogged) {
+        paginationEl?.setAttribute("hidden", "hidden");
         body.innerHTML = `<p class="muted">Debes iniciar sesion para ver tus pedidos.</p>`;
         return;
     }
@@ -814,6 +908,7 @@ function renderMyOrders(data) {
     const orders = data?.orders || [];
 
     if (!orders.length) {
+        paginationEl?.setAttribute("hidden", "hidden");
         body.innerHTML = `
             <div class="empty-orders">
                 <div class="empty-orders-icon">Historial</div>
@@ -2624,20 +2719,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     myOrdersBtn?.addEventListener("click", async () => {
         ordersModal?.setAttribute("aria-hidden", "false");
         ordersModal?.classList.add("open");
+        ordersPagination.page = 1;
 
         clearOrdersFeedback();
 
         try {
-            const data = await fetchMyOrders();
-
-            renderMyOrders(data);
+            await loadAndRenderOrders(ordersPagination.page);
         } catch {
             const body = document.getElementById("orders-body");
+            const paginationEl = document.getElementById("orders-pagination");
 
             if (body) {
                 body.innerHTML = `<p class="muted">Error cargando pedidos.</p>`;
             }
 
+            paginationEl?.setAttribute("hidden", "hidden");
             showOrdersFeedback("No se pudieron cargar los pedidos.", "error");
         }
     });
@@ -2667,9 +2763,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             btn.textContent = "Cancelando...";
 
             const result = await cancelOrder(orderId);
-            const updatedData = await fetchMyOrders();
-
-            renderMyOrders(updatedData);
+            await loadAndRenderOrders(ordersPagination.page);
 
             await refreshProductsUI();
 

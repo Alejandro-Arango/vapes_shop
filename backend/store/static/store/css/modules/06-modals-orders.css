@@ -149,6 +149,88 @@ body.light-mode .modal-content {
 }
 
 /*
+ * Nombre: Paginacion de pedidos
+ * Descripcion: Define controles para navegar historiales largos dentro del modal de pedidos.
+ */
+.orders-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.orders-pagination[hidden] {
+    display: none;
+}
+
+.orders-page-btn {
+    min-width: 104px;
+    min-height: 38px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.orders-page-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.orders-page-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.orders-page-status {
+    min-width: 116px;
+    text-align: center;
+    color: var(--muted-dark);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+body.light-mode .orders-pagination {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .orders-page-btn {
+    background: #fff;
+    color: var(--accent);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .orders-page-btn:hover:not(:disabled) {
+    color: #fff;
+}
+
+body.light-mode .orders-page-status {
+    color: var(--muted-light);
+}
+
+@media (max-width: 520px) {
+    .orders-pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .orders-page-btn,
+    .orders-page-status {
+        width: 100%;
+    }
+}
+
+/*
  * Nombre: Estados de pedido
  * Descripcion: Define badges visuales para cada estado de una orden.
  */
