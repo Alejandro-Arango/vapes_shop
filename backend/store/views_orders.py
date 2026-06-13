@@ -32,6 +32,10 @@ MAX_AUDIT_PRODUCT_IDS = 20
 ORDER_DEFAULT_PAGE = 1
 ORDER_DEFAULT_PAGE_SIZE = 4
 ORDER_MAX_PAGE_SIZE = 20
+ORDER_STATUS_FILTERS = {
+    status_key
+    for status_key, _ in Order.STATUS_CHOICES
+}
 
 
 def parse_bool(value):
@@ -155,13 +159,17 @@ def serialize_order(order):
     }
 
 
-def get_order_pagination_error(request):
+def get_order_query_error(request):
     """
-    Nombre: get_order_pagination_error
-    Descripcion: Valida parametros de paginacion del historial de pedidos.
+    Nombre: get_order_query_error
+    Descripcion: Valida filtros y paginacion del historial de pedidos.
     """
+    status_filter = request.query_params.get("status", "all").strip().lower()
     page = request.query_params.get("page")
     page_size = request.query_params.get("page_size")
+
+    if status_filter != "all" and status_filter not in ORDER_STATUS_FILTERS:
+        return "Estado de pedido invalido."
 
     if page is not None and not page.strip().isdigit():
         return "Pagina invalida."
@@ -179,6 +187,19 @@ def get_order_pagination_error(request):
             return "Tamano de pagina invalido."
 
     return ""
+
+
+def apply_order_query_params(orders, request):
+    """
+    Nombre: apply_order_query_params
+    Descripcion: Aplica filtros del historial de pedidos antes de paginar.
+    """
+    status_filter = request.query_params.get("status", "all").strip().lower()
+
+    if status_filter != "all":
+        orders = orders.filter(status=status_filter)
+
+    return orders
 
 
 def get_order_pagination_params(request):
@@ -557,7 +578,7 @@ def my_orders(request):
     Nombre: my_orders
     Descripcion: Devuelve el historial de pedidos del usuario autenticado con productos, total y datos de envio.
     """
-    pagination_error = get_order_pagination_error(request)
+    pagination_error = get_order_query_error(request)
 
     if pagination_error:
         return Response(
@@ -589,6 +610,7 @@ def my_orders(request):
         .prefetch_related("orderitem_set__product")
         .order_by("-date_ordered")
     )
+    user_orders = apply_order_query_params(user_orders, request)
     user_orders, pagination = paginate_orders(user_orders, request)
 
     orders = [

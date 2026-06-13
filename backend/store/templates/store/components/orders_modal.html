@@ -15,6 +15,21 @@ Descripcion: Componente modal que muestra el historial de pedidos, mensajes de f
             Aquí verás tus compras realizadas.
         </p>
 
+        <div class="orders-controls">
+            <label for="orders-status-filter">Filtrar por estado</label>
+
+            <select id="orders-status-filter">
+                <option value="all">Todos</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="pagado">Pagado</option>
+                <option value="en_preparacion">En preparacion</option>
+                <option value="enviado">Enviado</option>
+                <option value="entregado">Entregado</option>
+                <option value="cancelado">Cancelado</option>
+                <option value="reembolsado">Reembolsado</option>
+            </select>
+        </div>
+
         <div id="orders-feedback" class="orders-feedback" style="display: none;"></div>
 
         <div id="orders-confirm" class="orders-confirm" style="display: none;">

@@ -643,6 +643,12 @@ let ordersPagination = {
     has_previous: false,
 };
 
+function getOrdersStatusFilterValue() {
+    const statusFilter = document.getElementById("orders-status-filter");
+
+    return statusFilter?.value || "all";
+}
+
 /*
  * Nombre: fetchMyOrders
  * Descripcion: Obtiene los pedidos del usuario autenticado.
@@ -652,6 +658,12 @@ async function fetchMyOrders(page = ordersPagination.page) {
         page: String(Math.max(1, Number(page || 1))),
         page_size: String(ordersPageSize),
     });
+    const statusFilter = getOrdersStatusFilterValue();
+
+    if (statusFilter !== "all") {
+        params.set("status", statusFilter);
+    }
+
     const res = await fetch(`${api.myOrders}?${params.toString()}`, {
         credentials: "include",
     });
@@ -2112,6 +2124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const myOrdersBtn = document.getElementById("my-orders-btn");
     const ordersModal = document.getElementById("orders-modal");
     const ordersClose = document.getElementById("orders-close");
+    const ordersStatusFilter = document.getElementById("orders-status-filter");
     const ordersConfirmYes = document.getElementById("orders-confirm-yes");
     const ordersConfirmNo = document.getElementById("orders-confirm-no");
 
@@ -2720,6 +2733,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         ordersModal?.setAttribute("aria-hidden", "false");
         ordersModal?.classList.add("open");
         ordersPagination.page = 1;
+        if (ordersStatusFilter) ordersStatusFilter.value = "all";
 
         clearOrdersFeedback();
 
@@ -2742,6 +2756,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         hideOrderCancelConfirm();
 
         closeModalSafely(ordersModal, myOrdersBtn);
+    });
+
+    ordersStatusFilter?.addEventListener("change", async () => {
+        clearOrdersFeedback();
+        ordersPagination.page = 1;
+
+        try {
+            await loadAndRenderOrders(ordersPagination.page);
+        } catch {
+            const body = document.getElementById("orders-body");
+            const paginationEl = document.getElementById("orders-pagination");
+
+            if (body) {
+                body.innerHTML = `<p class="muted">Error cargando pedidos.</p>`;
+            }
+
+            paginationEl?.setAttribute("hidden", "hidden");
+            showOrdersFeedback("No se pudieron filtrar los pedidos.", "error");
+        }
     });
 
     ordersConfirmNo?.addEventListener("click", () => {

@@ -93,6 +93,45 @@ body.light-mode .modal-content {
     padding-right: 6px;
 }
 
+.orders-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 14px 0 4px;
+}
+
+.orders-controls label {
+    color: var(--muted-dark);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.orders-controls select {
+    min-height: 40px;
+    padding: 9px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+}
+
+.orders-controls option {
+    color: #222;
+}
+
+body.light-mode .orders-controls label {
+    color: var(--muted-light);
+}
+
+body.light-mode .orders-controls select {
+    background: #fff;
+    color: #222;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
 .orders-confirm {
     margin: 10px 0 12px;
     padding: 12px;

@@ -1414,6 +1414,43 @@ class StoreApiTests(APITestCase):
         self.assertTrue(response.data["pagination"]["has_next"])
         self.assertTrue(response.data["pagination"]["has_previous"])
 
+    def test_my_orders_filters_by_status(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Filtrado",
+            email=user.email,
+        )
+
+        for order_status in ("pagado", "enviado", "cancelado"):
+            order = Order.objects.create(
+                customer=customer,
+                status=order_status,
+                completed=True,
+            )
+            OrderItem.objects.create(
+                order=order,
+                product=self.product,
+                quantity=1,
+            )
+
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.get(
+            reverse("my_orders"),
+            {
+                "status": "enviado",
+                "page": "1",
+                "page_size": "4",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["orders"]), 1)
+        self.assertEqual(response.data["orders"][0]["status"], "enviado")
+        self.assertEqual(response.data["pagination"]["total"], 1)
+
     def test_my_orders_rejects_invalid_pagination(self):
         user = self.create_user()
         Customer.objects.create(
@@ -1433,6 +1470,10 @@ class StoreApiTests(APITestCase):
             reverse("my_orders"),
             {"page_size": "100"},
         )
+        invalid_status_response = self.client.get(
+            reverse("my_orders"),
+            {"status": "desconocido"},
+        )
 
         self.assertEqual(
             invalid_page_response.status_code,
@@ -1440,6 +1481,10 @@ class StoreApiTests(APITestCase):
         )
         self.assertEqual(
             invalid_page_size_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            invalid_status_response.status_code,
             status.HTTP_400_BAD_REQUEST,
         )
 
