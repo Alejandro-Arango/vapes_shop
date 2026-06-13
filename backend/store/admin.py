@@ -12,7 +12,16 @@ from django.db import transaction
 from django.http import HttpResponse
 
 from .audit import log_event
-from .models import Category, ContactLead, Customer, EventLog, Product, Order, OrderItem
+from .models import (
+    Category,
+    ContactLead,
+    Customer,
+    EventLog,
+    FavoriteProduct,
+    Product,
+    Order,
+    OrderItem,
+)
 
 
 def format_admin_bool(value):
@@ -447,6 +456,44 @@ class ProductAdmin(admin.ModelAdmin):
             request,
             f"{queryset.count()} producto(s) actualizados con 10 unidades adicionales."
         )
+
+
+@admin.register(FavoriteProduct)
+class FavoriteProductAdmin(admin.ModelAdmin):
+    """
+    Nombre: FavoriteProductAdmin
+    Descripcion: Permite consultar productos favoritos guardados por usuarios autenticados.
+    """
+
+    list_display = (
+        "id",
+        "user",
+        "product",
+        "created_at",
+    )
+
+    search_fields = (
+        "user__username",
+        "user__email",
+        "product__name",
+    )
+
+    list_filter = (
+        "created_at",
+    )
+
+    readonly_fields = (
+        "created_at",
+    )
+
+    list_select_related = (
+        "user",
+        "product",
+    )
+
+    ordering = (
+        "-created_at",
+    )
 
 
 class OrderItemInline(admin.TabularInline):

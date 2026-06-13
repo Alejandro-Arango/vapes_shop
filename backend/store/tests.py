@@ -41,7 +41,16 @@ from mi_tienda.settings import (
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
 from .audit import get_client_ip, log_event
-from .models import Category, ContactLead, Customer, EventLog, Order, OrderItem, Product
+from .models import (
+    Category,
+    ContactLead,
+    Customer,
+    EventLog,
+    FavoriteProduct,
+    Order,
+    OrderItem,
+    Product,
+)
 from .throttles import (
     AuthAnonRateThrottle,
     CartRateThrottle,
@@ -1009,6 +1018,112 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.data["pagination"]["page"], 2)
         self.assertEqual(response.data["pagination"]["total"], 5)
         self.assertEqual(response.data["pagination"]["total_pages"], 3)
+
+    def test_favorite_endpoints_require_authentication(self):
+        responses = [
+            self.client.get(reverse("favorite_products")),
+            self.client.post(
+                reverse("toggle_favorite_product"),
+                {"productId": self.product.id},
+                format="json",
+            ),
+        ]
+
+        for response in responses:
+            self.assertIn(
+                response.status_code,
+                (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+            )
+
+    def test_user_can_toggle_and_list_favorites(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        add_response = self.client.post(
+            reverse("toggle_favorite_product"),
+            {"productId": self.product.id},
+            format="json",
+        )
+
+        self.assertEqual(add_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(add_response.data["is_favorite"])
+        self.assertEqual(FavoriteProduct.objects.count(), 1)
+
+        list_response = self.client.get(reverse("favorite_products"))
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data["count"], 1)
+        self.assertEqual(list_response.data["favorites"][0]["id"], self.product.id)
+        self.assertTrue(list_response.data["favorites"][0]["is_favorite"])
+
+        remove_response = self.client.post(
+            reverse("toggle_favorite_product"),
+            {"productId": self.product.id},
+            format="json",
+        )
+
+        self.assertEqual(remove_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(remove_response.data["is_favorite"])
+        self.assertEqual(FavoriteProduct.objects.count(), 0)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="favorite_added",
+                metadata__product_id=self.product.id,
+            ).exists()
+        )
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="favorite_removed",
+                metadata__product_id=self.product.id,
+            ).exists()
+        )
+
+    def test_favorites_reject_invalid_or_inactive_product(self):
+        user = self.create_user()
+        inactive_product = Product.objects.create(
+            name="Producto inactivo",
+            description="No debe guardarse como favorito.",
+            price=Decimal("11.00"),
+            stock=2,
+            is_active=False,
+        )
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        invalid_response = self.client.post(
+            reverse("toggle_favorite_product"),
+            {"productId": "abc"},
+            format="json",
+        )
+        inactive_response = self.client.post(
+            reverse("toggle_favorite_product"),
+            {"productId": inactive_product.id},
+            format="json",
+        )
+
+        self.assertEqual(invalid_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(inactive_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(FavoriteProduct.objects.count(), 0)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="favorite_failed",
+                metadata__product_id=inactive_product.id,
+            ).exists()
+        )
+
+    def test_products_api_marks_authenticated_favorites(self):
+        user = self.create_user()
+        FavoriteProduct.objects.create(user=user, product=self.product)
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.get(reverse("api_products"))
+        favorite_product = next(
+            product
+            for product in response.data
+            if product["id"] == self.product.id
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(favorite_product["is_favorite"])
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         invalid_quantities = (0, "1.5", True, "abc")

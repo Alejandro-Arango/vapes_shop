@@ -12,6 +12,7 @@ from . import (
     views_auth,
     views_cart,
     views_contact,
+    views_favorites,
     views_orders,
 )
 
@@ -26,6 +27,14 @@ urlpatterns = [
     # Productos
     path("api/categories/", views_api.api_categories, name="api_categories"),
     path("api/products/", views_api.api_products, name="api_products"),
+
+    # Favoritos
+    path("api/favorites/", views_favorites.favorite_products, name="favorite_products"),
+    path(
+        "api/favorites/toggle/",
+        views_favorites.toggle_favorite_product,
+        name="toggle_favorite_product",
+    ),
 
     # Contacto
     path("api/contact/", views_contact.contact, name="contact"),

@@ -40,6 +40,7 @@ class ProductSerializer(serializers.ModelSerializer):
     """
 
     category = serializers.SerializerMethodField()
+    is_favorite = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -51,6 +52,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "price",
             "image",
             "stock",
+            "is_favorite",
         )
 
     def get_category(self, obj):
@@ -62,6 +64,15 @@ class ProductSerializer(serializers.ModelSerializer):
             return None
 
         return CategorySerializer(obj.category).data
+
+    def get_is_favorite(self, obj):
+        """
+        Nombre: get_is_favorite
+        Descripcion: Indica si el producto esta marcado como favorito para el usuario actual.
+        """
+        favorite_product_ids = self.context.get("favorite_product_ids", set())
+
+        return obj.id in favorite_product_ids
 
 
 class ContactLeadSerializer(serializers.ModelSerializer):

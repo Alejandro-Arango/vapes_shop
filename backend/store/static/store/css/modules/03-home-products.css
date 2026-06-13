@@ -151,6 +151,7 @@ body.light-mode .about {
     background: #ffffff;
     border-radius: 18px;
     overflow: hidden;
+    position: relative;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     display: flex;
     flex-direction: column;
@@ -172,6 +173,36 @@ body.light-mode .about {
     padding: 24px 24px 12px;
     background: #fff;
     display: block;
+}
+
+.favorite-toggle {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(18, 63, 53, 0.12);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--muted-light);
+    cursor: pointer;
+    box-shadow: 0 10px 22px rgba(18, 63, 53, 0.12);
+    transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease;
+    z-index: 2;
+}
+
+.favorite-toggle:hover,
+.favorite-toggle.active {
+    color: #fff;
+    background: var(--warning-accent);
+    transform: translateY(-1px);
+}
+
+.favorite-toggle:disabled {
+    opacity: 0.65;
+    cursor: wait;
 }
 
 .product-info {

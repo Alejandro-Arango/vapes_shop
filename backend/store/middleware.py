@@ -61,6 +61,7 @@ class ApiCacheControlMiddleware:
         "/api/auth/",
         "/api/cart/",
         "/api/contact/",
+        "/api/favorites/",
         "/api/health/",
         "/api/orders/",
     )

@@ -24,6 +24,8 @@ const api = {
     checkout: "/api/orders/checkout/",
     myOrders: "/api/orders/my/",
     contact: "/api/contact/",
+    favorites: "/api/favorites/",
+    toggleFavorite: "/api/favorites/toggle/",
 
     orderDetail: (orderId) => `/api/orders/${orderId}/`,
     reorderOrder: (orderId) => `/api/orders/reorder/${orderId}/`,
@@ -376,6 +378,26 @@ function clearOrdersFeedback() {
     feedback.style.display = "none";
 }
 
+function showFavoritesFeedback(message, type = "success") {
+    const feedback = document.getElementById("favorites-feedback");
+
+    if (!feedback) return;
+
+    feedback.textContent = message;
+    feedback.className = `orders-feedback ${type}`;
+    feedback.style.display = "block";
+}
+
+function clearFavoritesFeedback() {
+    const feedback = document.getElementById("favorites-feedback");
+
+    if (!feedback) return;
+
+    feedback.textContent = "";
+    feedback.className = "orders-feedback";
+    feedback.style.display = "none";
+}
+
 function showContactFeedback(message, type = "success") {
     const feedback = document.getElementById("contact-feedback");
 
@@ -472,10 +494,12 @@ function setAuthUI(isLoggedIn, user = null) {
     const btnLogout = document.getElementById("logout-btn");
     const labelUser = document.getElementById("user-label");
     const btnMyOrders = document.getElementById("my-orders-btn");
+    const btnFavorites = document.getElementById("favorites-btn");
 
     if (btnLogin) btnLogin.style.display = isLoggedIn ? "none" : "inline-flex";
     if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
     if (btnMyOrders) btnMyOrders.style.display = isLoggedIn ? "inline-flex" : "none";
+    if (btnFavorites) btnFavorites.style.display = isLoggedIn ? "inline-flex" : "none";
 
     if (labelUser) {
         labelUser.textContent = isLoggedIn
@@ -584,7 +608,9 @@ async function logoutUser() {
     setAuthUI(false);
     clearCartFeedback();
     clearOrdersFeedback();
+    clearFavoritesFeedback();
     hideOrderCancelConfirm();
+    closeModalSafely(document.getElementById("favorites-modal"));
 
     clearShippingForm();
     resetCheckoutSummary();
@@ -629,6 +655,294 @@ async function submitContactLead(contactData) {
     }
 
     return data;
+}
+
+// =============================================================================
+//  FAVORITOS
+// =============================================================================
+
+async function fetchFavorites() {
+    const res = await fetch(api.favorites, {
+        credentials: "include",
+    });
+
+    if (res.status === 401 || res.status === 403) {
+        return { notLogged: true, favorites: [] };
+    }
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.error || "No se pudieron cargar los favoritos");
+    }
+
+    return data;
+}
+
+async function toggleFavorite(productId) {
+    const res = await fetch(api.toggleFavorite, {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ productId }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+        const err = new Error(data?.error || "No se pudo actualizar el favorito");
+
+        err.authRequired = res.status === 401 || res.status === 403;
+
+        throw err;
+    }
+
+    return data;
+}
+
+function getFavoriteButtonLabel(product) {
+    return product?.is_favorite
+        ? "Quitar de favoritos"
+        : "Agregar a favoritos";
+}
+
+function getFavoriteIconClass(product) {
+    return product?.is_favorite ? "fas" : "far";
+}
+
+function renderFavoriteIconButton(product) {
+    const activeClass = product?.is_favorite ? "active" : "";
+    const label = getFavoriteButtonLabel(product);
+
+    return `
+        <button
+            class="favorite-toggle ${activeClass}"
+            type="button"
+            data-favorite-id="${product.id}"
+            aria-label="${label}"
+            title="${label}"
+        >
+            <i class="${getFavoriteIconClass(product)} fa-heart"></i>
+        </button>
+    `;
+}
+
+function mergeProductsIntoCatalog(products) {
+    products.forEach((product) => {
+        const index = catalogProducts.findIndex(
+            (item) => Number(item.id) === Number(product.id)
+        );
+
+        if (index >= 0) {
+            catalogProducts[index] = {
+                ...catalogProducts[index],
+                ...product,
+            };
+        } else {
+            catalogProducts.push(product);
+        }
+    });
+}
+
+function setCatalogProductFavoriteState(productId, isFavorite) {
+    catalogProducts = catalogProducts.map((product) => {
+        if (Number(product.id) !== Number(productId)) return product;
+
+        return {
+            ...product,
+            is_favorite: isFavorite,
+        };
+    });
+}
+
+function updateFavoriteButtons(productId, isFavorite) {
+    document
+        .querySelectorAll(`[data-favorite-id="${productId}"]`)
+        .forEach((btn) => {
+            const label = isFavorite
+                ? "Quitar de favoritos"
+                : "Agregar a favoritos";
+            const icon = btn.querySelector("i");
+            const text = btn.querySelector(".favorite-text");
+
+            btn.classList.toggle("active", isFavorite);
+            btn.setAttribute("aria-label", label);
+            btn.setAttribute("title", label);
+
+            if (icon) {
+                icon.className = `${isFavorite ? "fas" : "far"} fa-heart`;
+            }
+
+            if (text) {
+                text.textContent = isFavorite ? "Favorito" : "Guardar";
+            }
+        });
+}
+
+async function handleFavoriteToggle(btn, productId, options = {}) {
+    const originalDisabled = btn.disabled;
+
+    btn.disabled = true;
+
+    try {
+        const result = await toggleFavorite(productId);
+
+        setCatalogProductFavoriteState(result.product_id, result.is_favorite);
+        updateFavoriteButtons(result.product_id, result.is_favorite);
+        showToast(result.message || "Favoritos actualizados.", "success");
+
+        if (options.refreshFavorites) {
+            await loadAndRenderFavorites();
+        }
+    } catch (err) {
+        if (err.authRequired) {
+            showToast("Inicia sesion para guardar favoritos.", "error");
+            document.getElementById("open-auth")?.click();
+        } else {
+            showToast(err.message || "No se pudo actualizar favoritos.", "error");
+        }
+    } finally {
+        btn.disabled = originalDisabled;
+    }
+}
+
+function renderFavorites(data) {
+    const body = document.getElementById("favorites-body");
+
+    if (!body) return;
+
+    if (data?.notLogged) {
+        body.innerHTML = `<p class="muted">Debes iniciar sesion para ver tus favoritos.</p>`;
+        return;
+    }
+
+    const favorites = data?.favorites || [];
+
+    if (!favorites.length) {
+        body.innerHTML = `
+            <div class="empty-orders">
+                <div class="empty-orders-icon">Favoritos</div>
+
+                <h3>Aun no tienes favoritos</h3>
+
+                <p>Marca productos con el corazon para encontrarlos mas rapido.</p>
+
+                <button class="btn favorites-explore-btn">
+                    Explorar productos
+                </button>
+            </div>
+        `;
+
+        document
+            .querySelector(".favorites-explore-btn")
+            ?.addEventListener("click", () => {
+                const modal = document.getElementById("favorites-modal");
+                const favoritesBtn = document.getElementById("favorites-btn");
+
+                closeModalSafely(modal, favoritesBtn);
+
+                document
+                    .getElementById("productos")
+                    ?.scrollIntoView({
+                        behavior: "smooth",
+                    });
+            });
+
+        return;
+    }
+
+    mergeProductsIntoCatalog(favorites);
+
+    body.innerHTML = `
+        <div class="favorites-grid">
+            ${favorites
+                .map((product) => {
+                    const stock = Number(product.stock || 0);
+                    const addButton = stock > 0
+                        ? `
+                            <button class="btn small favorite-cart-btn" data-id="${product.id}">
+                                Agregar
+                            </button>
+                        `
+                        : `<button class="btn small" disabled>Sin stock</button>`;
+
+                    return `
+                        <article class="favorite-item">
+                            <img
+                                src="${escapeHtml(product.image) || "/static/store/img/STLTH.webp"}"
+                                alt="${escapeHtml(product.name)}"
+                            />
+
+                            <div>
+                                <h3>${escapeHtml(product.name)}</h3>
+
+                                <p class="muted">$${Number(product.price || 0).toFixed(2)}</p>
+
+                                <div class="favorite-item-actions">
+                                    <button class="btn small favorite-detail-btn" data-id="${product.id}">
+                                        Ver detalle
+                                    </button>
+
+                                    ${addButton}
+
+                                    <button
+                                        class="btn small btn-outline favorite-remove-btn"
+                                        data-favorite-id="${product.id}"
+                                    >
+                                        Quitar
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
+                    `;
+                })
+                .join("")}
+        </div>
+    `;
+
+    document.querySelectorAll(".favorite-detail-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            openProductDetail(Number(btn.dataset.id));
+        });
+    });
+
+    document.querySelectorAll(".favorite-cart-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            await addToCart(Number(btn.dataset.id), 1);
+        });
+    });
+
+    document.querySelectorAll(".favorite-remove-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            await handleFavoriteToggle(btn, btn.dataset.favoriteId, {
+                refreshFavorites: true,
+            });
+        });
+    });
+}
+
+async function loadAndRenderFavorites() {
+    const body = document.getElementById("favorites-body");
+
+    if (body) {
+        body.innerHTML = `<p class="muted">Cargando favoritos...</p>`;
+    }
+
+    clearFavoritesFeedback();
+
+    try {
+        const data = await fetchFavorites();
+
+        renderFavorites(data);
+    } catch (err) {
+        showFavoritesFeedback(
+            err.message || "No se pudieron cargar los favoritos.",
+            "error"
+        );
+
+        if (body) {
+            body.innerHTML = `<p class="muted">Error cargando favoritos.</p>`;
+        }
+    }
 }
 
 // =============================================================================
@@ -1412,6 +1726,18 @@ function renderProductDetail(product) {
     const addButton = stock > 0
         ? `<button class="btn product-detail-add" data-id="${product.id}">Agregar al carrito</button>`
         : `<button class="btn product-detail-add" disabled>Sin stock</button>`;
+    const favoriteAction = `
+        <button
+            class="btn btn-outline product-detail-favorite ${product.is_favorite ? "active" : ""}"
+            type="button"
+            data-favorite-id="${product.id}"
+            aria-label="${getFavoriteButtonLabel(product)}"
+            title="${getFavoriteButtonLabel(product)}"
+        >
+            <i class="${getFavoriteIconClass(product)} fa-heart"></i>
+            <span class="favorite-text">${product.is_favorite ? "Favorito" : "Guardar"}</span>
+        </button>
+    `;
     const categoryName = getProductCategoryName(product);
     const categoryBadge = categoryName
         ? `<span class="product-category-badge">${escapeHtml(categoryName)}</span>`
@@ -1446,6 +1772,8 @@ function renderProductDetail(product) {
                 <div class="product-detail-actions">
                     ${addButton}
 
+                    ${favoriteAction}
+
                     <button class="btn btn-outline product-detail-close-secondary">
                         Seguir viendo
                     </button>
@@ -1458,6 +1786,12 @@ function renderProductDetail(product) {
         .querySelector(".product-detail-add")
         ?.addEventListener("click", async () => {
             await addToCart(Number(product.id), 1);
+        });
+
+    document
+        .querySelector(".product-detail-favorite")
+        ?.addEventListener("click", async (event) => {
+            await handleFavoriteToggle(event.currentTarget, product.id);
         });
 
     document
@@ -1578,6 +1912,8 @@ function renderProducts(products, options = {}) {
                         alt="${escapeHtml(product.name)}"
                     />
 
+                    ${renderFavoriteIconButton(product)}
+
                     <div class="product-info">
                         ${categoryBadge}
 
@@ -1600,13 +1936,14 @@ function renderProducts(products, options = {}) {
 
     document.querySelectorAll(".product-card-clickable").forEach((card) => {
         card.addEventListener("click", (event) => {
-            if (event.target.closest(".add-to-cart")) return;
+            if (event.target.closest(".add-to-cart, .favorite-toggle")) return;
 
             openProductDetail(Number(card.dataset.id));
         });
 
         card.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;
+            if (event.target.closest(".favorite-toggle")) return;
 
             openProductDetail(Number(card.dataset.id));
         });
@@ -1617,6 +1954,14 @@ function renderProducts(products, options = {}) {
             event.stopPropagation();
 
             addToCart(Number(btn.dataset.id), 1);
+        });
+    });
+
+    document.querySelectorAll(".favorite-toggle").forEach((btn) => {
+        btn.addEventListener("click", async (event) => {
+            event.stopPropagation();
+
+            await handleFavoriteToggle(btn, btn.dataset.favoriteId);
         });
     });
 }
@@ -2390,6 +2735,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const ordersStatusFilter = document.getElementById("orders-status-filter");
     const ordersConfirmYes = document.getElementById("orders-confirm-yes");
     const ordersConfirmNo = document.getElementById("orders-confirm-no");
+    const favoritesBtn = document.getElementById("favorites-btn");
+    const favoritesModal = document.getElementById("favorites-modal");
+    const favoritesClose = document.getElementById("favorites-close");
 
     const checkoutSuccessModal = document.getElementById("checkout-success-modal");
     const checkoutSuccessClose = document.getElementById("checkout-success-close");
@@ -2842,6 +3190,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             await refreshAuthState();
             await updateCartUI();
+            await refreshProductsUI();
         } catch {
             showAuthFeedback("No se pudo iniciar sesion. Verifica tus datos.", "error");
         }
@@ -2891,6 +3240,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 await refreshAuthState();
                 await updateCartUI();
+                await refreshProductsUI();
             }, 800);
         } catch (err) {
             showAuthFeedback(err.message || "No se pudo registrar la cuenta.", "error");
@@ -2899,6 +3249,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     btnLogout?.addEventListener("click", async () => {
         await logoutUser();
+    });
+
+    favoritesBtn?.addEventListener("click", async () => {
+        favoritesModal?.setAttribute("aria-hidden", "false");
+        favoritesModal?.classList.add("open");
+
+        await loadAndRenderFavorites();
+    });
+
+    favoritesClose?.addEventListener("click", () => {
+        clearFavoritesFeedback();
+
+        closeModalSafely(favoritesModal, favoritesBtn);
     });
 
     contactForm?.addEventListener("submit", async (event) => {

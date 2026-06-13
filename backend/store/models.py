@@ -135,6 +135,41 @@ class Product(models.Model):
         return self.name
 
 
+class FavoriteProduct(models.Model):
+    """
+    Nombre: FavoriteProduct
+    Descripcion: Guarda productos favoritos por usuario para consulta rapida en la tienda.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favorite_products",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="favorited_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["user", "created_at"], name="favorite_user_date_idx"),
+            models.Index(fields=["product", "created_at"], name="favorite_product_date_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "product"],
+                name="favorite_user_product_unique",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user} - {self.product}"
+
+
 class ContactLead(models.Model):
     """
     Nombre: ContactLead

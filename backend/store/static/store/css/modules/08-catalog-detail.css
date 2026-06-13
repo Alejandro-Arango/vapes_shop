@@ -281,6 +281,7 @@ body.light-mode .quick-filter.active {
     border-radius: 18px;
     padding: 18px;
     border: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
 }
 
 .product-detail-image img {
@@ -327,6 +328,17 @@ body.light-mode .quick-filter.active {
     flex-wrap: wrap;
     gap: 12px;
     margin-top: 8px;
+}
+
+.product-detail-favorite {
+    min-height: 46px;
+    gap: 8px;
+}
+
+.product-detail-favorite.active {
+    background: var(--warning-accent);
+    border-color: var(--warning-accent);
+    color: #fff;
 }
 
 body.light-mode .product-detail-image {

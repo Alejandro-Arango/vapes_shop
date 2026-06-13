@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from .models import Category, Product
+from .models import Category, FavoriteProduct, Product
 from .serializers import CategorySerializer, ProductSerializer
 
 
@@ -132,6 +132,30 @@ def paginate_products(products, request):
     return products[start:end], pagination
 
 
+def get_user_favorite_product_ids(request, products):
+    """
+    Nombre: get_user_favorite_product_ids
+    Descripcion: Obtiene los IDs favoritos del usuario para los productos entregados.
+    """
+    if not request.user.is_authenticated:
+        return set()
+
+    product_ids = [
+        product.id
+        for product in products
+    ]
+
+    if not product_ids:
+        return set()
+
+    return set(
+        FavoriteProduct.objects.filter(
+            user=request.user,
+            product_id__in=product_ids,
+        ).values_list("product_id", flat=True)
+    )
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
@@ -183,7 +207,13 @@ def api_products(request):
 
     if should_paginate_products(request):
         products, pagination = paginate_products(products, request)
-        serializer = ProductSerializer(products, many=True)
+        products = list(products)
+        favorite_product_ids = get_user_favorite_product_ids(request, products)
+        serializer = ProductSerializer(
+            products,
+            many=True,
+            context={"favorite_product_ids": favorite_product_ids},
+        )
 
         return Response(
             {
@@ -192,7 +222,14 @@ def api_products(request):
             }
         )
 
-    serializer = ProductSerializer(products, many=True)
+    products = list(products)
+    favorite_product_ids = get_user_favorite_product_ids(request, products)
+    serializer = ProductSerializer(
+        products,
+        many=True,
+        context={"favorite_product_ids": favorite_product_ids},
+    )
+
     return Response(serializer.data)
 
 
