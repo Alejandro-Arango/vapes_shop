@@ -1440,6 +1440,45 @@ class StoreApiTests(APITestCase):
             ).exists()
         )
 
+    def test_user_can_view_own_order_detail(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Detalle",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="enviado",
+            completed=True,
+            shipping_name="Cliente Detalle",
+            shipping_phone="3001234567",
+            shipping_address="Calle 123",
+            shipping_city="Medellin",
+            shipping_notes="Porteria",
+            age_verified=True,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=2,
+        )
+
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.get(reverse("order_detail", args=[order.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], order.id)
+        self.assertEqual(response.data["status"], "enviado")
+        self.assertEqual(response.data["total"], 20.0)
+        self.assertEqual(response.data["shipping"]["city"], "Medellin")
+        self.assertEqual(response.data["shipping"]["notes"], "Porteria")
+        self.assertEqual(response.data["items"][0]["product"]["name"], self.product.name)
+        self.assertEqual(response.data["items"][0]["quantity"], 2)
+        self.assertEqual(response.data["items"][0]["line_total"], 20.0)
+
     def test_reorder_adds_available_items_to_cart(self):
         user = self.create_user()
         customer = Customer.objects.create(

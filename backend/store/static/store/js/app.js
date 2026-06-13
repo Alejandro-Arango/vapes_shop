@@ -25,6 +25,7 @@ const api = {
     myOrders: "/api/orders/my/",
     contact: "/api/contact/",
 
+    orderDetail: (orderId) => `/api/orders/${orderId}/`,
     reorderOrder: (orderId) => `/api/orders/reorder/${orderId}/`,
     cancelOrder: (orderId) => `/api/orders/cancel/${orderId}/`,
 };
@@ -681,6 +682,20 @@ async function fetchMyOrders(page = ordersPagination.page) {
     return await res.json();
 }
 
+async function fetchOrderDetail(orderId) {
+    const res = await fetch(api.orderDetail(orderId), {
+        credentials: "include",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.error || "No se pudo cargar el detalle del pedido");
+    }
+
+    return data;
+}
+
 /*
  * Nombre: cancelOrder
  * Descripcion: Solicita al backend cancelar una orden especifica.
@@ -874,6 +889,8 @@ async function loadAndRenderOrders(page = ordersPagination.page) {
 
 async function goToOrdersPage(page) {
     ordersPagination.page = Math.max(1, Number(page || 1));
+    hideOrderDetailPanel();
+
     await loadAndRenderOrders(ordersPagination.page);
 }
 
@@ -923,6 +940,90 @@ function renderOrdersPagination(pagination) {
     });
 }
 
+function hideOrderDetailPanel() {
+    const panel = document.getElementById("orders-detail");
+
+    if (!panel) return;
+
+    panel.setAttribute("hidden", "hidden");
+    panel.innerHTML = "";
+}
+
+function renderOrderDetailPanel(order) {
+    const panel = document.getElementById("orders-detail");
+
+    if (!panel || !order) return;
+
+    const fechaStr = order.date_ordered
+        ? new Date(order.date_ordered).toLocaleString()
+        : "";
+    const itemsHtml = (order.items || [])
+        .map((item) => `
+            <div class="orders-detail-item">
+                <div>
+                    <strong>${escapeHtml(item.product?.name || "Producto")}</strong>
+
+                    <span class="muted">
+                        $${Number(item.product?.price || 0).toFixed(2)}
+                        x ${Number(item.quantity || 0)}
+                    </span>
+                </div>
+
+                <strong>$${Number(item.line_total || 0).toFixed(2)}</strong>
+            </div>
+        `)
+        .join("");
+
+    panel.removeAttribute("hidden");
+    panel.innerHTML = `
+        <div class="orders-detail-head">
+            <div>
+                <span class="section-eyebrow">Detalle del pedido</span>
+
+                <h3>Pedido #${order.id}</h3>
+
+                <p class="muted">${fechaStr}</p>
+            </div>
+
+            <button class="btn small orders-detail-close" type="button">
+                Cerrar detalle
+            </button>
+        </div>
+
+        ${renderOrderTimeline(order)}
+
+        <div class="orders-detail-grid">
+            <section>
+                <h4>Productos</h4>
+
+                <div class="orders-detail-items">
+                    ${itemsHtml || `<p class="muted">Sin productos registrados.</p>`}
+                </div>
+            </section>
+
+            <section>
+                <h4>Resumen</h4>
+
+                <p>
+                    <strong>Estado:</strong>
+                    ${escapeHtml(formatOrderStatus(order))}
+                </p>
+
+                <p>
+                    <strong>Total:</strong>
+                    $${Number(order.total || 0).toFixed(2)}
+                </p>
+            </section>
+        </div>
+
+        ${renderShippingInfo(order)}
+    `;
+
+    panel
+        .querySelector(".orders-detail-close")
+        ?.addEventListener("click", hideOrderDetailPanel);
+}
+
 /*
  * Nombre: renderMyOrders
  * Descripcion: Renderiza el historial de pedidos, estados, productos, totales y acciones disponibles.
@@ -932,6 +1033,8 @@ function renderMyOrders(data) {
     const paginationEl = document.getElementById("orders-pagination");
 
     if (!body) return;
+
+    hideOrderDetailPanel();
 
     if (data?.notLogged) {
         paginationEl?.setAttribute("hidden", "hidden");
@@ -1040,6 +1143,10 @@ function renderMyOrders(data) {
                     </div>
 
                     <div class="order-actions">
+                        <button class="btn small order-detail-btn" data-id="${order.id}">
+                            Ver detalle
+                        </button>
+
                         <button class="btn small reorder-order-btn" data-id="${order.id}">
                             Comprar de nuevo
                         </button>
@@ -1054,6 +1161,31 @@ function renderMyOrders(data) {
     document.querySelectorAll(".cancel-order-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
             showOrderCancelConfirm(btn.dataset.id, btn);
+        });
+    });
+
+    document.querySelectorAll(".order-detail-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            const originalText = btn.textContent;
+
+            clearOrdersFeedback();
+
+            try {
+                btn.disabled = true;
+                btn.textContent = "Cargando...";
+
+                const order = await fetchOrderDetail(btn.dataset.id);
+
+                renderOrderDetailPanel(order);
+            } catch (err) {
+                showOrdersFeedback(
+                    err.message || "No se pudo cargar el detalle del pedido.",
+                    "error"
+                );
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
         });
     });
 
@@ -2867,6 +2999,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (ordersStatusFilter) ordersStatusFilter.value = "all";
 
         clearOrdersFeedback();
+        hideOrderDetailPanel();
 
         try {
             await loadAndRenderOrders(ordersPagination.page);
@@ -2885,12 +3018,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     ordersClose?.addEventListener("click", () => {
         hideOrderCancelConfirm();
+        hideOrderDetailPanel();
 
         closeModalSafely(ordersModal, myOrdersBtn);
     });
 
     ordersStatusFilter?.addEventListener("change", async () => {
         clearOrdersFeedback();
+        hideOrderDetailPanel();
         ordersPagination.page = 1;
 
         try {
