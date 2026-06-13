@@ -39,6 +39,11 @@ urlpatterns = [
     # Ordenes
     path("api/orders/checkout/", views_orders.checkout, name="checkout"),
     path("api/orders/my/", views_orders.my_orders, name="my_orders"),
+    path(
+        "api/orders/reorder/<int:order_id>/",
+        views_orders.reorder_order,
+        name="reorder_order",
+    ),
     path("api/orders/<int:order_id>/", views_orders.order_detail, name="order_detail"),
     path("api/orders/cancel/<int:order_id>/", views_orders.cancel_order, name="cancel_order"),
 

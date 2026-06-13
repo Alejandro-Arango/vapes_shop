@@ -14,10 +14,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .audit import log_event
-from .cart_utils import sync_cart_with_products
+from .cart_utils import parse_positive_quantity, sync_cart_with_products
 from .customer_utils import ensure_customer_for_user
 from .models import Product, Customer, Order, OrderItem
-from .throttles import CheckoutUserRateThrottle
+from .throttles import CartRateThrottle, CheckoutUserRateThrottle
 
 
 PHONE_PATTERN = re.compile(r"^[0-9\s()+-]+$")
@@ -664,6 +664,140 @@ def order_detail(request, order_id):
 
     return Response(
         serialize_order(order),
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@throttle_classes([CartRateThrottle])
+def reorder_order(request, order_id):
+    """
+    Nombre: reorder_order
+    Descripcion: Agrega al carrito los productos disponibles de un pedido anterior del usuario.
+    """
+    try:
+        customer = request.user.customer
+    except Customer.DoesNotExist:
+        log_event(
+            "order_reorder_failed",
+            "Recompra rechazada porque el usuario no tiene customer.",
+            request=request,
+            severity="warning",
+            metadata={"order_id": order_id},
+        )
+
+        return Response(
+            {"error": "No existe un customer asociado a este usuario"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        order = (
+            Order.objects
+            .prefetch_related("orderitem_set__product")
+            .get(id=order_id, customer=customer)
+        )
+    except Order.DoesNotExist:
+        log_event(
+            "order_reorder_failed",
+            "Recompra rechazada porque la orden no existe para el usuario.",
+            request=request,
+            severity="warning",
+            metadata={"order_id": order_id},
+        )
+
+        return Response(
+            {"error": "Orden no encontrada"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    cart = request.session.get("cart", {})
+
+    if not isinstance(cart, dict):
+        cart = {}
+
+    added_items = []
+    skipped_items = []
+
+    for item in order.orderitem_set.all():
+        product = item.product
+        product_id = str(product.id)
+        current_quantity = parse_positive_quantity(cart.get(product_id, 0)) or 0
+
+        if not product.is_active:
+            skipped_items.append({
+                "product_id": product.id,
+                "product_name": item.display_product_name,
+                "reason": "Producto no disponible",
+            })
+            continue
+
+        available_quantity = product.stock - current_quantity
+
+        if available_quantity <= 0:
+            skipped_items.append({
+                "product_id": product.id,
+                "product_name": item.display_product_name,
+                "reason": "Stock insuficiente",
+            })
+            continue
+
+        quantity_to_add = min(item.quantity, available_quantity)
+
+        cart[product_id] = current_quantity + quantity_to_add
+        added_items.append({
+            "product_id": product.id,
+            "product_name": product.name,
+            "quantity": quantity_to_add,
+        })
+
+        if quantity_to_add < item.quantity:
+            skipped_items.append({
+                "product_id": product.id,
+                "product_name": item.display_product_name,
+                "reason": "Stock parcial",
+            })
+
+    if not added_items:
+        log_event(
+            "order_reorder_failed",
+            "Recompra rechazada porque no hubo productos disponibles.",
+            request=request,
+            severity="warning",
+            metadata={"order_id": order_id},
+        )
+
+        return Response(
+            {
+                "error": "No hay productos disponibles para repetir este pedido",
+                "skipped_items": skipped_items,
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    request.session["cart"] = cart
+    request.session.modified = True
+
+    log_event(
+        "order_reorder_success",
+        "Productos de pedido anterior agregados al carrito.",
+        request=request,
+        metadata={
+            "order_id": order.id,
+            "added_items": len(added_items),
+            "skipped_items": len(skipped_items),
+        },
+    )
+
+    return Response(
+        {
+            "ok": True,
+            "message": "Productos agregados al carrito",
+            "cart": cart,
+            "added_items": added_items,
+            "skipped_items": skipped_items,
+        },
         status=status.HTTP_200_OK
     )
 

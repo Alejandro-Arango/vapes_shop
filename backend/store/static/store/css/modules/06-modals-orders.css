@@ -187,6 +187,13 @@ body.light-mode .orders-controls select {
     font-size: 15px;
 }
 
+.order-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
 /*
  * Nombre: Paginacion de pedidos
  * Descripcion: Define controles para navegar historiales largos dentro del modal de pedidos.

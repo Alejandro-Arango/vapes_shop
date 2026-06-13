@@ -1351,11 +1351,13 @@ class StoreApiTests(APITestCase):
         orders_response = self.client.get(reverse("my_orders"))
         detail_response = self.client.get(reverse("order_detail", args=[order.id]))
         cancel_response = self.client.post(reverse("cancel_order", args=[order.id]))
+        reorder_response = self.client.post(reverse("reorder_order", args=[order.id]))
 
         self.assertEqual(orders_response.status_code, status.HTTP_200_OK)
         self.assertEqual(orders_response.data["orders"], [])
         self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(cancel_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(reorder_response.status_code, status.HTTP_404_NOT_FOUND)
 
         order.refresh_from_db()
         self.product.refresh_from_db()
@@ -1373,6 +1375,77 @@ class StoreApiTests(APITestCase):
                 metadata__order_id=order.id,
             ).exists()
         )
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="order_reorder_failed",
+                metadata__order_id=order.id,
+            ).exists()
+        )
+
+    def test_reorder_adds_available_items_to_cart(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Recompra",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="entregado",
+            completed=True,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=2,
+        )
+
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.post(reverse("reorder_order", args=[order.id]))
+        session_cart = self.client.session.get("cart", {})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["ok"])
+        self.assertEqual(session_cart[str(self.product.id)], 2)
+        self.assertEqual(response.data["added_items"][0]["quantity"], 2)
+        self.assertEqual(response.data["skipped_items"], [])
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="order_reorder_success",
+                metadata__order_id=order.id,
+            ).exists()
+        )
+
+    def test_reorder_rejects_when_no_items_are_available(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Recompra",
+            email=user.email,
+        )
+        self.product.stock = 0
+        self.product.save(update_fields=["stock"])
+        order = Order.objects.create(
+            customer=customer,
+            status="entregado",
+            completed=True,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=1,
+        )
+
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.post(reverse("reorder_order", args=[order.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("disponibles", response.data["error"])
+        self.assertEqual(self.client.session.get("cart", {}), {})
 
     def test_my_orders_paginates_results(self):
         user = self.create_user()

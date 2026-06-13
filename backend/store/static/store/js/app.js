@@ -24,6 +24,7 @@ const api = {
     myOrders: "/api/orders/my/",
     contact: "/api/contact/",
 
+    reorderOrder: (orderId) => `/api/orders/reorder/${orderId}/`,
     cancelOrder: (orderId) => `/api/orders/cancel/${orderId}/`,
 };
 
@@ -700,6 +701,26 @@ async function cancelOrder(orderId) {
 }
 
 /*
+ * Nombre: reorderOrder
+ * Descripcion: Agrega al carrito productos disponibles de un pedido anterior.
+ */
+async function reorderOrder(orderId) {
+    const res = await fetch(api.reorderOrder(orderId), {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.error || "No se pudo repetir el pedido");
+    }
+
+    return data;
+}
+
+/*
  * Nombre: renderShippingInfo
  * Descripcion: Genera el bloque visual con los datos de envio asociados a una orden.
  */
@@ -1017,7 +1038,11 @@ function renderMyOrders(data) {
                         <strong>$${Number(order.total || 0).toFixed(2)}</strong>
                     </div>
 
-                    <div style="margin-top: 12px;">
+                    <div class="order-actions">
+                        <button class="btn small reorder-order-btn" data-id="${order.id}">
+                            Comprar de nuevo
+                        </button>
+
                         ${cancelButton}
                     </div>
                 </div>
@@ -1028,6 +1053,40 @@ function renderMyOrders(data) {
     document.querySelectorAll(".cancel-order-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
             showOrderCancelConfirm(btn.dataset.id, btn);
+        });
+    });
+
+    document.querySelectorAll(".reorder-order-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            const originalText = btn.textContent;
+
+            clearOrdersFeedback();
+
+            try {
+                btn.disabled = true;
+                btn.textContent = "Agregando...";
+
+                const result = await reorderOrder(btn.dataset.id);
+
+                await updateCartUI();
+
+                const skippedCount = Number(result.skipped_items?.length || 0);
+                const message = skippedCount
+                    ? "Agregamos los productos disponibles. Algunos no tenian stock."
+                    : result.message || "Productos agregados al carrito.";
+
+                showOrdersFeedback(message, skippedCount ? "error" : "success");
+                showToast("Productos agregados al carrito.", "success");
+            } catch (err) {
+                showOrdersFeedback(
+                    err.message || "No se pudo repetir el pedido.",
+                    "error"
+                );
+                showToast("No se pudo repetir el pedido.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
         });
     });
 }
