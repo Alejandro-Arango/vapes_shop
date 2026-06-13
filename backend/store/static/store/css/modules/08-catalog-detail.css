@@ -186,6 +186,68 @@ body.light-mode .quick-filter.active {
 }
 
 /*
+ * Nombre: Paginacion del catalogo
+ * Descripcion: Define controles para navegar productos por paginas sin cargar todo el catalogo.
+ */
+.catalog-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin: 30px 0 8px;
+}
+
+.catalog-pagination[hidden] {
+    display: none;
+}
+
+.catalog-page-btn {
+    min-width: 116px;
+    min-height: 42px;
+    padding: 10px 18px;
+    border: 1px solid rgba(18, 63, 53, 0.14);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--accent);
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.catalog-page-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.catalog-page-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.catalog-page-status {
+    min-width: 120px;
+    text-align: center;
+    color: var(--muted-light);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+@media (max-width: 520px) {
+    .catalog-pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .catalog-page-btn,
+    .catalog-page-status {
+        width: 100%;
+    }
+}
+
+/*
  * Nombre: Modal de detalle de producto
  * Descripcion: Define la presentacion visual del modal ampliado para productos del catalogo.
  */

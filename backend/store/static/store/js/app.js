@@ -931,10 +931,19 @@ function renderMyOrders(data) {
 
 let catalogProducts = [];
 let catalogCategories = [];
-let catalogTotalCount = 0;
 let catalogFilterRequestId = 0;
 let catalogSearchTimeout = null;
 const catalogSearchDelayMs = 300;
+const catalogPageSize = 6;
+
+let catalogPagination = {
+    page: 1,
+    page_size: catalogPageSize,
+    total: 0,
+    total_pages: 0,
+    has_next: false,
+    has_previous: false,
+};
 
 function getProductCategory(product) {
     return product?.category || null;
@@ -1024,6 +1033,37 @@ async function fetchProducts(query = {}) {
 
         return [];
     }
+}
+
+function normalizeProductResponse(data) {
+    if (Array.isArray(data)) {
+        return {
+            products: data,
+            pagination: {
+                page: 1,
+                page_size: data.length,
+                total: data.length,
+                total_pages: data.length ? 1 : 0,
+                has_next: false,
+                has_previous: false,
+            },
+        };
+    }
+
+    const products = Array.isArray(data?.results) ? data.results : [];
+    const pagination = data?.pagination || {};
+
+    return {
+        products,
+        pagination: {
+            page: Number(pagination.page || 1),
+            page_size: Number(pagination.page_size || catalogPageSize),
+            total: Number(pagination.total || products.length),
+            total_pages: Number(pagination.total_pages || 0),
+            has_next: Boolean(pagination.has_next),
+            has_previous: Boolean(pagination.has_previous),
+        },
+    };
 }
 
 function renderProductsSkeleton(count = 6) {
@@ -1204,7 +1244,7 @@ function renderProducts(products, options = {}) {
             .querySelector(".clear-catalog-filters")
             ?.addEventListener("click", async () => {
                 resetCatalogControls();
-                await applyCatalogFilters();
+                await applyCatalogFiltersNow();
             });
 
         return;
@@ -1282,22 +1322,27 @@ function renderProducts(products, options = {}) {
     });
 }
 
-function updateCatalogResultsInfo(filteredCount, totalCount, isFiltered = false) {
+function updateCatalogResultsInfo(currentCount, totalCount, pagination = null) {
     const resultsInfo = document.getElementById("catalog-results-info");
 
     if (!resultsInfo) return;
 
-    if (!filteredCount && !totalCount) {
+    if (!currentCount && !totalCount) {
         resultsInfo.textContent = "No hay productos cargados.";
         return;
     }
 
-    if (isFiltered && totalCount && filteredCount !== totalCount) {
-        resultsInfo.textContent = `Mostrando ${filteredCount} de ${totalCount} producto(s).`;
+    if (pagination && totalCount) {
+        const page = Number(pagination.page || 1);
+        const pageSize = Number(pagination.page_size || currentCount);
+        const start = ((page - 1) * pageSize) + 1;
+        const end = start + currentCount - 1;
+
+        resultsInfo.textContent = `Mostrando ${start}-${end} de ${totalCount} producto(s).`;
         return;
     }
 
-    resultsInfo.textContent = `Mostrando ${filteredCount} producto(s).`;
+    resultsInfo.textContent = `Mostrando ${currentCount} producto(s).`;
 }
 
 function resetCatalogControls() {
@@ -1320,17 +1365,74 @@ function setActiveQuickFilter(filterValue) {
     });
 }
 
+function resetCatalogPage() {
+    catalogPagination.page = 1;
+}
+
 function scheduleCatalogFilters() {
     clearTimeout(catalogSearchTimeout);
+    resetCatalogPage();
 
     catalogSearchTimeout = setTimeout(() => {
         applyCatalogFilters();
     }, catalogSearchDelayMs);
 }
 
-function applyCatalogFiltersNow() {
+async function applyCatalogFiltersNow() {
     clearTimeout(catalogSearchTimeout);
-    applyCatalogFilters();
+    resetCatalogPage();
+    await applyCatalogFilters();
+}
+
+async function goToCatalogPage(page) {
+    catalogPagination.page = Math.max(1, Number(page || 1));
+    await applyCatalogFilters();
+}
+
+function renderCatalogPagination(pagination) {
+    const paginationEl = document.getElementById("catalog-pagination");
+
+    if (!paginationEl) return;
+
+    const totalPages = Number(pagination.total_pages || 0);
+    const currentPage = Number(pagination.page || 1);
+
+    if (totalPages <= 1) {
+        paginationEl.innerHTML = "";
+        paginationEl.setAttribute("hidden", "hidden");
+        return;
+    }
+
+    paginationEl.removeAttribute("hidden");
+    paginationEl.innerHTML = `
+        <button
+            class="catalog-page-btn"
+            type="button"
+            data-page="${currentPage - 1}"
+            ${pagination.has_previous ? "" : "disabled"}
+        >
+            Anterior
+        </button>
+
+        <span class="catalog-page-status">
+            Pagina ${currentPage} de ${totalPages}
+        </span>
+
+        <button
+            class="catalog-page-btn"
+            type="button"
+            data-page="${currentPage + 1}"
+            ${pagination.has_next ? "" : "disabled"}
+        >
+            Siguiente
+        </button>
+    `;
+
+    paginationEl.querySelectorAll(".catalog-page-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            await goToCatalogPage(btn.dataset.page);
+        });
+    });
 }
 
 async function applyCatalogFilters() {
@@ -1338,25 +1440,34 @@ async function applyCatalogFilters() {
     const query = getCatalogProductQuery(values);
     const isFiltered = hasActiveCatalogFilters(values);
     const requestId = catalogFilterRequestId + 1;
+    const page = Number(catalogPagination.page || 1);
 
     catalogFilterRequestId = requestId;
     renderProductsSkeleton();
 
-    const products = await fetchProducts(query);
+    const data = await fetchProducts({
+        ...query,
+        page,
+        page_size: catalogPageSize,
+    });
+    const { products, pagination } = normalizeProductResponse(data);
 
     if (requestId !== catalogFilterRequestId) return;
 
-    catalogProducts = products;
-
-    if (!isFiltered) {
-        catalogTotalCount = products.length;
+    if (pagination.total_pages > 0 && page > pagination.total_pages) {
+        await goToCatalogPage(pagination.total_pages);
+        return;
     }
+
+    catalogProducts = products;
+    catalogPagination = pagination;
 
     updateCatalogResultsInfo(
         catalogProducts.length,
-        catalogTotalCount || catalogProducts.length,
-        isFiltered
+        catalogPagination.total,
+        catalogPagination
     );
+    renderCatalogPagination(catalogPagination);
 
     renderProducts(catalogProducts, {
         isFiltered,

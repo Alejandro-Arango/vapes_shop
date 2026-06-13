@@ -11,6 +11,9 @@ from .serializers import CategorySerializer, ProductSerializer
 
 
 PRODUCT_STOCK_FILTERS = ("all", "available", "low", "empty")
+PRODUCT_DEFAULT_PAGE = 1
+PRODUCT_DEFAULT_PAGE_SIZE = 6
+PRODUCT_MAX_PAGE_SIZE = 24
 PRODUCT_ORDERING_OPTIONS = {
     "default": ("-created_at", "-id"),
     "price-asc": ("price", "id"),
@@ -27,12 +30,29 @@ def get_product_query_error(request):
     """
     stock_filter = request.query_params.get("stock", "all").strip().lower()
     ordering = request.query_params.get("ordering", "default").strip().lower()
+    page = request.query_params.get("page")
+    page_size = request.query_params.get("page_size")
 
     if stock_filter not in PRODUCT_STOCK_FILTERS:
         return "Filtro de disponibilidad invalido."
 
     if ordering not in PRODUCT_ORDERING_OPTIONS:
         return "Ordenamiento invalido."
+
+    if page is not None and not page.strip().isdigit():
+        return "Pagina invalida."
+
+    if page is not None and int(page) < 1:
+        return "Pagina invalida."
+
+    if page_size is not None and not page_size.strip().isdigit():
+        return "Tamano de pagina invalido."
+
+    if page_size is not None:
+        clean_page_size = int(page_size)
+
+        if clean_page_size < 1 or clean_page_size > PRODUCT_MAX_PAGE_SIZE:
+            return "Tamano de pagina invalido."
 
     return ""
 
@@ -68,6 +88,48 @@ def apply_product_query_params(products, request):
         products = products.filter(stock=0)
 
     return products.order_by(*PRODUCT_ORDERING_OPTIONS[ordering])
+
+
+def should_paginate_products(request):
+    """
+    Nombre: should_paginate_products
+    Descripcion: Determina si el cliente pidio respuesta paginada.
+    """
+    return "page" in request.query_params or "page_size" in request.query_params
+
+
+def get_product_pagination_params(request):
+    """
+    Nombre: get_product_pagination_params
+    Descripcion: Obtiene pagina y tamano de pagina con valores por defecto seguros.
+    """
+    page = int(request.query_params.get("page", PRODUCT_DEFAULT_PAGE))
+    page_size = int(request.query_params.get("page_size", PRODUCT_DEFAULT_PAGE_SIZE))
+
+    return page, page_size
+
+
+def paginate_products(products, request):
+    """
+    Nombre: paginate_products
+    Descripcion: Recorta el queryset y agrega metadatos para navegar el catalogo.
+    """
+    page, page_size = get_product_pagination_params(request)
+    total = products.count()
+    total_pages = (total + page_size - 1) // page_size if total else 0
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    pagination = {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1 and total_pages > 0,
+    }
+
+    return products[start:end], pagination
 
 
 @api_view(["GET"])
@@ -118,6 +180,17 @@ def api_products(request):
         .select_related("category")
     )
     products = apply_product_query_params(products, request)
+
+    if should_paginate_products(request):
+        products, pagination = paginate_products(products, request)
+        serializer = ProductSerializer(products, many=True)
+
+        return Response(
+            {
+                "results": serializer.data,
+                "pagination": pagination,
+            }
+        )
 
     serializer = ProductSerializer(products, many=True)
     return Response(serializer.data)

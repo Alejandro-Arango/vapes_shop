@@ -933,6 +933,14 @@ class StoreApiTests(APITestCase):
             reverse("api_products"),
             {"ordering": "fecha-desc"},
         )
+        invalid_page_response = self.client.get(
+            reverse("api_products"),
+            {"page": "0"},
+        )
+        invalid_page_size_response = self.client.get(
+            reverse("api_products"),
+            {"page_size": "100"},
+        )
 
         self.assertEqual(
             invalid_stock_response.status_code,
@@ -942,6 +950,65 @@ class StoreApiTests(APITestCase):
             invalid_ordering_response.status_code,
             status.HTTP_400_BAD_REQUEST,
         )
+        self.assertEqual(
+            invalid_page_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            invalid_page_size_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    def test_products_api_paginates_when_requested(self):
+        for index in range(8):
+            Product.objects.create(
+                name=f"Producto pagina {index}",
+                description="Producto usado para probar paginacion.",
+                price=Decimal("12.00"),
+                stock=5,
+            )
+
+        response = self.client.get(
+            reverse("api_products"),
+            {
+                "page": "2",
+                "page_size": "3",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 3)
+        self.assertEqual(response.data["pagination"]["page"], 2)
+        self.assertEqual(response.data["pagination"]["page_size"], 3)
+        self.assertEqual(response.data["pagination"]["total"], 9)
+        self.assertEqual(response.data["pagination"]["total_pages"], 3)
+        self.assertTrue(response.data["pagination"]["has_next"])
+        self.assertTrue(response.data["pagination"]["has_previous"])
+
+    def test_products_api_paginates_filtered_results(self):
+        for index in range(5):
+            Product.objects.create(
+                name=f"Pod filtrado {index}",
+                description="Producto recargable para paginacion filtrada.",
+                price=Decimal("32.00"),
+                stock=3,
+            )
+
+        response = self.client.get(
+            reverse("api_products"),
+            {
+                "q": "recargable",
+                "stock": "low",
+                "page": "2",
+                "page_size": "2",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 2)
+        self.assertEqual(response.data["pagination"]["page"], 2)
+        self.assertEqual(response.data["pagination"]["total"], 5)
+        self.assertEqual(response.data["pagination"]["total_pages"], 3)
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         invalid_quantities = (0, "1.5", True, "abc")
