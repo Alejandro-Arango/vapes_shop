@@ -514,6 +514,52 @@ class Order(models.Model):
             product.save(update_fields=["stock"])
 
 
+class OrderStatusHistory(models.Model):
+    """
+    Nombre: OrderStatusHistory
+    Descripcion: Guarda cada cambio de estado de una orden para seguimiento y auditoria.
+    """
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="status_history",
+    )
+    previous_status = models.CharField(
+        max_length=20,
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Order.STATUS_CHOICES,
+    )
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_status_changes",
+    )
+    note = models.CharField(max_length=180, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("created_at",)
+        indexes = [
+            models.Index(
+                fields=["order", "created_at"],
+                name="order_status_order_date_idx",
+            ),
+            models.Index(
+                fields=["status", "created_at"],
+                name="order_status_state_date_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Orden #{self.order_id}: {self.previous_status or '-'} -> {self.status}"
+
+
 class OrderItem(models.Model):
     """
     Nombre: OrderItem

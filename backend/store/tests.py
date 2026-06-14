@@ -50,6 +50,7 @@ from .models import (
     FavoriteProduct,
     Order,
     OrderItem,
+    OrderStatusHistory,
     Product,
     ProductReview,
 )
@@ -1623,6 +1624,10 @@ class StoreApiTests(APITestCase):
         item = order.orderitem_set.get()
         self.assertEqual(item.product_name, "Producto prueba")
         self.assertEqual(item.unit_price, Decimal("10.00"))
+        history = order.status_history.get()
+        self.assertEqual(history.status, "pagado")
+        self.assertEqual(history.previous_status, "")
+        self.assertEqual(history.changed_by, user)
         self.assertTrue(
             EventLog.objects.filter(
                 event_type="checkout_success",
@@ -1640,6 +1645,14 @@ class StoreApiTests(APITestCase):
         self.assertEqual(orders_response.data["orders"][0]["status"], "pagado")
         self.assertEqual(orders_response.data["orders"][0]["status_label"], "Pagado")
         self.assertEqual(orders_response.data["orders"][0]["total"], 20.0)
+        self.assertEqual(
+            orders_response.data["orders"][0]["status_history"][0]["status"],
+            "pagado",
+        )
+        self.assertEqual(
+            orders_response.data["orders"][0]["status_history"][0]["note"],
+            "Pedido creado desde checkout.",
+        )
         self.assertEqual(
             orders_response.data["orders"][0]["items"][0]["product"]["name"],
             "Producto prueba",
@@ -1873,6 +1886,13 @@ class StoreApiTests(APITestCase):
             product=self.product,
             quantity=2,
         )
+        OrderStatusHistory.objects.create(
+            order=order,
+            previous_status="pagado",
+            status="enviado",
+            changed_by=user,
+            note="Pedido enviado por transportadora.",
+        )
 
         self.client.login(username=user.username, password="ClaveSegura123")
 
@@ -1887,6 +1907,12 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.data["items"][0]["product"]["name"], self.product.name)
         self.assertEqual(response.data["items"][0]["quantity"], 2)
         self.assertEqual(response.data["items"][0]["line_total"], 20.0)
+        self.assertEqual(response.data["status_history"][0]["previous_status"], "pagado")
+        self.assertEqual(response.data["status_history"][0]["status"], "enviado")
+        self.assertEqual(
+            response.data["status_history"][0]["note"],
+            "Pedido enviado por transportadora.",
+        )
 
     def test_reorder_adds_available_items_to_cart(self):
         user = self.create_user()
@@ -2170,6 +2196,10 @@ class StoreApiTests(APITestCase):
         order.refresh_from_db()
         self.assertEqual(self.product.stock, 5)
         self.assertEqual(order.status, "cancelado")
+        history = order.status_history.get()
+        self.assertEqual(history.previous_status, "pagado")
+        self.assertEqual(history.status, "cancelado")
+        self.assertEqual(history.changed_by, user)
         self.assertTrue(
             EventLog.objects.filter(
                 event_type="order_cancel_success",
@@ -2368,15 +2398,19 @@ class StoreApiTests(APITestCase):
         )
         admin_model = OrderAdmin(Order, self.admin_site)
         admin_model.message_user = lambda *args, **kwargs: None
+        request = self.create_admin_request()
 
         admin_model.mark_as_preparing(
-            self.create_admin_request(),
+            request,
             Order.objects.filter(id=order.id),
         )
 
         order.refresh_from_db()
         self.assertEqual(order.status, "en_preparacion")
         self.assertTrue(order.completed)
+        first_history = order.status_history.get(status="en_preparacion")
+        self.assertEqual(first_history.previous_status, "pagado")
+        self.assertEqual(first_history.changed_by, request.user)
         self.assertTrue(
             EventLog.objects.filter(
                 event_type="admin_order_preparing",
@@ -2385,13 +2419,16 @@ class StoreApiTests(APITestCase):
         )
 
         admin_model.mark_as_refunded(
-            self.create_admin_request(),
+            request,
             Order.objects.filter(id=order.id),
         )
 
         order.refresh_from_db()
         self.assertEqual(order.status, "reembolsado")
         self.assertFalse(order.completed)
+        second_history = order.status_history.get(status="reembolsado")
+        self.assertEqual(second_history.previous_status, "en_preparacion")
+        self.assertEqual(order.status_history.count(), 2)
         self.assertTrue(
             EventLog.objects.filter(
                 event_type="admin_order_refunded",

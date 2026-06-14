@@ -1435,6 +1435,51 @@ function renderOrderTimeline(order) {
     `;
 }
 
+function renderOrderStatusHistory(order) {
+    const history = Array.isArray(order?.status_history)
+        ? order.status_history
+        : [];
+
+    if (!history.length) return "";
+
+    const items = history
+        .map((entry) => {
+            const dateStr = entry.created_at
+                ? new Date(entry.created_at).toLocaleString()
+                : "";
+
+            return `
+                <li class="order-status-history-item">
+                    <span class="order-status-history-dot"></span>
+
+                    <div>
+                        <strong>${escapeHtml(entry.status_label || entry.status || "Estado")}</strong>
+
+                        <p>
+                            ${escapeHtml(entry.note || "Estado actualizado.")}
+                        </p>
+
+                        <small>
+                            ${escapeHtml(dateStr)}
+                            ${entry.changed_by ? ` - ${escapeHtml(entry.changed_by)}` : ""}
+                        </small>
+                    </div>
+                </li>
+            `;
+        })
+        .join("");
+
+    return `
+        <section class="order-status-history">
+            <h4>Historial de seguimiento</h4>
+
+            <ul>
+                ${items}
+            </ul>
+        </section>
+    `;
+}
+
 async function loadAndRenderOrders(page = ordersPagination.page) {
     const data = await fetchMyOrders(page);
     const pagination = data?.pagination || {};
@@ -1565,6 +1610,7 @@ function renderOrderDetailPanel(order) {
         </div>
 
         ${renderOrderTimeline(order)}
+        ${renderOrderStatusHistory(order)}
 
         <div class="orders-detail-grid">
             <section>

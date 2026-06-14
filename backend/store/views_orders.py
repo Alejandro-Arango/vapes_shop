@@ -19,6 +19,7 @@ from .cart_utils import parse_positive_quantity, sync_cart_with_products
 from .customer_utils import ensure_customer_for_user
 from .discounts import COUPON_SESSION_KEY, build_pricing, quantize_money
 from .models import Product, Customer, Order, OrderItem
+from .order_status import record_order_status, serialize_order_status_history
 from .throttles import CartRateThrottle, CheckoutUserRateThrottle
 
 
@@ -171,6 +172,7 @@ def serialize_order(order):
             "notes": order.shipping_notes or "",
         },
         "items": items,
+        "status_history": serialize_order_status_history(order),
     }
 
 
@@ -579,6 +581,12 @@ def checkout(request):
             discount_amount=pricing["discount"],
             total_amount=pricing["total"],
         )
+        record_order_status(
+            order,
+            status="pagado",
+            changed_by=request.user,
+            note="Pedido creado desde checkout.",
+        )
 
         for product, qty in order_lines:
             locked_product = locked_map[product.id]
@@ -669,7 +677,7 @@ def my_orders(request):
     user_orders = (
         Order.objects
         .filter(customer=customer)
-        .prefetch_related("orderitem_set__product")
+        .prefetch_related("orderitem_set__product", "status_history__changed_by")
         .order_by("-date_ordered")
     )
     user_orders = apply_order_query_params(user_orders, request)
@@ -707,7 +715,7 @@ def order_detail(request, order_id):
     try:
         order = (
             Order.objects
-            .prefetch_related("orderitem_set__product")
+            .prefetch_related("orderitem_set__product", "status_history__changed_by")
             .get(id=order_id, customer=customer)
         )
     except Order.DoesNotExist:
@@ -943,9 +951,17 @@ def cancel_order(request, order_id):
             order.restore_items_stock()
             restored_stock = True
 
+        previous_status = order.status
         order.status = "cancelado"
         order.completed = False
         order.save(update_fields=["status", "completed"])
+        record_order_status(
+            order,
+            previous_status=previous_status,
+            status="cancelado",
+            changed_by=request.user,
+            note="Pedido cancelado por el cliente.",
+        )
 
     log_event(
         "order_cancel_success",

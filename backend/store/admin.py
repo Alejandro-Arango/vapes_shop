@@ -23,7 +23,9 @@ from .models import (
     ProductReview,
     Order,
     OrderItem,
+    OrderStatusHistory,
 )
+from .order_status import record_order_status
 
 
 def format_admin_bool(value):
@@ -601,6 +603,29 @@ class OrderItemInline(admin.TabularInline):
     get_line_total.short_description = "Subtotal"
 
 
+class OrderStatusHistoryInline(admin.TabularInline):
+    model = OrderStatusHistory
+    extra = 0
+    can_delete = False
+    readonly_fields = (
+        "previous_status",
+        "status",
+        "changed_by",
+        "note",
+        "created_at",
+    )
+    fields = (
+        "previous_status",
+        "status",
+        "changed_by",
+        "note",
+        "created_at",
+    )
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     """
@@ -642,7 +667,7 @@ class OrderAdmin(admin.ModelAdmin):
 
     ordering = ("-date_ordered",)
 
-    inlines = [OrderItemInline]
+    inlines = [OrderItemInline, OrderStatusHistoryInline]
 
     actions = (
         "export_orders_csv",
@@ -685,9 +710,41 @@ class OrderAdmin(admin.ModelAdmin):
     get_user.short_description = "Usuario"
 
     def get_total_order(self, obj):
+        if obj.coupon_code or obj.discount_amount or obj.total_amount:
+            return obj.total_amount
+
         total = sum(item.get_total for item in obj.orderitem_set.all())
         return total
     get_total_order.short_description = "Total"
+
+    def save_model(self, request, obj, form, change):
+        previous_status = ""
+
+        if change and obj.pk:
+            previous_status = (
+                Order.objects
+                .filter(pk=obj.pk)
+                .values_list("status", flat=True)
+                .first()
+            ) or ""
+
+        super().save_model(request, obj, form, change)
+
+        if not change:
+            record_order_status(
+                obj,
+                status=obj.status,
+                changed_by=request.user,
+                note="Orden creada desde admin.",
+            )
+        elif previous_status and previous_status != obj.status:
+            record_order_status(
+                obj,
+                previous_status=previous_status,
+                status=obj.status,
+                changed_by=request.user,
+                note="Estado actualizado desde admin.",
+            )
 
     def apply_status_action(self, request, queryset, new_status, completed, event_type):
         """
@@ -708,6 +765,13 @@ class OrderAdmin(admin.ModelAdmin):
                 order.status = new_status
                 order.completed = completed
                 order.save(update_fields=["status", "completed"])
+                record_order_status(
+                    order,
+                    previous_status=previous_status,
+                    status=new_status,
+                    changed_by=request.user,
+                    note="Estado actualizado desde admin.",
+                )
                 updated += 1
 
                 log_event(
@@ -850,9 +914,17 @@ class OrderAdmin(admin.ModelAdmin):
                 if restored_stock:
                     order.restore_items_stock()
 
+                previous_status = order.status
                 order.status = "cancelado"
                 order.completed = False
                 order.save(update_fields=["status", "completed"])
+                record_order_status(
+                    order,
+                    previous_status=previous_status,
+                    status="cancelado",
+                    changed_by=request.user,
+                    note="Orden cancelada desde admin.",
+                )
                 updated += 1
 
                 log_event(
@@ -884,6 +956,52 @@ class OrderAdmin(admin.ModelAdmin):
             request,
             f"{updated} orden(es) marcadas como reembolsadas."
         )
+
+
+@admin.register(OrderStatusHistory)
+class OrderStatusHistoryAdmin(admin.ModelAdmin):
+    """
+    Nombre: OrderStatusHistoryAdmin
+    Descripcion: Permite consultar el historial de cambios de estado de las ordenes.
+    """
+
+    list_display = (
+        "id",
+        "order",
+        "previous_status",
+        "status",
+        "changed_by",
+        "created_at",
+    )
+
+    search_fields = (
+        "order__id",
+        "changed_by__username",
+        "note",
+    )
+
+    list_filter = (
+        "status",
+        "created_at",
+    )
+
+    readonly_fields = (
+        "order",
+        "previous_status",
+        "status",
+        "changed_by",
+        "note",
+        "created_at",
+    )
+
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):

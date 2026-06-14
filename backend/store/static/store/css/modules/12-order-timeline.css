@@ -117,6 +117,80 @@ body.light-mode .order-timeline-cancelled {
     color: #dc2626;
 }
 
+/*
+ * Nombre: Historial de seguimiento
+ * Descripcion: Lista cronologica de cambios reales de estado dentro del detalle de pedido.
+ */
+.order-status-history {
+    margin: 12px 0;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.order-status-history h4 {
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.order-status-history ul {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.order-status-history-item {
+    display: grid;
+    grid-template-columns: 14px 1fr;
+    gap: 10px;
+    align-items: start;
+}
+
+.order-status-history-dot {
+    width: 10px;
+    height: 10px;
+    margin-top: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(255, 90, 44, 0.14);
+}
+
+.order-status-history-item strong {
+    display: block;
+    color: #fff;
+    font-size: 13px;
+}
+
+.order-status-history-item p {
+    margin: 3px 0;
+    color: var(--muted-dark);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.order-status-history-item small {
+    color: var(--muted-dark);
+    font-size: 11px;
+}
+
+body.light-mode .order-status-history {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .order-status-history-item strong {
+    color: #222;
+}
+
+body.light-mode .order-status-history-item p,
+body.light-mode .order-status-history-item small {
+    color: var(--muted-light);
+}
+
 @media (max-width: 560px) {
     .order-timeline {
         gap: 4px;
