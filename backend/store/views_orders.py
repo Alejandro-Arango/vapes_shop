@@ -19,6 +19,7 @@ from .cart_utils import parse_positive_quantity, sync_cart_with_products
 from .customer_utils import ensure_customer_for_user
 from .discounts import COUPON_SESSION_KEY, build_pricing, quantize_money
 from .models import Product, Customer, Order, OrderItem, ShippingAddress
+from .order_notifications import notify_order_created
 from .order_status import record_order_status, serialize_order_status_history
 from .throttles import CartRateThrottle, CheckoutUserRateThrottle
 
@@ -682,6 +683,31 @@ def checkout(request):
             "items": len(order_lines),
         },
     )
+    notification_result = notify_order_created(order)
+    notification_event = "order_notification_sent"
+    notification_severity = "info"
+    notification_message = "Notificaciones de pedido enviadas."
+
+    if not any(notification_result.values()):
+        notification_event = "order_notification_not_sent"
+        notification_severity = "warning"
+        notification_message = "No se pudieron enviar las notificaciones de pedido."
+    elif not all(notification_result.values()):
+        notification_event = "order_notification_partial"
+        notification_severity = "warning"
+        notification_message = "Solo algunas notificaciones de pedido fueron enviadas."
+
+    log_event(
+        notification_event,
+        notification_message,
+        request=request,
+        user=request.user,
+        severity=notification_severity,
+        metadata={
+            "order_id": order.id,
+            **notification_result,
+        },
+    )
 
     return Response(
         {
@@ -691,6 +717,7 @@ def checkout(request):
             "discount": float(pricing["discount"]),
             "coupon_code": order.coupon_code,
             "total_pagado": total,
+            "notifications": notification_result,
         },
         status=status.HTTP_200_OK
     )

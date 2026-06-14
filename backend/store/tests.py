@@ -417,6 +417,7 @@ class StoreApiTests(APITestCase):
         EMAIL_USE_SSL=False,
         DEFAULT_FROM_EMAIL="Vape Shop <no-reply@example.com>",
         CONTACT_NOTIFICATION_EMAIL="admin@example.com",
+        ORDER_NOTIFICATION_EMAIL="orders@example.com",
         CONTACT_WHATSAPP_NUMBER="573016604375",
     )
     def test_production_check_accepts_hardened_configuration(self):
@@ -1893,6 +1894,96 @@ class StoreApiTests(APITestCase):
 
         with self.assertRaises(ProtectedError):
             self.product.delete()
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="no-reply@example.com",
+        ORDER_NOTIFICATION_EMAIL="orders@example.com",
+    )
+    def test_checkout_sends_customer_and_admin_order_notifications(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3000000000",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "Porteria",
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+        order = Order.objects.get(id=response.data["order_id"])
+        subjects = [email.subject for email in mail.outbox]
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertIn(f"Pedido #{order.id} recibido en Vape Shop", subjects)
+        self.assertIn(f"Nuevo pedido #{order.id} en Vape Shop", subjects)
+        self.assertIn(user.email, mail.outbox[0].to + mail.outbox[1].to)
+        self.assertIn("orders@example.com", mail.outbox[0].to + mail.outbox[1].to)
+        self.assertEqual(
+            response.data["notifications"],
+            {
+                "customer_email_sent": True,
+                "admin_email_sent": True,
+            },
+        )
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="order_notification_sent",
+                metadata__order_id=order.id,
+                metadata__customer_email_sent=True,
+                metadata__admin_email_sent=True,
+            ).exists()
+        )
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="no-reply@example.com",
+        ORDER_NOTIFICATION_EMAIL="",
+    )
+    def test_checkout_continues_if_order_admin_notification_is_missing(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3000000000",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "",
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+        order = Order.objects.get(id=response.data["order_id"])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [user.email])
+        self.assertEqual(
+            response.data["notifications"],
+            {
+                "customer_email_sent": True,
+                "admin_email_sent": False,
+            },
+        )
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="order_notification_partial",
+                metadata__order_id=order.id,
+                metadata__customer_email_sent=True,
+                metadata__admin_email_sent=False,
+            ).exists()
+        )
 
     def test_checkout_applies_coupon_and_stores_discount_snapshot(self):
         user = self.create_user()

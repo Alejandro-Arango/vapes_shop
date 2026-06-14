@@ -608,6 +608,11 @@ CONTACT_NOTIFICATION_EMAIL = os.environ.get(
     "admin@vape-shop.local",
 )
 
+ORDER_NOTIFICATION_EMAIL = os.environ.get(
+    "ORDER_NOTIFICATION_EMAIL",
+    CONTACT_NOTIFICATION_EMAIL,
+)
+
 EMAIL_BACKEND = os.environ.get(
     "DJANGO_EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend",
