@@ -171,6 +171,13 @@ def serialize_order(order):
             "city": order.shipping_city or "",
             "notes": order.shipping_notes or "",
         },
+        "tracking": {
+            "carrier": order.tracking_carrier,
+            "number": order.tracking_number,
+            "url": order.tracking_url,
+            "shipped_at": order.shipped_at,
+            "delivered_at": order.delivered_at,
+        },
         "items": items,
         "status_history": serialize_order_status_history(order),
     }

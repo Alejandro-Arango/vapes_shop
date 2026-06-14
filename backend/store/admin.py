@@ -10,6 +10,7 @@ import json
 from django.contrib import admin
 from django.db import transaction
 from django.http import HttpResponse
+from django.utils import timezone
 
 from .audit import log_event
 from .models import (
@@ -663,6 +664,8 @@ class OrderAdmin(admin.ModelAdmin):
         "shipping_phone",
         "shipping_address",
         "shipping_city",
+        "tracking_carrier",
+        "tracking_number",
     )
 
     ordering = ("-date_ordered",)
@@ -703,6 +706,18 @@ class OrderAdmin(admin.ModelAdmin):
                 )
             },
         ),
+        (
+            "Seguimiento de envio",
+            {
+                "fields": (
+                    "tracking_carrier",
+                    "tracking_number",
+                    "tracking_url",
+                    "shipped_at",
+                    "delivered_at",
+                )
+            },
+        ),
     )
 
     def get_user(self, obj):
@@ -728,6 +743,8 @@ class OrderAdmin(admin.ModelAdmin):
                 .first()
             ) or ""
 
+        self.apply_tracking_timestamps(obj, obj.status)
+
         super().save_model(request, obj, form, change)
 
         if not change:
@@ -745,6 +762,29 @@ class OrderAdmin(admin.ModelAdmin):
                 changed_by=request.user,
                 note="Estado actualizado desde admin.",
             )
+
+    def apply_tracking_timestamps(self, order, new_status):
+        """
+        Nombre: apply_tracking_timestamps
+        Descripcion: Completa fechas de envio y entrega segun el estado administrativo.
+        """
+        now = timezone.now()
+        update_fields = []
+
+        if new_status == "enviado" and not order.shipped_at:
+            order.shipped_at = now
+            update_fields.append("shipped_at")
+
+        if new_status == "entregado":
+            if not order.shipped_at:
+                order.shipped_at = now
+                update_fields.append("shipped_at")
+
+            if not order.delivered_at:
+                order.delivered_at = now
+                update_fields.append("delivered_at")
+
+        return update_fields
 
     def apply_status_action(self, request, queryset, new_status, completed, event_type):
         """
@@ -764,7 +804,9 @@ class OrderAdmin(admin.ModelAdmin):
                 previous_status = order.status
                 order.status = new_status
                 order.completed = completed
-                order.save(update_fields=["status", "completed"])
+                update_fields = ["status", "completed"]
+                update_fields += self.apply_tracking_timestamps(order, new_status)
+                order.save(update_fields=update_fields)
                 record_order_status(
                     order,
                     previous_status=previous_status,
@@ -807,6 +849,11 @@ class OrderAdmin(admin.ModelAdmin):
                 order.shipping_phone or "",
                 order.shipping_city or "",
                 order.shipping_address or "",
+                order.tracking_carrier,
+                order.tracking_number,
+                order.tracking_url,
+                format_admin_datetime(order.shipped_at),
+                format_admin_datetime(order.delivered_at),
                 str(self.get_total_order(order)),
                 format_admin_datetime(order.date_ordered),
             )
@@ -826,6 +873,11 @@ class OrderAdmin(admin.ModelAdmin):
                 "Telefono envio",
                 "Ciudad",
                 "Direccion",
+                "Transportadora",
+                "Guia",
+                "URL rastreo",
+                "Fecha envio",
+                "Fecha entrega",
                 "Total",
                 "Fecha",
             ),

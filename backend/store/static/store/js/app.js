@@ -1367,6 +1367,86 @@ function renderShippingInfo(order) {
     `;
 }
 
+function renderTrackingInfo(order) {
+    const tracking = order.tracking || {};
+    const shippedAt = tracking.shipped_at
+        ? new Date(tracking.shipped_at).toLocaleString()
+        : "";
+    const deliveredAt = tracking.delivered_at
+        ? new Date(tracking.delivered_at).toLocaleString()
+        : "";
+    const hasTrackingData =
+        tracking.carrier ||
+        tracking.number ||
+        tracking.url ||
+        shippedAt ||
+        deliveredAt;
+
+    if (!hasTrackingData) {
+        return "";
+    }
+
+    return `
+        <div class="order-tracking">
+            <h4>Seguimiento del envio</h4>
+
+            <div class="order-shipping-grid">
+                ${tracking.carrier
+                    ? `
+                        <p>
+                            <strong>Transportadora:</strong>
+                            ${escapeHtml(tracking.carrier)}
+                        </p>
+                    `
+                    : ""
+                }
+
+                ${tracking.number
+                    ? `
+                        <p>
+                            <strong>Guia:</strong>
+                            ${escapeHtml(tracking.number)}
+                        </p>
+                    `
+                    : ""
+                }
+
+                ${shippedAt
+                    ? `
+                        <p>
+                            <strong>Enviado:</strong>
+                            ${escapeHtml(shippedAt)}
+                        </p>
+                    `
+                    : ""
+                }
+
+                ${deliveredAt
+                    ? `
+                        <p>
+                            <strong>Entregado:</strong>
+                            ${escapeHtml(deliveredAt)}
+                        </p>
+                    `
+                    : ""
+                }
+
+                ${tracking.url
+                    ? `
+                        <p class="order-shipping-notes">
+                            <strong>Rastreo:</strong>
+                            <a href="${escapeHtml(tracking.url)}" target="_blank" rel="noopener noreferrer">
+                                Abrir enlace de seguimiento
+                            </a>
+                        </p>
+                    `
+                    : ""
+                }
+            </div>
+        </div>
+    `;
+}
+
 /*
  * Nombre: renderOrderTimeline
  * Descripcion: Genera una linea visual de progreso segun el estado actual de una orden.
@@ -1637,6 +1717,7 @@ function renderOrderDetailPanel(order) {
         </div>
 
         ${renderShippingInfo(order)}
+        ${renderTrackingInfo(order)}
     `;
 
     panel

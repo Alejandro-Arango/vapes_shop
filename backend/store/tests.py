@@ -1879,6 +1879,9 @@ class StoreApiTests(APITestCase):
             shipping_address="Calle 123",
             shipping_city="Medellin",
             shipping_notes="Porteria",
+            tracking_carrier="Servientrega",
+            tracking_number="GUIA123",
+            tracking_url="https://example.com/rastreo/GUIA123",
             age_verified=True,
         )
         OrderItem.objects.create(
@@ -1904,6 +1907,12 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.data["total"], 20.0)
         self.assertEqual(response.data["shipping"]["city"], "Medellin")
         self.assertEqual(response.data["shipping"]["notes"], "Porteria")
+        self.assertEqual(response.data["tracking"]["carrier"], "Servientrega")
+        self.assertEqual(response.data["tracking"]["number"], "GUIA123")
+        self.assertEqual(
+            response.data["tracking"]["url"],
+            "https://example.com/rastreo/GUIA123",
+        )
         self.assertEqual(response.data["items"][0]["product"]["name"], self.product.name)
         self.assertEqual(response.data["items"][0]["quantity"], 2)
         self.assertEqual(response.data["items"][0]["line_total"], 20.0)
@@ -2360,6 +2369,9 @@ class StoreApiTests(APITestCase):
             shipping_phone="3000000000",
             shipping_city="Medellin",
             shipping_address="Calle 1",
+            tracking_carrier="Interrapidisimo",
+            tracking_number="IR123",
+            tracking_url="https://example.com/IR123",
         )
         OrderItem.objects.create(
             order=order,
@@ -2381,6 +2393,8 @@ class StoreApiTests(APITestCase):
         self.assertIn("ordenes.csv", response["Content-Disposition"])
         self.assertIn("cliente@example.com", content)
         self.assertIn("Medellin", content)
+        self.assertIn("Interrapidisimo", content)
+        self.assertIn("IR123", content)
         self.assertIn("20.00", content)
 
     def test_admin_can_mark_orders_as_preparing_and_refunded(self):
@@ -2435,6 +2449,46 @@ class StoreApiTests(APITestCase):
                 metadata__order_id=order.id,
             ).exists()
         )
+
+    def test_admin_status_actions_set_tracking_dates(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="en_preparacion",
+            completed=True,
+        )
+        admin_model = OrderAdmin(Order, self.admin_site)
+        admin_model.message_user = lambda *args, **kwargs: None
+        request = self.create_admin_request()
+
+        admin_model.mark_as_sent(
+            request,
+            Order.objects.filter(id=order.id),
+        )
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, "enviado")
+        self.assertIsNotNone(order.shipped_at)
+        self.assertIsNone(order.delivered_at)
+
+        shipped_at = order.shipped_at
+
+        admin_model.mark_as_delivered(
+            request,
+            Order.objects.filter(id=order.id),
+        )
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, "entregado")
+        self.assertEqual(order.shipped_at, shipped_at)
+        self.assertIsNotNone(order.delivered_at)
+        self.assertEqual(order.status_history.count(), 2)
 
     def test_log_event_redacts_sensitive_metadata(self):
         event = log_event(
