@@ -180,6 +180,7 @@ function formatOrderStatus(order) {
 
 const AGE_VERIFICATION_KEY = "vapeShopAgeVerified";
 let ageVerifiedInSession = false;
+let currentUser = null;
 
 /*
  * Nombre: hasAgeVerification
@@ -504,6 +505,8 @@ function setAuthUI(isLoggedIn, user = null) {
     if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
     if (btnMyOrders) btnMyOrders.style.display = isLoggedIn ? "inline-flex" : "none";
     if (btnFavorites) btnFavorites.style.display = isLoggedIn ? "inline-flex" : "none";
+
+    currentUser = isLoggedIn ? user : null;
 
     if (labelUser) {
         labelUser.textContent = isLoggedIn
@@ -3121,6 +3124,25 @@ function getShippingFormData() {
     return shippingData;
 }
 
+function setInputValueIfEmpty(id, value) {
+    const input = document.getElementById(id);
+    const cleanValue = String(value || "").trim();
+
+    if (!input || input.value.trim() || !cleanValue) return;
+
+    input.value = cleanValue;
+}
+
+function autofillShippingFormFromProfile() {
+    const shipping = currentUser?.default_shipping || {};
+
+    setInputValueIfEmpty("shipping-name", shipping.name);
+    setInputValueIfEmpty("shipping-phone", shipping.phone);
+    setInputValueIfEmpty("shipping-address", shipping.address);
+    setInputValueIfEmpty("shipping-city", shipping.city);
+    setInputValueIfEmpty("shipping-notes", shipping.notes);
+}
+
 /*
  * Nombre: clearShippingForm
  * Descripcion: Limpia los campos del formulario de datos de envio del carrito.
@@ -3493,6 +3515,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 return;
             }
 
+            autofillShippingFormFromProfile();
             setCheckoutStep("shipping");
             return;
         }
@@ -3543,6 +3566,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     return;
                 }
 
+                autofillShippingFormFromProfile();
                 setCheckoutStep("shipping");
                 return;
             }

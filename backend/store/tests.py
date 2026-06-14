@@ -456,6 +456,8 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(event.metadata["user_id"], response.data["id"])
+        self.assertEqual(response.data["customer"]["email"], "nuevo@example.com")
+        self.assertEqual(response.data["default_shipping"]["name"], "nuevo")
         self.assertNotIn("email", event.metadata)
         self.assertNotIn("username", event.metadata)
 
@@ -573,6 +575,46 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(Customer.objects.count(), 1)
         self.assertEqual(customer.user, user)
+        self.assertEqual(response.data["customer"]["first_name"], "Cliente")
+        self.assertEqual(response.data["default_shipping"]["name"], "Cliente Preexistente")
+
+    def test_me_returns_default_shipping_from_latest_order(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Perfil",
+            email=user.email,
+            phone="3001112222",
+        )
+        Order.objects.create(
+            customer=customer,
+            shipping_name="Cliente Antiguo",
+            shipping_phone="3000000000",
+            shipping_address="Calle Antigua",
+            shipping_city="Envigado",
+            shipping_notes="Entrega antigua",
+        )
+        latest_order = Order.objects.create(
+            customer=customer,
+            shipping_name="Cliente Actual",
+            shipping_phone="3009998888",
+            shipping_address="Calle Nueva",
+            shipping_city="Medellin",
+            shipping_notes="Porteria principal",
+        )
+
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.get(reverse("auth_me"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["customer"]["phone"], "3001112222")
+        self.assertEqual(response.data["default_shipping"]["name"], latest_order.shipping_name)
+        self.assertEqual(response.data["default_shipping"]["phone"], "3009998888")
+        self.assertEqual(response.data["default_shipping"]["address"], "Calle Nueva")
+        self.assertEqual(response.data["default_shipping"]["city"], "Medellin")
+        self.assertEqual(response.data["default_shipping"]["notes"], "Porteria principal")
 
     def test_failed_login_creates_event_log(self):
         response = self.client.post(

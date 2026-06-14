@@ -14,8 +14,72 @@ from rest_framework.response import Response
 
 from .audit import log_event
 from .customer_utils import ensure_customer_for_user
+from .models import Order
 from .serializers import UserRegisterSerializer, UserSerializer
 from .throttles import AuthAnonRateThrottle
+
+
+def get_customer_display_name(customer, user):
+    """
+    Nombre: get_customer_display_name
+    Descripcion: Construye un nombre visible para autocompletar datos de envio.
+    """
+    full_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip()
+
+    return full_name or user.username or user.email
+
+
+def get_last_shipping_order(customer):
+    """
+    Nombre: get_last_shipping_order
+    Descripcion: Busca el ultimo pedido con direccion registrada para sugerir datos de envio.
+    """
+    return (
+        Order.objects
+        .filter(customer=customer)
+        .exclude(shipping_address__isnull=True)
+        .exclude(shipping_address="")
+        .order_by("-date_ordered", "-id")
+        .first()
+    )
+
+
+def serialize_current_user(user):
+    """
+    Nombre: serialize_current_user
+    Descripcion: Expone usuario, customer y datos sugeridos de envio para el checkout.
+    """
+    customer = ensure_customer_for_user(user)
+    last_order = get_last_shipping_order(customer)
+    customer_name = get_customer_display_name(customer, user)
+
+    default_shipping = {
+        "name": customer_name,
+        "phone": customer.phone or "",
+        "address": "",
+        "city": "",
+        "notes": "",
+    }
+
+    if last_order:
+        default_shipping.update({
+            "name": last_order.shipping_name or customer_name,
+            "phone": last_order.shipping_phone or customer.phone or "",
+            "address": last_order.shipping_address or "",
+            "city": last_order.shipping_city or "",
+            "notes": last_order.shipping_notes or "",
+        })
+
+    data = UserSerializer(user).data
+    data["customer"] = {
+        "first_name": customer.first_name,
+        "last_name": customer.last_name,
+        "email": customer.email,
+        "phone": customer.phone or "",
+    }
+    data["default_shipping"] = default_shipping
+
+    return data
 
 
 def normalize_login_identifier(data):
@@ -66,7 +130,7 @@ def register(request):
         )
 
         return Response(
-            UserSerializer(user).data,
+            serialize_current_user(user),
             status=status.HTTP_201_CREATED
         )
 
@@ -160,7 +224,7 @@ def login_view(request):
     )
 
     return Response(
-        UserSerializer(user).data,
+        serialize_current_user(user),
         status=status.HTTP_200_OK
     )
 
@@ -195,6 +259,6 @@ def me(request):
     Descripcion: Devuelve los datos del usuario autenticado actual.
     """
     return Response(
-        UserSerializer(request.user).data,
+        serialize_current_user(request.user),
         status=status.HTTP_200_OK
     )
