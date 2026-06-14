@@ -10,6 +10,38 @@
 {% block content %}
 <div id="content-main">
     <div class="module">
+        <h2>Reportes descargables</h2>
+
+        <form method="get" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: end;">
+            <div>
+                <label for="date_from">Desde</label>
+                <input id="date_from" name="date_from" type="date" value="{{ report_date_from }}">
+            </div>
+
+            <div>
+                <label for="date_to">Hasta</label>
+                <input id="date_to" name="date_to" type="date" value="{{ report_date_to }}">
+            </div>
+
+            <button class="button" type="submit">Aplicar filtro</button>
+
+            <a class="button" href="{% url 'admin:store_business_dashboard' %}">
+                Limpiar
+            </a>
+        </form>
+
+        <p style="margin-top: 12px;">
+            <a class="button" href="{{ sales_report_url }}">
+                Descargar ventas CSV
+            </a>
+
+            <a class="button" href="{{ products_report_url }}">
+                Descargar productos vendidos CSV
+            </a>
+        </p>
+    </div>
+
+    <div class="module">
         <h2>Indicadores principales</h2>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">

@@ -1,18 +1,23 @@
 """
 Archivo: admin_dashboard.py
-Descripcion: Agrega un resumen administrativo con metricas basicas del negocio.
+Descripcion: Agrega un resumen administrativo con metricas basicas y reportes CSV del negocio.
 Dependencias: Django admin, agregaciones ORM y modelos de store
 """
 
-from datetime import timedelta
+import csv
+
+from datetime import datetime, time, timedelta
 from decimal import Decimal
+from urllib.parse import urlencode
 
 from django.contrib import admin
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce
+from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from .models import Customer, Order, OrderItem, Product
 
@@ -24,6 +29,7 @@ REVENUE_STATUSES = (
     "entregado",
 )
 LOW_STOCK_THRESHOLD = 3
+CSV_FORMULA_PREFIXES = ("=", "+", "-", "@")
 
 
 def quantize_money(value):
@@ -48,6 +54,113 @@ def aggregate_money(queryset, field_name):
     )["total"]
 
     return quantize_money(total)
+
+
+def escape_csv_formula(value):
+    """
+    Nombre: escape_csv_formula
+    Descripcion: Evita formulas ejecutables al abrir reportes CSV en hojas de calculo.
+    """
+    if not isinstance(value, str):
+        return value
+
+    if value.lstrip()[:1] in CSV_FORMULA_PREFIXES:
+        return f"'{value}"
+
+    return value
+
+
+def build_csv_response(filename, headers, rows):
+    """
+    Nombre: build_csv_response
+    Descripcion: Construye una respuesta CSV descargable para reportes administrativos.
+    """
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    writer.writerow(headers)
+
+    for row in rows:
+        writer.writerow(
+            escape_csv_formula(value)
+            for value in row
+        )
+
+    return response
+
+
+def parse_report_date(value):
+    """
+    Nombre: parse_report_date
+    Descripcion: Interpreta fechas YYYY-MM-DD recibidas por query string.
+    """
+    if not value:
+        return None
+
+    return parse_date(str(value).strip())
+
+
+def get_report_date_range(request):
+    """
+    Nombre: get_report_date_range
+    Descripcion: Obtiene rango de fechas opcional para reportes administrativos.
+    """
+    return (
+        parse_report_date(request.GET.get("date_from")),
+        parse_report_date(request.GET.get("date_to")),
+    )
+
+
+def apply_report_date_range(queryset, date_from, date_to, field_name="date_ordered"):
+    """
+    Nombre: apply_report_date_range
+    Descripcion: Aplica limites inclusivos por fecha a un queryset.
+    """
+    current_timezone = timezone.get_current_timezone()
+
+    if date_from:
+        start = timezone.make_aware(
+            datetime.combine(date_from, time.min),
+            current_timezone,
+        )
+        queryset = queryset.filter(**{f"{field_name}__gte": start})
+
+    if date_to:
+        end = timezone.make_aware(
+            datetime.combine(date_to, time.max),
+            current_timezone,
+        )
+        queryset = queryset.filter(**{f"{field_name}__lte": end})
+
+    return queryset
+
+
+def build_report_query(date_from, date_to):
+    """
+    Nombre: build_report_query
+    Descripcion: Construye query string para enlaces de descarga del dashboard.
+    """
+    query = {}
+
+    if date_from:
+        query["date_from"] = date_from.isoformat()
+
+    if date_to:
+        query["date_to"] = date_to.isoformat()
+
+    return urlencode(query)
+
+
+def format_report_datetime(value):
+    """
+    Nombre: format_report_datetime
+    Descripcion: Convierte fechas de reportes a texto estable.
+    """
+    if not value:
+        return ""
+
+    return timezone.localtime(value).isoformat()
 
 
 def build_status_rows():
@@ -76,14 +189,43 @@ def build_top_products(limit=5):
     Nombre: build_top_products
     Descripcion: Calcula productos mas vendidos por unidades y valor vendido.
     """
+    return list(get_sold_products()[:limit])
+
+
+def get_revenue_orders(date_from=None, date_to=None):
+    """
+    Nombre: get_revenue_orders
+    Descripcion: Obtiene pedidos que cuentan como venta dentro de un rango opcional.
+    """
+    orders = (
+        Order.objects
+        .filter(status__in=REVENUE_STATUSES)
+        .select_related("customer", "customer__user")
+        .order_by("-date_ordered", "-id")
+    )
+
+    return apply_report_date_range(orders, date_from, date_to)
+
+
+def get_sold_products(date_from=None, date_to=None):
+    """
+    Nombre: get_sold_products
+    Descripcion: Agrega productos vendidos dentro de un rango opcional.
+    """
     line_revenue = ExpressionWrapper(
         F("unit_price") * F("quantity"),
         output_field=DecimalField(max_digits=12, decimal_places=2),
     )
+    items = OrderItem.objects.filter(order__status__in=REVENUE_STATUSES)
+    items = apply_report_date_range(
+        items,
+        date_from,
+        date_to,
+        field_name="order__date_ordered",
+    )
 
-    return list(
-        OrderItem.objects
-        .filter(order__status__in=REVENUE_STATUSES)
+    return (
+        items
         .values("product_name")
         .annotate(
             units_sold=Coalesce(Sum("quantity"), Value(0)),
@@ -93,7 +235,73 @@ def build_top_products(limit=5):
                 output_field=DecimalField(max_digits=12, decimal_places=2),
             ),
         )
-        .order_by("-units_sold", "-revenue", "product_name")[:limit]
+        .order_by("-units_sold", "-revenue", "product_name")
+    )
+
+
+def sales_report_csv_view(request):
+    """
+    Nombre: sales_report_csv_view
+    Descripcion: Descarga pedidos vendidos en CSV con rango de fechas opcional.
+    """
+    date_from, date_to = get_report_date_range(request)
+    rows = (
+        (
+            order.id,
+            format_report_datetime(order.date_ordered),
+            str(order.customer),
+            order.customer.email,
+            order.get_status_display(),
+            order.shipping_city or "",
+            order.coupon_code,
+            str(quantize_money(order.subtotal_amount)),
+            str(quantize_money(order.discount_amount)),
+            str(quantize_money(order.total_amount)),
+        )
+        for order in get_revenue_orders(date_from, date_to)
+    )
+
+    return build_csv_response(
+        "reporte-ventas.csv",
+        (
+            "Pedido",
+            "Fecha",
+            "Cliente",
+            "Correo",
+            "Estado",
+            "Ciudad",
+            "Cupon",
+            "Subtotal",
+            "Descuento",
+            "Total",
+        ),
+        rows,
+    )
+
+
+def sold_products_report_csv_view(request):
+    """
+    Nombre: sold_products_report_csv_view
+    Descripcion: Descarga productos vendidos en CSV con rango de fechas opcional.
+    """
+    date_from, date_to = get_report_date_range(request)
+    rows = (
+        (
+            row["product_name"] or "Producto sin nombre",
+            row["units_sold"],
+            str(quantize_money(row["revenue"])),
+        )
+        for row in get_sold_products(date_from, date_to)
+    )
+
+    return build_csv_response(
+        "reporte-productos-vendidos.csv",
+        (
+            "Producto",
+            "Unidades vendidas",
+            "Ventas",
+        ),
+        rows,
     )
 
 
@@ -143,10 +351,23 @@ def business_dashboard_view(request, site=admin.site):
     Nombre: business_dashboard_view
     Descripcion: Renderiza el resumen administrativo protegido por el admin.
     """
+    date_from, date_to = get_report_date_range(request)
+    report_query = build_report_query(date_from, date_to)
+    sales_report_url = reverse("admin:store_business_sales_report")
+    products_report_url = reverse("admin:store_business_products_report")
+
+    if report_query:
+        sales_report_url = f"{sales_report_url}?{report_query}"
+        products_report_url = f"{products_report_url}?{report_query}"
+
     context = {
         **site.each_context(request),
         **build_business_dashboard_context(),
         "title": "Resumen del negocio",
+        "report_date_from": date_from.isoformat() if date_from else "",
+        "report_date_to": date_to.isoformat() if date_to else "",
+        "sales_report_url": sales_report_url,
+        "products_report_url": products_report_url,
     }
 
     return TemplateResponse(
@@ -172,6 +393,16 @@ def register_business_dashboard(site=admin.site):
                 "store/resumen/",
                 site.admin_view(lambda request: business_dashboard_view(request, site)),
                 name="store_business_dashboard",
+            ),
+            path(
+                "store/resumen/ventas.csv",
+                site.admin_view(sales_report_csv_view),
+                name="store_business_sales_report",
+            ),
+            path(
+                "store/resumen/productos-vendidos.csv",
+                site.admin_view(sold_products_report_csv_view),
+                name="store_business_products_report",
             ),
         ]
 

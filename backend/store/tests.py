@@ -5,6 +5,7 @@ Dependencias: Django test, Django auth, Django urls, Django REST Framework y mod
 """
 
 import os
+from datetime import timedelta
 from io import StringIO
 from decimal import Decimal
 from unittest.mock import patch
@@ -21,6 +22,7 @@ from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -2790,6 +2792,107 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Resumen del negocio")
         self.assertContains(response, "Productos mas vendidos")
+        self.assertContains(response, "Descargar ventas CSV")
+
+    def test_admin_business_dashboard_exports_filtered_reports(self):
+        now = timezone.now()
+        old_date = now - timedelta(days=45)
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+        formula_product = Product.objects.create(
+            name="=Producto reporte",
+            description="Descripcion",
+            price=Decimal("12.00"),
+            stock=5,
+        )
+        included_order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+            shipping_city="Medellin",
+            subtotal_amount=Decimal("24.00"),
+            total_amount=Decimal("24.00"),
+        )
+        old_order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+            shipping_city="Envigado",
+            subtotal_amount=Decimal("10.00"),
+            total_amount=Decimal("10.00"),
+        )
+        cancelled_order = Order.objects.create(
+            customer=customer,
+            status="cancelado",
+            completed=False,
+            shipping_city="Medellin",
+            subtotal_amount=Decimal("99.00"),
+            total_amount=Decimal("99.00"),
+        )
+        Order.objects.filter(id=included_order.id).update(date_ordered=now)
+        Order.objects.filter(id=old_order.id).update(date_ordered=old_date)
+        Order.objects.filter(id=cancelled_order.id).update(date_ordered=now)
+        OrderItem.objects.create(
+            order=included_order,
+            product=formula_product,
+            quantity=2,
+        )
+        OrderItem.objects.create(
+            order=old_order,
+            product=self.product,
+            quantity=1,
+        )
+        OrderItem.objects.create(
+            order=cancelled_order,
+            product=self.product,
+            quantity=4,
+        )
+        admin_user = User.objects.create_superuser(
+            username="report-admin",
+            email="report-admin@example.com",
+            password="ClaveSegura123",
+        )
+        report_params = {
+            "date_from": now.date().isoformat(),
+            "date_to": now.date().isoformat(),
+        }
+        self.client.force_login(admin_user)
+
+        sales_response = self.client.get(
+            reverse("admin:store_business_sales_report"),
+            report_params,
+        )
+        sales_content = sales_response.content.decode()
+
+        self.assertEqual(sales_response.status_code, 200)
+        self.assertIn(
+            "reporte-ventas.csv",
+            sales_response["Content-Disposition"],
+        )
+        self.assertIn(f"\r\n{included_order.id},", sales_content)
+        self.assertIn("Medellin", sales_content)
+        self.assertNotIn(f"\r\n{old_order.id},", sales_content)
+        self.assertNotIn(f"\r\n{cancelled_order.id},", sales_content)
+
+        products_response = self.client.get(
+            reverse("admin:store_business_products_report"),
+            report_params,
+        )
+        products_content = products_response.content.decode()
+
+        self.assertEqual(products_response.status_code, 200)
+        self.assertIn(
+            "reporte-productos-vendidos.csv",
+            products_response["Content-Disposition"],
+        )
+        self.assertIn("'=Producto reporte", products_content)
+        self.assertIn("2", products_content)
+        self.assertNotIn("Producto prueba", products_content)
 
     def test_admin_can_mark_orders_as_preparing_and_refunded(self):
         user = self.create_user()
