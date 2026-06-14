@@ -83,4 +83,5 @@ urlpatterns = [
     path("api/auth/login/", views_auth.login_view, name="auth_login"),
     path("api/auth/logout/", views_auth.logout_view, name="auth_logout"),
     path("api/auth/me/", views_auth.me, name="auth_me"),
+    path("api/auth/profile/", views_auth.profile, name="auth_profile"),
 ]

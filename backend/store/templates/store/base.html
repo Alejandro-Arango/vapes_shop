@@ -41,6 +41,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
 
     {% include 'store/components/cart_drawer.html' %}
     {% include 'store/components/auth_modal.html' %}
+    {% include 'store/components/profile_modal.html' %}
     {% include 'store/components/orders_modal.html' %}
     {% include 'store/components/favorites_modal.html' %}
     {% include 'store/components/product_detail_modal.html' %}
@@ -109,7 +110,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
         });
     </script>
 
-    <script src="{% static 'store/js/app.js' %}?v=shipping-autofill-1"></script>
+    <script src="{% static 'store/js/app.js' %}?v=profile-1"></script>
 
     {% block extra_scripts %}{% endblock %}
 </body>

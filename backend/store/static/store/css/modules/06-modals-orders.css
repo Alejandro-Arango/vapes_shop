@@ -97,6 +97,10 @@ body.light-mode .modal-content {
     width: min(860px, 100%);
 }
 
+.profile-content {
+    width: min(560px, 100%);
+}
+
 .favorites-body {
     margin-top: 14px;
     max-height: calc(100vh - 210px);

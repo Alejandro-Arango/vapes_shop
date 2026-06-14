@@ -15,6 +15,7 @@ const api = {
     authLogin: "/api/auth/login/",
     authLogout: "/api/auth/logout/",
     me: "/api/auth/me/",
+    authProfile: "/api/auth/profile/",
     cartGet: "/api/cart/",
     cartAdd: "/api/cart/add/",
     cartUpdate: "/api/cart/update/",
@@ -343,6 +344,26 @@ function clearAuthFeedback() {
     feedback.style.display = "none";
 }
 
+function showProfileFeedback(message, type = "success") {
+    const feedback = document.getElementById("profile-feedback");
+
+    if (!feedback) return;
+
+    feedback.textContent = message;
+    feedback.className = `auth-feedback ${type}`;
+    feedback.style.display = "block";
+}
+
+function clearProfileFeedback() {
+    const feedback = document.getElementById("profile-feedback");
+
+    if (!feedback) return;
+
+    feedback.textContent = "";
+    feedback.className = "auth-feedback";
+    feedback.style.display = "none";
+}
+
 function showCartFeedback(message, type = "success") {
     const cartFeedback = document.getElementById("cart-feedback");
 
@@ -498,11 +519,13 @@ function setAuthUI(isLoggedIn, user = null) {
     const btnLogin = document.getElementById("open-auth");
     const btnLogout = document.getElementById("logout-btn");
     const labelUser = document.getElementById("user-label");
+    const btnProfile = document.getElementById("profile-btn");
     const btnMyOrders = document.getElementById("my-orders-btn");
     const btnFavorites = document.getElementById("favorites-btn");
 
     if (btnLogin) btnLogin.style.display = isLoggedIn ? "none" : "inline-flex";
     if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
+    if (btnProfile) btnProfile.style.display = isLoggedIn ? "inline-flex" : "none";
     if (btnMyOrders) btnMyOrders.style.display = isLoggedIn ? "inline-flex" : "none";
     if (btnFavorites) btnFavorites.style.display = isLoggedIn ? "inline-flex" : "none";
 
@@ -599,6 +622,38 @@ async function loginUser(emailOrUsername, password) {
     return await res.json();
 }
 
+async function updateProfile(profileData) {
+    const res = await fetch(api.authProfile, {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify(profileData),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+        const firstNameError = Array.isArray(data?.first_name)
+            ? data.first_name[0]
+            : data?.first_name;
+        const lastNameError = Array.isArray(data?.last_name)
+            ? data.last_name[0]
+            : data?.last_name;
+        const phoneError = Array.isArray(data?.phone)
+            ? data.phone[0]
+            : data?.phone;
+
+        throw new Error(
+            firstNameError ||
+            lastNameError ||
+            phoneError ||
+            data?.error ||
+            "No se pudo actualizar el perfil."
+        );
+    }
+
+    return data;
+}
+
 /*
  * Nombre: logoutUser
  * Descripcion: Cierra la sesion y limpia estados visuales relacionados.
@@ -616,8 +671,10 @@ async function logoutUser() {
     clearCartFeedback();
     clearOrdersFeedback();
     clearFavoritesFeedback();
+    clearProfileFeedback();
     hideOrderCancelConfirm();
     closeModalSafely(document.getElementById("favorites-modal"));
+    closeModalSafely(document.getElementById("profile-modal"));
 
     clearShippingForm();
     resetCheckoutSummary();
@@ -3143,6 +3200,17 @@ function autofillShippingFormFromProfile() {
     setInputValueIfEmpty("shipping-notes", shipping.notes);
 }
 
+function fillProfileForm() {
+    const customer = currentUser?.customer || {};
+    const firstName = document.getElementById("profile-first-name");
+    const lastName = document.getElementById("profile-last-name");
+    const phone = document.getElementById("profile-phone");
+
+    if (firstName) firstName.value = customer.first_name || "";
+    if (lastName) lastName.value = customer.last_name || "";
+    if (phone) phone.value = customer.phone || "";
+}
+
 /*
  * Nombre: clearShippingForm
  * Descripcion: Limpia los campos del formulario de datos de envio del carrito.
@@ -3229,6 +3297,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const authClose = document.getElementById("auth-close");
     const loginForm = document.getElementById("login-form");
     const registerForm = document.getElementById("register-form");
+    const profileBtn = document.getElementById("profile-btn");
+    const profileModal = document.getElementById("profile-modal");
+    const profileClose = document.getElementById("profile-close");
+    const profileForm = document.getElementById("profile-form");
     const contactForm = document.getElementById("contact-form");
     const contactName = document.getElementById("contact-name");
     const contactEmail = document.getElementById("contact-email");
@@ -3743,6 +3815,60 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     authClose?.addEventListener("click", () => {
         closeModalSafely(authModal, btnOpenAuth);
+    });
+
+    profileBtn?.addEventListener("click", async () => {
+        clearProfileFeedback();
+
+        if (!currentUser) {
+            await refreshAuthState();
+        }
+
+        fillProfileForm();
+        profileModal?.setAttribute("aria-hidden", "false");
+        profileModal?.classList.add("open");
+    });
+
+    profileClose?.addEventListener("click", () => {
+        closeModalSafely(profileModal, profileBtn);
+    });
+
+    profileForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        clearProfileFeedback();
+
+        const submitBtn = profileForm.querySelector("button[type='submit']");
+        const originalText = submitBtn?.textContent || "Guardar cambios";
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Guardando...";
+        }
+
+        try {
+            const data = await updateProfile({
+                first_name: document.getElementById("profile-first-name")?.value || "",
+                last_name: document.getElementById("profile-last-name")?.value || "",
+                phone: document.getElementById("profile-phone")?.value || "",
+            });
+
+            currentUser = data;
+            setAuthUI(true, data);
+            fillProfileForm();
+            showProfileFeedback("Perfil actualizado correctamente.", "success");
+            showToast("Perfil actualizado correctamente.", "success");
+        } catch (err) {
+            showProfileFeedback(
+                err.message || "No se pudo actualizar el perfil.",
+                "error"
+            );
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        }
     });
 
     document.getElementById("show-register")?.addEventListener("click", (e) => {

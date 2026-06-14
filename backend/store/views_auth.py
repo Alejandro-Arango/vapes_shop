@@ -15,7 +15,11 @@ from rest_framework.response import Response
 from .audit import log_event
 from .customer_utils import ensure_customer_for_user
 from .models import Order
-from .serializers import UserRegisterSerializer, UserSerializer
+from .serializers import (
+    CustomerProfileSerializer,
+    UserRegisterSerializer,
+    UserSerializer,
+)
 from .throttles import AuthAnonRateThrottle
 
 
@@ -258,6 +262,44 @@ def me(request):
     Nombre: me
     Descripcion: Devuelve los datos del usuario autenticado actual.
     """
+    return Response(
+        serialize_current_user(request.user),
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(["POST", "PATCH"])
+@permission_classes([IsAuthenticated])
+def profile(request):
+    """
+    Nombre: profile
+    Descripcion: Actualiza datos basicos del cliente autenticado y devuelve el perfil vigente.
+    """
+    serializer = CustomerProfileSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        log_event(
+            "profile_update_failed",
+            "Actualizacion de perfil rechazada por validaciones.",
+            request=request,
+            user=request.user,
+            severity="warning",
+            metadata={"errors": serializer.errors},
+        )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    customer = ensure_customer_for_user(request.user)
+    serializer.update_customer(customer)
+
+    log_event(
+        "profile_update_success",
+        "Perfil de cliente actualizado.",
+        request=request,
+        user=request.user,
+        metadata={"user_id": request.user.id},
+    )
+
     return Response(
         serialize_current_user(request.user),
         status=status.HTTP_200_OK

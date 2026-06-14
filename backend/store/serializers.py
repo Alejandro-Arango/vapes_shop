@@ -270,3 +270,74 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "username", "email")
+
+
+class CustomerProfileSerializer(serializers.Serializer):
+    """
+    Nombre: CustomerProfileSerializer
+    Descripcion: Valida los datos editables del perfil del cliente autenticado.
+    """
+
+    first_name = serializers.CharField(
+        max_length=100,
+        allow_blank=True,
+        required=False,
+    )
+    last_name = serializers.CharField(
+        max_length=100,
+        allow_blank=True,
+        required=False,
+    )
+    phone = serializers.CharField(
+        max_length=30,
+        allow_blank=True,
+        required=False,
+    )
+
+    def validate_first_name(self, value):
+        return value.strip()
+
+    def validate_last_name(self, value):
+        return value.strip()
+
+    def validate_phone(self, value):
+        phone = value.strip()
+
+        if not phone:
+            return phone
+
+        allowed_chars = set("0123456789+() -")
+
+        if any(char not in allowed_chars for char in phone):
+            raise serializers.ValidationError(
+                "El telefono solo puede contener numeros, espacios, +, - y parentesis."
+            )
+
+        digits_count = sum(char.isdigit() for char in phone)
+
+        if digits_count < 7:
+            raise serializers.ValidationError("El telefono debe tener al menos 7 digitos.")
+
+        if digits_count > CONTACT_PHONE_MAX_DIGITS:
+            raise serializers.ValidationError("El telefono no puede superar 15 digitos.")
+
+        return phone
+
+    def update_customer(self, customer):
+        """
+        Nombre: update_customer
+        Descripcion: Aplica datos validados al customer asociado al usuario.
+        """
+        update_fields = []
+
+        for field in ("first_name", "last_name", "phone"):
+            if field not in self.validated_data:
+                continue
+
+            setattr(customer, field, self.validated_data[field])
+            update_fields.append(field)
+
+        if update_fields:
+            customer.save(update_fields=update_fields)
+
+        return customer

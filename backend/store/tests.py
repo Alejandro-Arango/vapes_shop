@@ -616,6 +616,61 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.data["default_shipping"]["city"], "Medellin")
         self.assertEqual(response.data["default_shipping"]["notes"], "Porteria principal")
 
+    def test_profile_update_requires_auth_and_updates_customer(self):
+        unauthenticated_response = self.client.post(
+            reverse("auth_profile"),
+            {
+                "first_name": "Cliente",
+                "last_name": "Perfil",
+                "phone": "3001234567",
+            },
+            format="json",
+        )
+
+        self.assertIn(
+            unauthenticated_response.status_code,
+            (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+        )
+
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        invalid_response = self.client.post(
+            reverse("auth_profile"),
+            {
+                "first_name": "Cliente",
+                "last_name": "Perfil",
+                "phone": "telefono",
+            },
+            format="json",
+        )
+
+        self.assertEqual(invalid_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone", invalid_response.data)
+
+        response = self.client.post(
+            reverse("auth_profile"),
+            {
+                "first_name": "Cliente",
+                "last_name": "Actualizado",
+                "phone": "300 123 4567",
+            },
+            format="json",
+        )
+
+        customer = user.customer
+        customer.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(customer.first_name, "Cliente")
+        self.assertEqual(customer.last_name, "Actualizado")
+        self.assertEqual(customer.phone, "300 123 4567")
+        self.assertEqual(response.data["customer"]["phone"], "300 123 4567")
+        self.assertEqual(response.data["default_shipping"]["phone"], "300 123 4567")
+        self.assertTrue(
+            EventLog.objects.filter(event_type="profile_update_success").exists()
+        )
+
     def test_failed_login_creates_event_log(self):
         response = self.client.post(
             reverse("auth_login"),
