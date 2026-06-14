@@ -341,9 +341,117 @@ body.light-mode .quick-filter.active {
     color: #fff;
 }
 
+.product-reviews-panel {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.product-reviews-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.product-reviews-head h3 {
+    margin: 8px 0 0;
+    font-size: 22px;
+}
+
+.product-review-form {
+    display: grid;
+    grid-template-columns: 0.6fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 16px;
+}
+
+.product-review-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.product-review-field label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted-dark);
+}
+
+.product-review-field select,
+.product-review-field textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-family: inherit;
+}
+
+.product-review-field textarea {
+    resize: vertical;
+}
+
+.product-review-list {
+    display: grid;
+    gap: 10px;
+}
+
+.product-review-item {
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.product-review-item div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.product-review-item span {
+    color: var(--warning-accent);
+    font-weight: 700;
+}
+
+.product-review-item p {
+    color: var(--muted-dark);
+    line-height: 1.5;
+}
+
 body.light-mode .product-detail-image {
     background: rgba(0, 0, 0, 0.03);
     border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .product-reviews-panel {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .product-review-field label {
+    color: var(--muted-light);
+}
+
+body.light-mode .product-review-field select,
+body.light-mode .product-review-field textarea {
+    background: #fff;
+    color: #222;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .product-review-item {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .product-review-item p {
+    color: var(--muted-light);
 }
 
 @media (max-width: 800px) {
@@ -358,5 +466,12 @@ body.light-mode .product-detail-image {
 
     .product-detail-info h2 {
         font-size: 26px;
+    }
+
+    .product-reviews-head,
+    .product-review-form,
+    .product-review-item div {
+        grid-template-columns: 1fr;
+        flex-direction: column;
     }
 }

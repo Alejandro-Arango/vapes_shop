@@ -231,6 +231,23 @@ body.light-mode .about {
     font-weight: 700;
 }
 
+.product-rating {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted-light);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.product-rating-stars {
+    display: inline-flex;
+    gap: 2px;
+    color: var(--warning-accent);
+    font-size: 12px;
+}
+
 .product-info .muted {
     font-size: 13px;
     color: var(--muted-light);

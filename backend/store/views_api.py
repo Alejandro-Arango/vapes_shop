@@ -1,5 +1,5 @@
 from django.db import DatabaseError, connection
-from django.db.models import Q
+from django.db.models import Avg, Count, Q
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -156,6 +156,19 @@ def get_user_favorite_product_ids(request, products):
     )
 
 
+def apply_private_cache_headers(response, request):
+    """
+    Nombre: apply_private_cache_headers
+    Descripcion: Evita cachear respuestas de catalogo que incluyen estado del usuario.
+    """
+    if request.user.is_authenticated:
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+
+    return response
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
@@ -202,6 +215,16 @@ def api_products(request):
         Product.objects
         .filter(is_active=True)
         .select_related("category")
+        .annotate(
+            rating_average=Avg(
+                "reviews__rating",
+                filter=Q(reviews__is_approved=True),
+            ),
+            rating_count=Count(
+                "reviews",
+                filter=Q(reviews__is_approved=True),
+            ),
+        )
     )
     products = apply_product_query_params(products, request)
 
@@ -215,12 +238,14 @@ def api_products(request):
             context={"favorite_product_ids": favorite_product_ids},
         )
 
-        return Response(
+        response = Response(
             {
                 "results": serializer.data,
                 "pagination": pagination,
             }
         )
+
+        return apply_private_cache_headers(response, request)
 
     products = list(products)
     favorite_product_ids = get_user_favorite_product_ids(request, products)
@@ -230,7 +255,9 @@ def api_products(request):
         context={"favorite_product_ids": favorite_product_ids},
     )
 
-    return Response(serializer.data)
+    response = Response(serializer.data)
+
+    return apply_private_cache_headers(response, request)
 
 
 @api_view(["GET"])

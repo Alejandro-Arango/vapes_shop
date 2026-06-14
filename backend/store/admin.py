@@ -19,6 +19,7 @@ from .models import (
     EventLog,
     FavoriteProduct,
     Product,
+    ProductReview,
     Order,
     OrderItem,
 )
@@ -489,6 +490,50 @@ class FavoriteProductAdmin(admin.ModelAdmin):
     list_select_related = (
         "user",
         "product",
+    )
+
+    ordering = (
+        "-created_at",
+    )
+
+
+@admin.register(ProductReview)
+class ProductReviewAdmin(admin.ModelAdmin):
+    """
+    Nombre: ProductReviewAdmin
+    Descripcion: Permite moderar calificaciones y comentarios asociados a productos.
+    """
+
+    list_display = (
+        "id",
+        "product",
+        "user",
+        "rating",
+        "is_approved",
+        "created_at",
+    )
+
+    search_fields = (
+        "product__name",
+        "user__username",
+        "user__email",
+        "comment",
+    )
+
+    list_filter = (
+        "rating",
+        "is_approved",
+        "created_at",
+    )
+
+    list_select_related = (
+        "product",
+        "user",
+    )
+
+    readonly_fields = (
+        "created_at",
+        "updated_at",
     )
 
     ordering = (

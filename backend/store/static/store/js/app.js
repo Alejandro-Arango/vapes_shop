@@ -30,6 +30,8 @@ const api = {
     orderDetail: (orderId) => `/api/orders/${orderId}/`,
     reorderOrder: (orderId) => `/api/orders/reorder/${orderId}/`,
     cancelOrder: (orderId) => `/api/orders/cancel/${orderId}/`,
+    productReviews: (productId) => `/api/products/${productId}/reviews/`,
+    submitProductReview: (productId) => `/api/products/${productId}/reviews/submit/`,
 };
 
 const shippingLimits = {
@@ -875,6 +877,8 @@ function renderFavorites(data) {
                             <div>
                                 <h3>${escapeHtml(product.name)}</h3>
 
+                                ${renderProductRating(product)}
+
                                 <p class="muted">$${Number(product.price || 0).toFixed(2)}</p>
 
                                 <div class="favorite-item-actions">
@@ -941,6 +945,260 @@ async function loadAndRenderFavorites() {
 
         if (body) {
             body.innerHTML = `<p class="muted">Error cargando favoritos.</p>`;
+        }
+    }
+}
+
+// =============================================================================
+//  RESEÑAS
+// =============================================================================
+
+async function fetchProductReviews(productId) {
+    const res = await fetch(api.productReviews(productId), {
+        credentials: "include",
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.error || "No se pudieron cargar las reseñas");
+    }
+
+    return data;
+}
+
+async function submitProductReview(productId, reviewData) {
+    const res = await fetch(api.submitProductReview(productId), {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify(reviewData),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+        const err = new Error(data?.error || "No se pudo guardar la reseña");
+
+        err.authRequired = res.status === 401 || res.status === 403;
+
+        throw err;
+    }
+
+    return data;
+}
+
+function renderProductRating(product) {
+    const average = Number(product?.rating_average || 0);
+    const count = Number(product?.rating_count || 0);
+    const rounded = Math.round(average);
+    const stars = Array.from({ length: 5 })
+        .map((_, index) => {
+            const iconClass = index < rounded ? "fas" : "far";
+
+            return `<i class="${iconClass} fa-star"></i>`;
+        })
+        .join("");
+    const label = count
+        ? `${average.toFixed(1)} de 5 (${count})`
+        : "Sin calificaciones";
+
+    return `
+        <div
+            class="product-rating"
+            data-rating-product-id="${product?.id || ""}"
+            aria-label="${label}"
+        >
+            <span class="product-rating-stars">${stars}</span>
+
+            <span>${label}</span>
+        </div>
+    `;
+}
+
+function setCatalogProductReviewSummary(productId, ratingAverage, ratingCount) {
+    catalogProducts = catalogProducts.map((product) => {
+        if (Number(product.id) !== Number(productId)) return product;
+
+        return {
+            ...product,
+            rating_average: Number(ratingAverage || 0),
+            rating_count: Number(ratingCount || 0),
+        };
+    });
+}
+
+function updateProductRatingBadges(productId, ratingAverage, ratingCount) {
+    const product = {
+        id: productId,
+        rating_average: ratingAverage,
+        rating_count: ratingCount,
+    };
+
+    document
+        .querySelectorAll(`[data-rating-product-id="${productId}"]`)
+        .forEach((ratingEl) => {
+            ratingEl.outerHTML = renderProductRating(product);
+        });
+}
+
+function renderProductReviewsPanel(productId, data) {
+    const panel = document.getElementById("product-reviews-panel");
+
+    if (!panel) return;
+
+    const ownReview = data?.own_review || null;
+    const reviews = data?.reviews || [];
+    const reviewsHtml = reviews.length
+        ? reviews
+            .map((review) => `
+                <article class="product-review-item">
+                    <div>
+                        <strong>${escapeHtml(review.user || "Cliente")}</strong>
+
+                        <span>${Number(review.rating || 0)} de 5</span>
+                    </div>
+
+                    <p>${escapeHtml(review.comment || "Sin comentario.")}</p>
+                </article>
+            `)
+            .join("")
+        : `<p class="muted">Aun no hay reseñas para este producto.</p>`;
+
+    panel.innerHTML = `
+        <div class="product-reviews-head">
+            <div>
+                <span class="product-detail-tag">Reseñas</span>
+
+                <h3>Opiniones de clientes</h3>
+            </div>
+
+            ${renderProductRating({
+                id: productId,
+                rating_average: data?.rating_average || 0,
+                rating_count: data?.rating_count || 0,
+            })}
+        </div>
+
+        <form class="product-review-form">
+            <div class="product-review-field">
+                <label for="product-review-rating">Tu calificacion</label>
+
+                <select id="product-review-rating" name="rating">
+                    ${[5, 4, 3, 2, 1]
+                        .map((rating) => `
+                            <option
+                                value="${rating}"
+                                ${Number(ownReview?.rating || 5) === rating ? "selected" : ""}
+                            >
+                                ${rating} de 5
+                            </option>
+                        `)
+                        .join("")}
+                </select>
+            </div>
+
+            <div class="product-review-field">
+                <label for="product-review-comment">Comentario</label>
+
+                <textarea
+                    id="product-review-comment"
+                    name="comment"
+                    maxlength="600"
+                    rows="3"
+                    placeholder="Comparte tu experiencia con este producto"
+                >${escapeHtml(ownReview?.comment || "")}</textarea>
+            </div>
+
+            <button class="btn small" type="submit">
+                ${ownReview ? "Actualizar reseña" : "Guardar reseña"}
+            </button>
+        </form>
+
+        <div class="product-review-list">
+            ${reviewsHtml}
+        </div>
+    `;
+
+    panel
+        .querySelector(".product-review-form")
+        ?.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const form = event.currentTarget;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn?.textContent || "Guardar reseña";
+            const rating = form.elements.rating?.value;
+            const comment = form.elements.comment?.value || "";
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Guardando...";
+            }
+
+            try {
+                const result = await submitProductReview(productId, {
+                    rating,
+                    comment,
+                });
+
+                setCatalogProductReviewSummary(
+                    productId,
+                    result.rating_average,
+                    result.rating_count
+                );
+                updateProductRatingBadges(
+                    productId,
+                    result.rating_average,
+                    result.rating_count
+                );
+
+                const refreshed = await fetchProductReviews(productId);
+
+                renderProductReviewsPanel(productId, refreshed);
+                showToast(result.message || "Reseña guardada.", "success");
+            } catch (err) {
+                if (err.authRequired) {
+                    showToast("Inicia sesion para escribir una reseña.", "error");
+                    document.getElementById("open-auth")?.click();
+                } else {
+                    showToast(err.message || "No se pudo guardar la reseña.", "error");
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            }
+        });
+}
+
+async function loadProductReviews(productId) {
+    const panel = document.getElementById("product-reviews-panel");
+
+    if (panel) {
+        panel.innerHTML = `<p class="muted">Cargando reseñas...</p>`;
+    }
+
+    try {
+        const data = await fetchProductReviews(productId);
+
+        setCatalogProductReviewSummary(
+            productId,
+            data.rating_average,
+            data.rating_count
+        );
+        updateProductRatingBadges(
+            productId,
+            data.rating_average,
+            data.rating_count
+        );
+        renderProductReviewsPanel(productId, data);
+    } catch (err) {
+        if (panel) {
+            panel.innerHTML = `
+                <p class="muted">
+                    ${escapeHtml(err.message || "No se pudieron cargar las reseñas.")}
+                </p>
+            `;
         }
     }
 }
@@ -1759,6 +2017,8 @@ function renderProductDetail(product) {
 
                 ${categoryBadge}
 
+                ${renderProductRating(product)}
+
                 <p class="muted product-detail-description">
                     ${escapeHtml(product.description || "Sin descripcion disponible.")}
                 </p>
@@ -1780,6 +2040,10 @@ function renderProductDetail(product) {
                 </div>
             </div>
         </div>
+
+        <section id="product-reviews-panel" class="product-reviews-panel">
+            <p class="muted">Cargando reseñas...</p>
+        </section>
     `;
 
     document
@@ -1815,6 +2079,7 @@ function openProductDetail(productId) {
     if (!modal || !product) return;
 
     renderProductDetail(product);
+    loadProductReviews(product.id);
 
     modal.setAttribute("aria-hidden", "false");
     modal.classList.add("open");
@@ -1918,6 +2183,8 @@ function renderProducts(products, options = {}) {
                         ${categoryBadge}
 
                         <h3>${escapeHtml(product.name)}</h3>
+
+                        ${renderProductRating(product)}
 
                         <p class="muted">${escapeHtml(product.description || "")}</p>
 

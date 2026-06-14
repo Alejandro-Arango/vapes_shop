@@ -41,6 +41,8 @@ class ProductSerializer(serializers.ModelSerializer):
 
     category = serializers.SerializerMethodField()
     is_favorite = serializers.SerializerMethodField()
+    rating_average = serializers.SerializerMethodField()
+    rating_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -53,6 +55,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "image",
             "stock",
             "is_favorite",
+            "rating_average",
+            "rating_count",
         )
 
     def get_category(self, obj):
@@ -73,6 +77,22 @@ class ProductSerializer(serializers.ModelSerializer):
         favorite_product_ids = self.context.get("favorite_product_ids", set())
 
         return obj.id in favorite_product_ids
+
+    def get_rating_average(self, obj):
+        """
+        Nombre: get_rating_average
+        Descripcion: Expone el promedio de calificacion aprobado del producto.
+        """
+        rating_average = getattr(obj, "rating_average", None) or 0
+
+        return round(float(rating_average), 1)
+
+    def get_rating_count(self, obj):
+        """
+        Nombre: get_rating_count
+        Descripcion: Expone la cantidad de reseñas aprobadas del producto.
+        """
+        return int(getattr(obj, "rating_count", 0) or 0)
 
 
 class ContactLeadSerializer(serializers.ModelSerializer):

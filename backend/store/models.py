@@ -170,6 +170,52 @@ class FavoriteProduct(models.Model):
         return f"{self.user} - {self.product}"
 
 
+class ProductReview(models.Model):
+    """
+    Nombre: ProductReview
+    Descripcion: Guarda calificaciones y comentarios de usuarios sobre productos activos.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="product_reviews",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="reviews",
+    )
+    rating = models.PositiveSmallIntegerField()
+    comment = models.TextField(blank=True)
+    is_approved = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(
+                fields=["product", "is_approved", "created_at"],
+                name="review_product_status_idx",
+            ),
+            models.Index(fields=["user", "created_at"], name="review_user_date_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "product"],
+                name="review_user_product_unique",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(rating__gte=1, rating__lte=5),
+                name="review_rating_range",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.product} - {self.rating}/5"
+
+
 class ContactLead(models.Model):
     """
     Nombre: ContactLead

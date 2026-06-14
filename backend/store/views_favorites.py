@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db.models import Avg, Count, Q
 
 from .audit import log_event
 from .models import FavoriteProduct, Product
@@ -43,16 +44,25 @@ def favorite_products(request):
     Nombre: favorite_products
     Descripcion: Devuelve los productos favoritos activos del usuario autenticado.
     """
-    favorites = (
-        FavoriteProduct.objects
-        .filter(user=request.user, product__is_active=True)
-        .select_related("product__category")
-        .order_by("-created_at")
+    products = list(
+        Product.objects
+        .filter(
+            is_active=True,
+            favorited_by__user=request.user,
+        )
+        .select_related("category")
+        .annotate(
+            rating_average=Avg(
+                "reviews__rating",
+                filter=Q(reviews__is_approved=True),
+            ),
+            rating_count=Count(
+                "reviews",
+                filter=Q(reviews__is_approved=True),
+            ),
+        )
+        .order_by("-favorited_by__created_at")
     )
-    products = [
-        favorite.product
-        for favorite in favorites
-    ]
     favorite_product_ids = {
         product.id
         for product in products

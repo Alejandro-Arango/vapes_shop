@@ -50,6 +50,7 @@ from .models import (
     Order,
     OrderItem,
     Product,
+    ProductReview,
 )
 from .throttles import (
     AuthAnonRateThrottle,
@@ -1124,6 +1125,154 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(favorite_product["is_favorite"])
+
+    def test_review_submit_requires_authentication(self):
+        response = self.client.post(
+            reverse("submit_product_review", args=[self.product.id]),
+            {
+                "rating": 5,
+                "comment": "Muy buen producto.",
+            },
+            format="json",
+        )
+
+        self.assertIn(
+            response.status_code,
+            (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+        )
+
+    def test_user_can_create_update_and_list_product_review(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        create_response = self.client.post(
+            reverse("submit_product_review", args=[self.product.id]),
+            {
+                "rating": 5,
+                "comment": "Excelente sabor.",
+            },
+            format="json",
+        )
+        update_response = self.client.post(
+            reverse("submit_product_review", args=[self.product.id]),
+            {
+                "rating": 4,
+                "comment": "Buen producto.",
+            },
+            format="json",
+        )
+        list_response = self.client.get(
+            reverse("product_reviews", args=[self.product.id])
+        )
+
+        self.assertEqual(create_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(ProductReview.objects.count(), 1)
+        self.assertEqual(update_response.data["review"]["rating"], 4)
+        self.assertEqual(update_response.data["rating_average"], 4.0)
+        self.assertEqual(update_response.data["rating_count"], 1)
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data["own_review"]["rating"], 4)
+        self.assertEqual(list_response.data["reviews"][0]["comment"], "Buen producto.")
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="review_created",
+                metadata__product_id=self.product.id,
+            ).exists()
+        )
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="review_updated",
+                metadata__product_id=self.product.id,
+            ).exists()
+        )
+
+    def test_product_reviews_reject_invalid_payload_and_inactive_product(self):
+        user = self.create_user()
+        inactive_product = Product.objects.create(
+            name="Producto no reseñable",
+            description="Producto inactivo.",
+            price=Decimal("10.00"),
+            stock=1,
+            is_active=False,
+        )
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        invalid_rating_response = self.client.post(
+            reverse("submit_product_review", args=[self.product.id]),
+            {
+                "rating": 6,
+                "comment": "Fuera de rango.",
+            },
+            format="json",
+        )
+        invalid_comment_response = self.client.post(
+            reverse("submit_product_review", args=[self.product.id]),
+            {
+                "rating": 5,
+                "comment": "x" * 601,
+            },
+            format="json",
+        )
+        inactive_response = self.client.post(
+            reverse("submit_product_review", args=[inactive_product.id]),
+            {
+                "rating": 5,
+                "comment": "No debe guardar.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            invalid_rating_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            invalid_comment_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(inactive_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(ProductReview.objects.count(), 0)
+
+    def test_products_api_includes_review_summary(self):
+        first_user = self.create_user()
+        second_user = User.objects.create_user(
+            username="cliente_reviews",
+            email="cliente_reviews@example.com",
+            password="ClaveSegura123",
+        )
+        ProductReview.objects.create(
+            user=first_user,
+            product=self.product,
+            rating=5,
+            comment="Muy bueno.",
+        )
+        ProductReview.objects.create(
+            user=second_user,
+            product=self.product,
+            rating=3,
+            comment="Correcto.",
+        )
+
+        response = self.client.get(reverse("api_products"))
+        product_data = next(
+            product
+            for product in response.data
+            if product["id"] == self.product.id
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(product_data["rating_average"], 4.0)
+        self.assertEqual(product_data["rating_count"], 2)
+
+    def test_authenticated_product_api_is_not_cached(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.get(reverse("api_products"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.headers["Cache-Control"], "no-store, max-age=0")
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
         invalid_quantities = (0, "1.5", True, "abc")
