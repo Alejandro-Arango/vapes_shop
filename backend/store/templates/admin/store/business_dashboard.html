@@ -1,0 +1,154 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Inicio</a>
+    &rsaquo; Resumen del negocio
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="module">
+        <h2>Indicadores principales</h2>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+            <div style="padding: 12px; border: 1px solid var(--hairline-color); border-radius: 4px;">
+                <strong>Ventas totales</strong>
+                <p style="font-size: 22px; margin: 8px 0 0;">${{ revenue_total }}</p>
+            </div>
+
+            <div style="padding: 12px; border: 1px solid var(--hairline-color); border-radius: 4px;">
+                <strong>Ventas ultimos 30 dias</strong>
+                <p style="font-size: 22px; margin: 8px 0 0;">${{ revenue_last_30_days }}</p>
+            </div>
+
+            <div style="padding: 12px; border: 1px solid var(--hairline-color); border-radius: 4px;">
+                <strong>Pedidos totales</strong>
+                <p style="font-size: 22px; margin: 8px 0 0;">{{ total_orders }}</p>
+            </div>
+
+            <div style="padding: 12px; border: 1px solid var(--hairline-color); border-radius: 4px;">
+                <strong>Pedidos hoy</strong>
+                <p style="font-size: 22px; margin: 8px 0 0;">{{ orders_today }}</p>
+            </div>
+
+            <div style="padding: 12px; border: 1px solid var(--hairline-color); border-radius: 4px;">
+                <strong>Ticket promedio</strong>
+                <p style="font-size: 22px; margin: 8px 0 0;">${{ average_order_value }}</p>
+            </div>
+
+            <div style="padding: 12px; border: 1px solid var(--hairline-color); border-radius: 4px;">
+                <strong>Clientes</strong>
+                <p style="font-size: 22px; margin: 8px 0 0;">{{ customer_count }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="module">
+        <h2>Pedidos por estado</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Estado</th>
+                    <th>Pedidos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in status_rows %}
+                <tr>
+                    <td>{{ row.label }}</td>
+                    <td>{{ row.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="module">
+        <h2>Productos mas vendidos</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Unidades</th>
+                    <th>Ventas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in top_products %}
+                <tr>
+                    <td>{{ product.product_name|default:"Producto sin nombre" }}</td>
+                    <td>{{ product.units_sold }}</td>
+                    <td>${{ product.revenue }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">Aun no hay productos vendidos.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="module">
+        <h2>Alertas de inventario</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in low_stock_products %}
+                <tr>
+                    <td>{{ product.name }}</td>
+                    <td>{{ product.stock }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2">No hay productos activos con stock bajo.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="module">
+        <h2>Pedidos recientes</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>Estado</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in recent_orders %}
+                <tr>
+                    <td>
+                        <a href="{% url 'admin:store_order_change' order.id %}">
+                            #{{ order.id }}
+                        </a>
+                    </td>
+                    <td>{{ order.customer }}</td>
+                    <td>{{ order.get_status_display }}</td>
+                    <td>${{ order.total_amount }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">Aun no hay pedidos registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

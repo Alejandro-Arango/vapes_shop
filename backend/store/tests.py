@@ -40,6 +40,7 @@ from mi_tienda.settings import (
 )
 
 from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
+from .admin_dashboard import build_business_dashboard_context
 from .audit import get_client_ip, log_event
 from .models import (
     Category,
@@ -2708,6 +2709,87 @@ class StoreApiTests(APITestCase):
         self.assertIn("Interrapidisimo", content)
         self.assertIn("IR123", content)
         self.assertIn("20.00", content)
+
+    def test_admin_business_dashboard_context_summarizes_metrics(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+        second_product = Product.objects.create(
+            name="Producto destacado",
+            description="Descripcion",
+            price=Decimal("15.00"),
+            stock=2,
+        )
+        paid_order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+            total_amount=Decimal("20.00"),
+        )
+        sent_order = Order.objects.create(
+            customer=customer,
+            status="enviado",
+            completed=True,
+            total_amount=Decimal("45.00"),
+        )
+        Order.objects.create(
+            customer=customer,
+            status="cancelado",
+            completed=False,
+            total_amount=Decimal("99.00"),
+        )
+        OrderItem.objects.create(
+            order=paid_order,
+            product=self.product,
+            quantity=2,
+        )
+        OrderItem.objects.create(
+            order=sent_order,
+            product=second_product,
+            quantity=3,
+        )
+
+        context = build_business_dashboard_context()
+        status_counts = {
+            row["status"]: row["count"]
+            for row in context["status_rows"]
+        }
+
+        self.assertEqual(context["total_orders"], 3)
+        self.assertEqual(context["orders_last_30_days"], 3)
+        self.assertEqual(context["revenue_total"], Decimal("65.00"))
+        self.assertEqual(context["average_order_value"], Decimal("32.50"))
+        self.assertEqual(context["customer_count"], 1)
+        self.assertEqual(status_counts["pagado"], 1)
+        self.assertEqual(status_counts["enviado"], 1)
+        self.assertEqual(status_counts["cancelado"], 1)
+        self.assertEqual(context["top_products"][0]["product_name"], "Producto destacado")
+        self.assertEqual(context["top_products"][0]["units_sold"], 3)
+        self.assertIn(second_product, list(context["low_stock_products"]))
+
+    def test_admin_business_dashboard_view_requires_staff_and_renders(self):
+        dashboard_url = reverse("admin:store_business_dashboard")
+
+        anonymous_response = self.client.get(dashboard_url)
+
+        self.assertEqual(anonymous_response.status_code, 302)
+
+        admin_user = User.objects.create_superuser(
+            username="dashboard-admin",
+            email="dashboard-admin@example.com",
+            password="ClaveSegura123",
+        )
+        self.client.force_login(admin_user)
+
+        response = self.client.get(dashboard_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Resumen del negocio")
+        self.assertContains(response, "Productos mas vendidos")
 
     def test_admin_can_mark_orders_as_preparing_and_refunded(self):
         user = self.create_user()

@@ -13,6 +13,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 
 from .audit import log_event
+from .admin_dashboard import register_business_dashboard
 from .models import (
     Category,
     ContactLead,
@@ -29,6 +30,9 @@ from .models import (
 )
 from .order_notifications import notify_order_status_changed
 from .order_status import record_order_status
+
+
+register_business_dashboard(admin.site)
 
 
 def format_admin_bool(value):

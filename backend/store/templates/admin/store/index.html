@@ -1,0 +1,19 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+<div class="module" id="store-business-dashboard-link">
+    <h2>Resumen ecommerce</h2>
+
+    <p>
+        Consulta ventas, pedidos por estado, productos mas vendidos y alertas de inventario.
+    </p>
+
+    <p>
+        <a class="button" href="{% url 'admin:store_business_dashboard' %}">
+            Ver resumen del negocio
+        </a>
+    </p>
+</div>
+
+{{ block.super }}
+{% endblock %}
