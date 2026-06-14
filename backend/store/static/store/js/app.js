@@ -21,6 +21,8 @@ const api = {
     cartDecrease: "/api/cart/decrease/",
     cartRemove: "/api/cart/remove/",
     cartClear: "/api/cart/clear/",
+    cartApplyCoupon: "/api/cart/apply-coupon/",
+    cartRemoveCoupon: "/api/cart/remove-coupon/",
     checkout: "/api/orders/checkout/",
     myOrders: "/api/orders/my/",
     contact: "/api/contact/",
@@ -2656,6 +2658,75 @@ async function clearCart() {
     }
 }
 
+function setCouponStatus(message = "", type = "") {
+    const status = document.getElementById("coupon-status");
+
+    if (!status) return;
+
+    status.textContent = message;
+    status.className = `coupon-status ${type}`.trim();
+}
+
+function renderCouponState(cartData = {}) {
+    const input = document.getElementById("coupon-code");
+    const removeBtn = document.getElementById("coupon-remove-btn");
+    const coupon = cartData?.coupon || null;
+    const discount = Number(cartData?.discount || 0);
+
+    if (!input || !removeBtn) return;
+
+    if (coupon) {
+        input.value = coupon.code || "";
+        removeBtn.hidden = false;
+        setCouponStatus(
+            `Cupon ${coupon.code} aplicado. Descuento: $${discount.toFixed(2)}.`,
+            "success"
+        );
+
+        return;
+    }
+
+    removeBtn.hidden = true;
+
+    if (cartData?.coupon_error) {
+        setCouponStatus(cartData.coupon_error, "error");
+        return;
+    }
+
+    setCouponStatus("", "");
+}
+
+async function applyCoupon(code) {
+    const res = await fetch(api.cartApplyCoupon, {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.error || "No se pudo aplicar el cupon.");
+    }
+
+    return data;
+}
+
+async function removeCoupon() {
+    const res = await fetch(api.cartRemoveCoupon, {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.error || "No se pudo quitar el cupon.");
+    }
+
+    return data;
+}
+
 /*
  * Nombre: updateCartUI
  * Descripcion: Actualiza productos, cantidades, botones, contador y total del carrito.
@@ -2668,11 +2739,13 @@ async function updateCartUI() {
     if (!itemsEl || !countEl || !totalEl) return;
 
     let items = [];
+    let cartData = null;
 
     const serverCart = await getServerCart();
 
     if (serverCart && Array.isArray(serverCart.items)) {
         items = serverCart.items;
+        cartData = serverCart;
     } else {
         const local = getLocalCart();
         const ids = Object.keys(local).map(Number);
@@ -2728,6 +2801,12 @@ async function updateCartUI() {
         countEl.textContent = "0";
         totalEl.textContent = "$0.00";
 
+        renderCouponState(serverCart || {
+            subtotal: 0,
+            discount: 0,
+            total: 0,
+            coupon: null,
+        });
         resetCheckoutSummary();
 
         return;
@@ -2861,10 +2940,11 @@ async function updateCartUI() {
         });
     });
 
-    const total = items.reduce(
+    const calculatedTotal = items.reduce(
         (sum, item) => sum + Number(item.product.price) * Number(item.quantity),
         0
     );
+    const finalTotal = cartData ? Number(cartData.total || 0) : calculatedTotal;
 
     const count = items.reduce(
         (sum, item) => sum + Number(item.quantity),
@@ -2872,7 +2952,13 @@ async function updateCartUI() {
     );
 
     countEl.textContent = String(count);
-    totalEl.textContent = `$${total.toFixed(2)}`;
+    totalEl.textContent = `$${finalTotal.toFixed(2)}`;
+    renderCouponState(cartData || {
+        subtotal: calculatedTotal,
+        discount: 0,
+        total: calculatedTotal,
+        coupon: null,
+    });
 }
 
 // =============================================================================
@@ -2976,6 +3062,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const continueShoppingBtn = document.getElementById("continue-shopping-btn");
     const clearCartBtn = document.getElementById("clear-cart-btn");
+    const couponForm = document.getElementById("coupon-form");
+    const couponInput = document.getElementById("coupon-code");
+    const couponApplyBtn = document.getElementById("coupon-apply-btn");
+    const couponRemoveBtn = document.getElementById("coupon-remove-btn");
     const checkoutBtn = document.getElementById("checkout-btn");
     const checkoutPrevBtn = document.getElementById("checkout-prev-btn");
     const checkoutNextBtn = document.getElementById("checkout-next-btn");
@@ -3080,6 +3170,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const serverCart = await getServerCart();
         const items = serverCart?.items || [];
         const total = Number(serverCart?.total || 0);
+        const subtotal = Number(serverCart?.subtotal ?? total);
+        const discount = Number(serverCart?.discount || 0);
+        const coupon = serverCart?.coupon || null;
 
         if (!items.length) {
             showCartFeedback("Tu carrito esta vacio.", "error");
@@ -3144,6 +3237,21 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             </div>
 
+            <div class="checkout-confirm-total checkout-confirm-subtotal">
+                <span>Subtotal</span>
+                <strong>$${subtotal.toFixed(2)}</strong>
+            </div>
+
+            ${discount > 0
+                ? `
+                    <div class="checkout-confirm-total checkout-confirm-discount">
+                        <span>Descuento${coupon?.code ? ` (${escapeHtml(coupon.code)})` : ""}</span>
+                        <strong>-$${discount.toFixed(2)}</strong>
+                    </div>
+                `
+                : ""
+            }
+
             <div class="checkout-confirm-total">
                 <span>Total a pagar</span>
                 <strong>$${total.toFixed(2)}</strong>
@@ -3181,6 +3289,67 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         resetCheckoutSummary();
         setCheckoutStep("cart");
+    });
+
+    couponForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const code = couponInput?.value.trim() || "";
+
+        if (!code) {
+            setCouponStatus("Ingresa un codigo de cupon.", "error");
+            return;
+        }
+
+        if (couponApplyBtn) {
+            couponApplyBtn.disabled = true;
+            couponApplyBtn.textContent = "Aplicando...";
+        }
+
+        try {
+            const data = await applyCoupon(code);
+
+            renderCouponState(data);
+            resetCheckoutSummary();
+            await updateCartUI();
+            showToast(data?.message || "Cupon aplicado correctamente.", "success");
+        } catch (err) {
+            setCouponStatus(
+                err.message || "No se pudo aplicar el cupon.",
+                "error"
+            );
+            showToast(err.message || "No se pudo aplicar el cupon.", "error");
+        } finally {
+            if (couponApplyBtn) {
+                couponApplyBtn.disabled = false;
+                couponApplyBtn.textContent = "Aplicar";
+            }
+        }
+    });
+
+    couponRemoveBtn?.addEventListener("click", async () => {
+        couponRemoveBtn.disabled = true;
+
+        try {
+            const data = await removeCoupon();
+
+            if (couponInput) {
+                couponInput.value = "";
+            }
+
+            renderCouponState(data);
+            resetCheckoutSummary();
+            await updateCartUI();
+            showToast(data?.message || "Cupon removido correctamente.", "success");
+        } catch (err) {
+            setCouponStatus(
+                err.message || "No se pudo quitar el cupon.",
+                "error"
+            );
+            showToast(err.message || "No se pudo quitar el cupon.", "error");
+        } finally {
+            couponRemoveBtn.disabled = false;
+        }
     });
 
     checkoutNextBtn?.addEventListener("click", async () => {
@@ -3350,6 +3519,17 @@ document.addEventListener("DOMContentLoaded", async () => {
                     }
 
                     showToast("Actualizamos tu carrito. Revisalo antes de pagar.", "info");
+                }
+
+                if (data?.coupon_invalid) {
+                    resetCheckoutSummary();
+                    setCheckoutStep("cart");
+
+                    try {
+                        await updateCartUI();
+                    } catch (err) {
+                        console.warn("Error actualizando carrito por cupon invalido:", err);
+                    }
                 }
 
                 if (res.status === 401 || res.status === 403) {

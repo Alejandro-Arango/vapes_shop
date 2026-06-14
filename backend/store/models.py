@@ -330,6 +330,66 @@ class EventLog(models.Model):
         return f"{self.event_type} - {self.severity}"
 
 
+class DiscountCode(models.Model):
+    """
+    Nombre: DiscountCode
+    Descripcion: Define cupones de descuento aplicables al carrito antes del checkout.
+    """
+
+    DISCOUNT_TYPE_CHOICES = [
+        ("percent", "Porcentaje"),
+        ("fixed", "Valor fijo"),
+    ]
+
+    code = models.CharField(max_length=40, unique=True)
+    description = models.CharField(max_length=160, blank=True)
+    discount_type = models.CharField(
+        max_length=20,
+        choices=DISCOUNT_TYPE_CHOICES,
+        default="percent",
+    )
+    value = models.DecimalField(max_digits=10, decimal_places=2)
+    min_order_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+    max_uses = models.PositiveIntegerField(blank=True, null=True)
+    used_count = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    starts_at = models.DateTimeField(blank=True, null=True)
+    ends_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("code",)
+        indexes = [
+            models.Index(fields=["code", "is_active"], name="discount_code_active_idx"),
+            models.Index(fields=["is_active", "starts_at", "ends_at"], name="discount_active_dates_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(discount_type="fixed", value__gte=0)
+                    | models.Q(discount_type="percent", value__gte=0, value__lte=100)
+                ),
+                name="discount_value_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(min_order_total__gte=0),
+                name="discount_min_total_non_negative",
+            ),
+        ]
+
+    def __str__(self):
+        return self.code
+
+    def save(self, *args, **kwargs):
+        self.code = str(self.code or "").strip().upper()
+
+        super().save(*args, **kwargs)
+
+
 class Order(models.Model):
     """
     Nombre: Order
@@ -363,6 +423,22 @@ class Order(models.Model):
     shipping_city = models.CharField(max_length=100, blank=True, null=True)
     shipping_notes = models.TextField(blank=True, null=True)
     age_verified = models.BooleanField(default=False)
+    coupon_code = models.CharField(max_length=40, blank=True)
+    subtotal_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+    discount_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+    total_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
 
     class Meta:
         indexes = [

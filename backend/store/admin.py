@@ -16,6 +16,7 @@ from .models import (
     Category,
     ContactLead,
     Customer,
+    DiscountCode,
     EventLog,
     FavoriteProduct,
     Product,
@@ -327,6 +328,48 @@ class EventLogAdmin(admin.ModelAdmin):
             ),
             rows,
         )
+
+
+@admin.register(DiscountCode)
+class DiscountCodeAdmin(admin.ModelAdmin):
+    """
+    Nombre: DiscountCodeAdmin
+    Descripcion: Permite crear, activar y auditar cupones de descuento.
+    """
+
+    list_display = (
+        "id",
+        "code",
+        "discount_type",
+        "value",
+        "min_order_total",
+        "used_count",
+        "max_uses",
+        "is_active",
+        "starts_at",
+        "ends_at",
+    )
+
+    search_fields = (
+        "code",
+        "description",
+    )
+
+    list_filter = (
+        "discount_type",
+        "is_active",
+        "starts_at",
+        "ends_at",
+    )
+
+    readonly_fields = (
+        "used_count",
+        "created_at",
+    )
+
+    ordering = (
+        "code",
+    )
 
 
 @admin.register(Category)

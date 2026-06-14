@@ -45,6 +45,7 @@ from .models import (
     Category,
     ContactLead,
     Customer,
+    DiscountCode,
     EventLog,
     FavoriteProduct,
     Order,
@@ -1313,6 +1314,58 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["cart"][str(self.product.id)], 2)
 
+    def test_cart_coupon_apply_remove_and_discount_total(self):
+        DiscountCode.objects.create(
+            code="VAPE10",
+            discount_type="percent",
+            value=Decimal("10.00"),
+        )
+        self.set_session_cart({str(self.product.id): 2})
+
+        apply_response = self.client.post(
+            reverse("api_cart_apply_coupon"),
+            {"code": " vape10 "},
+            format="json",
+        )
+        cart_response = self.client.get(reverse("api_cart"))
+        remove_response = self.client.post(reverse("api_cart_remove_coupon"))
+
+        self.assertEqual(apply_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(apply_response.data["subtotal"], 20.0)
+        self.assertEqual(apply_response.data["discount"], 2.0)
+        self.assertEqual(apply_response.data["total"], 18.0)
+        self.assertEqual(apply_response.data["coupon"]["code"], "VAPE10")
+        self.assertEqual(cart_response.data["total"], 18.0)
+        self.assertEqual(cart_response.data["coupon"]["code"], "VAPE10")
+        self.assertEqual(remove_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(remove_response.data["discount"], 0.0)
+        self.assertEqual(remove_response.data["total"], 20.0)
+        self.assertIsNone(remove_response.data["coupon"])
+
+    def test_cart_coupon_rejects_invalid_or_minimum_total(self):
+        DiscountCode.objects.create(
+            code="MINIMO",
+            discount_type="fixed",
+            value=Decimal("5.00"),
+            min_order_total=Decimal("50.00"),
+        )
+        self.set_session_cart({str(self.product.id): 2})
+
+        invalid_response = self.client.post(
+            reverse("api_cart_apply_coupon"),
+            {"code": "NOEXISTE"},
+            format="json",
+        )
+        minimum_response = self.client.post(
+            reverse("api_cart_apply_coupon"),
+            {"code": "MINIMO"},
+            format="json",
+        )
+
+        self.assertEqual(invalid_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(minimum_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("compra minima", minimum_response.data["error"])
+
     def test_cart_update_sets_exact_quantity(self):
         self.set_session_cart({str(self.product.id): 1})
 
@@ -1606,6 +1659,98 @@ class StoreApiTests(APITestCase):
 
         with self.assertRaises(ProtectedError):
             self.product.delete()
+
+    def test_checkout_applies_coupon_and_stores_discount_snapshot(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 2})
+        discount = DiscountCode.objects.create(
+            code="AHORRO5",
+            discount_type="fixed",
+            value=Decimal("5.00"),
+        )
+        self.client.post(
+            reverse("api_cart_apply_coupon"),
+            {"code": "AHORRO5"},
+            format="json",
+        )
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3001234567",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "",
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+
+        order = Order.objects.get(id=response.data["order_id"])
+        discount.refresh_from_db()
+        self.product.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["subtotal"], 20.0)
+        self.assertEqual(response.data["discount"], 5.0)
+        self.assertEqual(response.data["total_pagado"], 15.0)
+        self.assertEqual(response.data["coupon_code"], "AHORRO5")
+        self.assertEqual(order.coupon_code, "AHORRO5")
+        self.assertEqual(order.subtotal_amount, Decimal("20.00"))
+        self.assertEqual(order.discount_amount, Decimal("5.00"))
+        self.assertEqual(order.total_amount, Decimal("15.00"))
+        self.assertEqual(discount.used_count, 1)
+        self.assertEqual(self.product.stock, 3)
+
+        detail_response = self.client.get(reverse("order_detail", args=[order.id]))
+
+        self.assertEqual(detail_response.data["subtotal"], 20.0)
+        self.assertEqual(detail_response.data["discount"], 5.0)
+        self.assertEqual(detail_response.data["total"], 15.0)
+        self.assertEqual(detail_response.data["coupon_code"], "AHORRO5")
+
+    def test_checkout_rejects_coupon_that_becomes_invalid(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 2})
+        DiscountCode.objects.create(
+            code="AGOTADO",
+            discount_type="percent",
+            value=Decimal("10.00"),
+            max_uses=1,
+            used_count=1,
+        )
+        session = self.client.session
+        session["coupon_code"] = "AGOTADO"
+        session.save()
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3001234567",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "",
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+
+        self.product.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(response.data["coupon_invalid"])
+        self.assertEqual(Order.objects.count(), 0)
+        self.assertEqual(self.product.stock, 5)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="checkout_failed",
+                metadata__coupon_code="AGOTADO",
+            ).exists()
+        )
 
     def test_checkout_links_existing_customer_by_email(self):
         user = self.create_user()

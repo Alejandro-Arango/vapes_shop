@@ -5,6 +5,7 @@ Dependencias: Django transaction, Django REST Framework, modelos Product, Custom
 """
 
 import re
+from decimal import Decimal
 
 from django.db import transaction
 
@@ -16,6 +17,7 @@ from rest_framework.response import Response
 from .audit import log_event
 from .cart_utils import parse_positive_quantity, sync_cart_with_products
 from .customer_utils import ensure_customer_for_user
+from .discounts import COUPON_SESSION_KEY, build_pricing, quantize_money
 from .models import Product, Customer, Order, OrderItem
 from .throttles import CartRateThrottle, CheckoutUserRateThrottle
 
@@ -140,6 +142,16 @@ def serialize_order(order):
             "line_total": line_total,
         })
 
+    subtotal = total
+    discount = float(order.discount_amount or 0)
+    stored_total = float(order.total_amount or 0)
+    has_stored_total = (
+        bool(order.coupon_code)
+        or bool(order.discount_amount)
+        or bool(order.total_amount)
+    )
+    order_total = stored_total if has_stored_total else max(subtotal - discount, 0)
+
     return {
         "id": order.id,
         "date_ordered": order.date_ordered,
@@ -147,7 +159,10 @@ def serialize_order(order):
         "status": order.status,
         "status_label": order.get_status_display(),
         "age_verified": order.age_verified,
-        "total": total,
+        "subtotal": subtotal,
+        "discount": discount,
+        "coupon_code": order.coupon_code,
+        "total": order_total,
         "shipping": {
             "name": order.shipping_name or "",
             "phone": order.shipping_phone or "",
@@ -516,6 +531,39 @@ def checkout(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+        subtotal = Decimal("0.00")
+
+        for product, qty in order_lines:
+            locked_product = locked_map[product.id]
+            subtotal += locked_product.price * Decimal(qty)
+
+        subtotal = quantize_money(subtotal)
+        coupon_code = request.session.get(COUPON_SESSION_KEY, "")
+        pricing = build_pricing(subtotal, coupon_code, lock=bool(coupon_code))
+
+        if coupon_code and pricing["coupon_error"]:
+            request.session.pop(COUPON_SESSION_KEY, None)
+            request.session.modified = True
+
+            log_event(
+                "checkout_failed",
+                "Checkout rechazado por cupon invalido.",
+                request=request,
+                severity="warning",
+                metadata={
+                    "coupon_code": coupon_code,
+                    "coupon_error": pricing["coupon_error"],
+                },
+            )
+
+            return Response(
+                {
+                    "error": pricing["coupon_error"],
+                    "coupon_invalid": True,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         order = Order.objects.create(
             customer=customer,
             completed=True,
@@ -526,9 +574,11 @@ def checkout(request):
             shipping_city=shipping_city,
             shipping_notes=shipping_notes,
             age_verified=True,
+            coupon_code=pricing["coupon"]["code"] if pricing["coupon"] else "",
+            subtotal_amount=pricing["subtotal"],
+            discount_amount=pricing["discount"],
+            total_amount=pricing["total"],
         )
-
-        total = 0.0
 
         for product, qty in order_lines:
             locked_product = locked_map[product.id]
@@ -542,13 +592,19 @@ def checkout(request):
                 unit_price=unit_price,
             )
 
-            total += float(unit_price) * qty
-
             locked_product.stock -= qty
             locked_product.save(update_fields=["stock"])
 
+        if pricing["discount_obj"]:
+            discount_obj = pricing["discount_obj"]
+            discount_obj.used_count += 1
+            discount_obj.save(update_fields=["used_count"])
+
         request.session["cart"] = {}
+        request.session.pop(COUPON_SESSION_KEY, None)
         request.session.modified = True
+
+    total = float(pricing["total"])
 
     log_event(
         "checkout_success",
@@ -557,6 +613,9 @@ def checkout(request):
         metadata={
             "order_id": order.id,
             "total": total,
+            "subtotal": float(pricing["subtotal"]),
+            "discount": float(pricing["discount"]),
+            "coupon_code": order.coupon_code,
             "items": len(order_lines),
         },
     )
@@ -565,6 +624,9 @@ def checkout(request):
         {
             "message": "Compra realizada con exito",
             "order_id": order.id,
+            "subtotal": float(pricing["subtotal"]),
+            "discount": float(pricing["discount"]),
+            "coupon_code": order.coupon_code,
             "total_pagado": total,
         },
         status=status.HTTP_200_OK

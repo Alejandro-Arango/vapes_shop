@@ -40,6 +40,29 @@ Descripcion: Componente lateral que muestra el carrito, datos de envio, confirma
         <div id="cart-items" class="cart-items">
             <!-- Contenido generado dinamicamente desde app.js -->
         </div>
+
+        <form id="coupon-form" class="coupon-form">
+            <label for="coupon-code">Cupón de descuento</label>
+
+            <div class="coupon-row">
+                <input
+                    id="coupon-code"
+                    type="text"
+                    placeholder="Ingresa tu cupón"
+                    autocomplete="off"
+                />
+
+                <button id="coupon-apply-btn" class="btn small" type="submit">
+                    Aplicar
+                </button>
+
+                <button id="coupon-remove-btn" class="btn small btn-outline" type="button" hidden>
+                    Quitar
+                </button>
+            </div>
+
+            <p id="coupon-status" class="coupon-status" aria-live="polite"></p>
+        </form>
     </section>
 
     <section id="checkout-step-shipping" class="checkout-step-panel">
