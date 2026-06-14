@@ -16,6 +16,7 @@ const api = {
     authLogout: "/api/auth/logout/",
     me: "/api/auth/me/",
     authProfile: "/api/auth/profile/",
+    shippingAddresses: "/api/auth/shipping-addresses/",
     cartGet: "/api/cart/",
     cartAdd: "/api/cart/add/",
     cartUpdate: "/api/cart/update/",
@@ -33,6 +34,7 @@ const api = {
     orderDetail: (orderId) => `/api/orders/${orderId}/`,
     reorderOrder: (orderId) => `/api/orders/reorder/${orderId}/`,
     cancelOrder: (orderId) => `/api/orders/cancel/${orderId}/`,
+    shippingAddressDetail: (addressId) => `/api/auth/shipping-addresses/${addressId}/`,
     productReviews: (productId) => `/api/products/${productId}/reviews/`,
     submitProductReview: (productId) => `/api/products/${productId}/reviews/submit/`,
 };
@@ -530,6 +532,7 @@ function setAuthUI(isLoggedIn, user = null) {
     if (btnFavorites) btnFavorites.style.display = isLoggedIn ? "inline-flex" : "none";
 
     currentUser = isLoggedIn ? user : null;
+    renderShippingAddressBook();
 
     if (labelUser) {
         labelUser.textContent = isLoggedIn
@@ -648,6 +651,61 @@ async function updateProfile(profileData) {
             phoneError ||
             data?.error ||
             "No se pudo actualizar el perfil."
+        );
+    }
+
+    return data;
+}
+
+function getShippingAddressApiError(data) {
+    const fields = ["label", "name", "phone", "address", "city", "notes"];
+
+    for (const field of fields) {
+        const value = data?.[field];
+
+        if (Array.isArray(value) && value.length) return value[0];
+        if (value) return value;
+    }
+
+    return data?.error || data?.detail || data?.message || "";
+}
+
+async function saveShippingAddress(addressData, addressId = null) {
+    const url = addressId
+        ? api.shippingAddressDetail(addressId)
+        : api.shippingAddresses;
+    const method = addressId ? "PATCH" : "POST";
+    const res = await fetch(url, {
+        method,
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify(addressData),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(
+            getShippingAddressApiError(data) ||
+            "No se pudo guardar la direccion."
+        );
+    }
+
+    return data;
+}
+
+async function deleteShippingAddress(addressId) {
+    const res = await fetch(api.shippingAddressDetail(addressId), {
+        method: "DELETE",
+        headers: csrfHeaders(),
+        credentials: "include",
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(
+            data?.error ||
+            data?.detail ||
+            "No se pudo eliminar la direccion."
         );
     }
 
@@ -3162,12 +3220,14 @@ function getShippingFormData() {
     const shippingAddress = document.getElementById("shipping-address")?.value.trim() || "";
     const shippingCity = document.getElementById("shipping-city")?.value.trim() || "";
     const shippingNotes = document.getElementById("shipping-notes")?.value.trim() || "";
+    const shippingAddressId = getSelectedShippingAddressId();
     const shippingData = {
         shippingName,
         shippingPhone,
         shippingAddress,
         shippingCity,
         shippingNotes,
+        shippingAddressId,
     };
     const validationError = getShippingValidationError(shippingData);
 
@@ -3181,6 +3241,132 @@ function getShippingFormData() {
     return shippingData;
 }
 
+function getSavedShippingAddresses() {
+    if (!Array.isArray(currentUser?.shipping_addresses)) return [];
+
+    return currentUser.shipping_addresses;
+}
+
+function getSelectedShippingAddressId() {
+    const select = document.getElementById("shipping-address-select");
+    const value = select?.value || "";
+
+    if (!value) return "";
+
+    return value;
+}
+
+function getSelectedShippingAddress() {
+    const selectedId = Number(getSelectedShippingAddressId());
+
+    if (!selectedId) return null;
+
+    return getSavedShippingAddresses().find(
+        (address) => Number(address.id) === selectedId
+    ) || null;
+}
+
+function formatShippingAddressOption(address) {
+    const label = address.label || address.address || "Direccion guardada";
+    const city = address.city ? ` - ${address.city}` : "";
+    const suffix = address.is_default ? " (predeterminada)" : "";
+
+    return `${label}${city}${suffix}`;
+}
+
+function setShippingAddressStatus(message = "", type = "") {
+    const statusEl = document.getElementById("shipping-address-status");
+
+    if (!statusEl) return;
+
+    statusEl.textContent = message;
+    statusEl.className = `shipping-address-status ${type}`.trim();
+}
+
+function renderShippingAddressBook(preferredAddressId = null, forcePreferred = false) {
+    const book = document.getElementById("shipping-address-book");
+    const select = document.getElementById("shipping-address-select");
+    const deleteBtn = document.getElementById("shipping-address-delete-btn");
+    const defaultBtn = document.getElementById("shipping-address-default-btn");
+
+    if (!book || !select) return;
+
+    if (!currentUser) {
+        book.style.display = "none";
+        select.innerHTML = '<option value="">Ingresar manualmente</option>';
+
+        return;
+    }
+
+    const addresses = getSavedShippingAddresses();
+    const selectedBeforeRender = select.value;
+    const defaultAddressId = currentUser?.default_shipping?.id || "";
+    const selectedAddressId = forcePreferred
+        ? preferredAddressId || selectedBeforeRender || defaultAddressId || ""
+        : selectedBeforeRender || preferredAddressId || defaultAddressId || "";
+
+    book.style.display = "grid";
+    select.innerHTML = `
+        <option value="">Ingresar manualmente</option>
+        ${addresses
+        .map((address) => `
+                <option value="${address.id}">
+                    ${escapeHtml(formatShippingAddressOption(address))}
+                </option>
+            `)
+        .join("")}
+    `;
+
+    if (
+        selectedAddressId &&
+        addresses.some((address) => Number(address.id) === Number(selectedAddressId))
+    ) {
+        select.value = String(selectedAddressId);
+    }
+
+    const hasSelectedAddress = Boolean(select.value);
+
+    if (deleteBtn) deleteBtn.disabled = !hasSelectedAddress;
+    if (defaultBtn) defaultBtn.disabled = !hasSelectedAddress;
+}
+
+function fillShippingFormFromAddress(address, onlyIfEmpty = false) {
+    if (!address) return;
+
+    const setter = onlyIfEmpty ? setInputValueIfEmpty : setInputValue;
+
+    setter("shipping-label", address.label);
+    setter("shipping-name", address.name);
+    setter("shipping-phone", address.phone);
+    setter("shipping-address", address.address);
+    setter("shipping-city", address.city);
+    setter("shipping-notes", address.notes);
+}
+
+function getShippingAddressFormPayload(isDefault = false) {
+    const shippingData = getShippingFormData();
+
+    if (!shippingData) return null;
+
+    return {
+        label: document.getElementById("shipping-label")?.value.trim() || "",
+        name: shippingData.shippingName,
+        phone: shippingData.shippingPhone,
+        address: shippingData.shippingAddress,
+        city: shippingData.shippingCity,
+        notes: shippingData.shippingNotes,
+        is_default: isDefault,
+    };
+}
+
+function setInputValue(id, value) {
+    const input = document.getElementById(id);
+
+    if (!input) return;
+
+    input.value = String(value || "").trim();
+}
+
 function setInputValueIfEmpty(id, value) {
     const input = document.getElementById(id);
     const cleanValue = String(value || "").trim();
@@ -3192,7 +3378,16 @@ function setInputValueIfEmpty(id, value) {
 
 function autofillShippingFormFromProfile() {
     const shipping = currentUser?.default_shipping || {};
+    const selectedAddress = getSelectedShippingAddress();
 
+    renderShippingAddressBook(shipping.id);
+
+    if (selectedAddress) {
+        fillShippingFormFromAddress(selectedAddress, true);
+        return;
+    }
+
+    setInputValueIfEmpty("shipping-label", shipping.label);
     setInputValueIfEmpty("shipping-name", shipping.name);
     setInputValueIfEmpty("shipping-phone", shipping.phone);
     setInputValueIfEmpty("shipping-address", shipping.address);
@@ -3216,17 +3411,23 @@ function fillProfileForm() {
  * Descripcion: Limpia los campos del formulario de datos de envio del carrito.
  */
 function clearShippingForm() {
+    const shippingLabel = document.getElementById("shipping-label");
     const shippingName = document.getElementById("shipping-name");
     const shippingPhone = document.getElementById("shipping-phone");
     const shippingAddress = document.getElementById("shipping-address");
     const shippingCity = document.getElementById("shipping-city");
     const shippingNotes = document.getElementById("shipping-notes");
+    const shippingAddressSelect = document.getElementById("shipping-address-select");
 
+    if (shippingLabel) shippingLabel.value = "";
     if (shippingName) shippingName.value = "";
     if (shippingPhone) shippingPhone.value = "";
     if (shippingAddress) shippingAddress.value = "";
     if (shippingCity) shippingCity.value = "";
     if (shippingNotes) shippingNotes.value = "";
+    if (shippingAddressSelect) shippingAddressSelect.value = "";
+
+    setShippingAddressStatus();
 }
 
 /*
@@ -3287,6 +3488,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const checkoutPrevBtn = document.getElementById("checkout-prev-btn");
     const checkoutNextBtn = document.getElementById("checkout-next-btn");
     const checkoutStepIndicators = document.querySelectorAll(".checkout-step-indicator");
+    const shippingAddressSelect = document.getElementById("shipping-address-select");
+    const shippingAddressSaveBtn = document.getElementById("shipping-address-save-btn");
+    const shippingAddressDefaultBtn = document.getElementById("shipping-address-default-btn");
+    const shippingAddressDeleteBtn = document.getElementById("shipping-address-delete-btn");
 
     const productDetailModal = document.getElementById("product-detail-modal");
     const productDetailClose = document.getElementById("product-detail-close");
@@ -3510,6 +3715,134 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         resetCheckoutSummary();
         setCheckoutStep("cart");
+    });
+
+    shippingAddressSelect?.addEventListener("change", () => {
+        const selectedAddress = getSelectedShippingAddress();
+
+        setShippingAddressStatus();
+
+        if (selectedAddress) {
+            fillShippingFormFromAddress(selectedAddress);
+        } else {
+            setInputValue("shipping-label", "");
+        }
+
+        renderShippingAddressBook(shippingAddressSelect.value);
+    });
+
+    shippingAddressSaveBtn?.addEventListener("click", async () => {
+        if (!currentUser) {
+            await refreshAuthState();
+        }
+
+        if (!currentUser) {
+            setShippingAddressStatus(
+                "Inicia sesion para guardar direcciones.",
+                "error"
+            );
+            return;
+        }
+
+        const selectedAddressId = getSelectedShippingAddressId();
+        const payload = getShippingAddressFormPayload(false);
+
+        if (!payload) return;
+
+        const originalText = shippingAddressSaveBtn.textContent;
+        shippingAddressSaveBtn.disabled = true;
+        shippingAddressSaveBtn.textContent = "Guardando...";
+
+        try {
+            const data = await saveShippingAddress(
+                payload,
+                selectedAddressId || null
+            );
+            const savedAddressId =
+                data.saved_shipping_address_id ||
+                selectedAddressId ||
+                data.default_shipping?.id ||
+                "";
+
+            setAuthUI(true, data);
+            renderShippingAddressBook(savedAddressId, true);
+            setShippingAddressStatus("Direccion guardada.", "success");
+            showToast("Direccion guardada correctamente.", "success");
+        } catch (err) {
+            setShippingAddressStatus(
+                err.message || "No se pudo guardar la direccion.",
+                "error"
+            );
+            showToast(err.message || "No se pudo guardar la direccion.", "error");
+        } finally {
+            shippingAddressSaveBtn.disabled = false;
+            shippingAddressSaveBtn.textContent = originalText;
+        }
+    });
+
+    shippingAddressDefaultBtn?.addEventListener("click", async () => {
+        const selectedAddressId = getSelectedShippingAddressId();
+
+        if (!selectedAddressId) {
+            setShippingAddressStatus("Selecciona una direccion guardada.", "error");
+            return;
+        }
+
+        const originalText = shippingAddressDefaultBtn.textContent;
+        shippingAddressDefaultBtn.disabled = true;
+        shippingAddressDefaultBtn.textContent = "Guardando...";
+
+        try {
+            const data = await saveShippingAddress(
+                { is_default: true },
+                selectedAddressId
+            );
+
+            setAuthUI(true, data);
+            renderShippingAddressBook(selectedAddressId, true);
+            setShippingAddressStatus("Direccion predeterminada actualizada.", "success");
+            showToast("Direccion predeterminada actualizada.", "success");
+        } catch (err) {
+            setShippingAddressStatus(
+                err.message || "No se pudo actualizar la direccion.",
+                "error"
+            );
+            showToast(err.message || "No se pudo actualizar la direccion.", "error");
+        } finally {
+            shippingAddressDefaultBtn.disabled = false;
+            shippingAddressDefaultBtn.textContent = originalText;
+        }
+    });
+
+    shippingAddressDeleteBtn?.addEventListener("click", async () => {
+        const selectedAddressId = getSelectedShippingAddressId();
+
+        if (!selectedAddressId) {
+            setShippingAddressStatus("Selecciona una direccion guardada.", "error");
+            return;
+        }
+
+        const originalText = shippingAddressDeleteBtn.textContent;
+        shippingAddressDeleteBtn.disabled = true;
+        shippingAddressDeleteBtn.textContent = "Eliminando...";
+
+        try {
+            const data = await deleteShippingAddress(selectedAddressId);
+
+            setAuthUI(true, data);
+            renderShippingAddressBook(data.default_shipping?.id || null, true);
+            setShippingAddressStatus("Direccion eliminada.", "success");
+            showToast("Direccion eliminada correctamente.", "success");
+        } catch (err) {
+            setShippingAddressStatus(
+                err.message || "No se pudo eliminar la direccion.",
+                "error"
+            );
+            showToast(err.message || "No se pudo eliminar la direccion.", "error");
+        } finally {
+            shippingAddressDeleteBtn.disabled = false;
+            shippingAddressDeleteBtn.textContent = originalText;
+        }
     });
 
     couponForm?.addEventListener("submit", async (event) => {

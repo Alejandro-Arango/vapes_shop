@@ -25,6 +25,7 @@ from .models import (
     Order,
     OrderItem,
     OrderStatusHistory,
+    ShippingAddress,
 )
 from .order_status import record_order_status
 
@@ -112,6 +113,41 @@ class CustomerAdmin(admin.ModelAdmin):
     ordering = (
         "first_name",
         "last_name",
+    )
+
+
+@admin.register(ShippingAddress)
+class ShippingAddressAdmin(admin.ModelAdmin):
+    """
+    Nombre: ShippingAddressAdmin
+    Descripcion: Permite auditar y gestionar direcciones guardadas por cliente.
+    """
+
+    list_display = (
+        "id",
+        "customer",
+        "label",
+        "city",
+        "is_default",
+        "updated_at",
+    )
+    search_fields = (
+        "customer__email",
+        "customer__first_name",
+        "customer__last_name",
+        "label",
+        "name",
+        "phone",
+        "address",
+        "city",
+    )
+    list_filter = (
+        "is_default",
+        "city",
+    )
+    ordering = (
+        "-is_default",
+        "-updated_at",
     )
 
 

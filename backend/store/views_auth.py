@@ -6,6 +6,7 @@ Dependencias: Django auth, modelo User, Django REST Framework, serializers de us
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
+from django.db import transaction
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -14,9 +15,10 @@ from rest_framework.response import Response
 
 from .audit import log_event
 from .customer_utils import ensure_customer_for_user
-from .models import Order
+from .models import Order, ShippingAddress
 from .serializers import (
     CustomerProfileSerializer,
+    ShippingAddressSerializer,
     UserRegisterSerializer,
     UserSerializer,
 )
@@ -48,16 +50,77 @@ def get_last_shipping_order(customer):
     )
 
 
+def get_default_shipping_address(customer):
+    """
+    Nombre: get_default_shipping_address
+    Descripcion: Obtiene la direccion guardada que debe sugerirse en checkout.
+    """
+    return customer.shipping_addresses.order_by("-is_default", "-updated_at", "-id").first()
+
+
+def serialize_shipping_address_as_checkout(address):
+    """
+    Nombre: serialize_shipping_address_as_checkout
+    Descripcion: Convierte una direccion guardada al formato usado por el checkout.
+    """
+    if not address:
+        return {}
+
+    return {
+        "id": address.id,
+        "label": address.label,
+        "name": address.name,
+        "phone": address.phone,
+        "address": address.address,
+        "city": address.city,
+        "notes": address.notes,
+    }
+
+
+def ensure_single_default_shipping_address(address):
+    """
+    Nombre: ensure_single_default_shipping_address
+    Descripcion: Mantiene una sola direccion predeterminada por cliente.
+    """
+    if not address.is_default:
+        return address
+
+    ShippingAddress.objects.filter(
+        customer=address.customer,
+        is_default=True,
+    ).exclude(id=address.id).update(is_default=False)
+
+    return address
+
+
+def ensure_customer_has_default_shipping_address(customer):
+    """
+    Nombre: ensure_customer_has_default_shipping_address
+    Descripcion: Promueve una direccion disponible si el cliente queda sin predeterminada.
+    """
+    if customer.shipping_addresses.filter(is_default=True).exists():
+        return
+
+    fallback = customer.shipping_addresses.order_by("-updated_at", "-id").first()
+
+    if fallback:
+        fallback.is_default = True
+        fallback.save(update_fields=["is_default", "updated_at"])
+
+
 def serialize_current_user(user):
     """
     Nombre: serialize_current_user
     Descripcion: Expone usuario, customer y datos sugeridos de envio para el checkout.
     """
     customer = ensure_customer_for_user(user)
+    default_address = get_default_shipping_address(customer)
     last_order = get_last_shipping_order(customer)
     customer_name = get_customer_display_name(customer, user)
 
     default_shipping = {
+        "id": None,
+        "label": "",
         "name": customer_name,
         "phone": customer.phone or "",
         "address": "",
@@ -65,8 +128,14 @@ def serialize_current_user(user):
         "notes": "",
     }
 
-    if last_order:
+    if default_address:
+        default_shipping.update(
+            serialize_shipping_address_as_checkout(default_address)
+        )
+    elif last_order:
         default_shipping.update({
+            "id": None,
+            "label": "",
             "name": last_order.shipping_name or customer_name,
             "phone": last_order.shipping_phone or customer.phone or "",
             "address": last_order.shipping_address or "",
@@ -82,6 +151,10 @@ def serialize_current_user(user):
         "phone": customer.phone or "",
     }
     data["default_shipping"] = default_shipping
+    data["shipping_addresses"] = ShippingAddressSerializer(
+        customer.shipping_addresses.all(),
+        many=True,
+    ).data
 
     return data
 
@@ -304,3 +377,131 @@ def profile(request):
         serialize_current_user(request.user),
         status=status.HTTP_200_OK
     )
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def shipping_addresses(request):
+    """
+    Nombre: shipping_addresses
+    Descripcion: Lista o crea direcciones de envio guardadas para el cliente autenticado.
+    """
+    customer = ensure_customer_for_user(request.user)
+
+    if request.method == "GET":
+        return Response(
+            serialize_current_user(request.user),
+            status=status.HTTP_200_OK
+        )
+
+    serializer = ShippingAddressSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        log_event(
+            "shipping_address_save_failed",
+            "Direccion de envio rechazada por validaciones.",
+            request=request,
+            user=request.user,
+            severity="warning",
+            metadata={"errors": serializer.errors},
+        )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    with transaction.atomic():
+        is_first_address = not customer.shipping_addresses.exists()
+        address = serializer.save(customer=customer)
+
+        if is_first_address:
+            address.is_default = True
+            address.save(update_fields=["is_default", "updated_at"])
+
+        ensure_single_default_shipping_address(address)
+        ensure_customer_has_default_shipping_address(customer)
+
+    log_event(
+        "shipping_address_saved",
+        "Direccion de envio guardada.",
+        request=request,
+        user=request.user,
+        metadata={"shipping_address_id": address.id},
+    )
+
+    data = serialize_current_user(request.user)
+    data["saved_shipping_address_id"] = address.id
+
+    return Response(data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def shipping_address_detail(request, address_id):
+    """
+    Nombre: shipping_address_detail
+    Descripcion: Actualiza o elimina una direccion guardada del cliente autenticado.
+    """
+    customer = ensure_customer_for_user(request.user)
+
+    try:
+        address = ShippingAddress.objects.get(id=address_id, customer=customer)
+    except ShippingAddress.DoesNotExist:
+        return Response(
+            {"error": "Direccion de envio no encontrada."},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if request.method == "DELETE":
+        deleted_address_id = address.id
+
+        with transaction.atomic():
+            address.delete()
+            ensure_customer_has_default_shipping_address(customer)
+
+        log_event(
+            "shipping_address_deleted",
+            "Direccion de envio eliminada.",
+            request=request,
+            user=request.user,
+            metadata={"shipping_address_id": deleted_address_id},
+        )
+
+        return Response(
+            serialize_current_user(request.user),
+            status=status.HTTP_200_OK
+        )
+
+    serializer = ShippingAddressSerializer(
+        address,
+        data=request.data,
+        partial=True,
+    )
+
+    if not serializer.is_valid():
+        log_event(
+            "shipping_address_update_failed",
+            "Actualizacion de direccion rechazada por validaciones.",
+            request=request,
+            user=request.user,
+            severity="warning",
+            metadata={"errors": serializer.errors},
+        )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    with transaction.atomic():
+        address = serializer.save()
+        ensure_single_default_shipping_address(address)
+        ensure_customer_has_default_shipping_address(customer)
+
+    log_event(
+        "shipping_address_updated",
+        "Direccion de envio actualizada.",
+        request=request,
+        user=request.user,
+        metadata={"shipping_address_id": address.id},
+    )
+
+    data = serialize_current_user(request.user)
+    data["saved_shipping_address_id"] = address.id
+
+    return Response(data, status=status.HTTP_200_OK)

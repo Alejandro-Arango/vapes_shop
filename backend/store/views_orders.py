@@ -18,7 +18,7 @@ from .audit import log_event
 from .cart_utils import parse_positive_quantity, sync_cart_with_products
 from .customer_utils import ensure_customer_for_user
 from .discounts import COUPON_SESSION_KEY, build_pricing, quantize_money
-from .models import Product, Customer, Order, OrderItem
+from .models import Product, Customer, Order, OrderItem, ShippingAddress
 from .order_status import record_order_status, serialize_order_status_history
 from .throttles import CartRateThrottle, CheckoutUserRateThrottle
 
@@ -315,6 +315,7 @@ def checkout(request):
         )
 
     cart = synced_cart
+    customer = ensure_customer_for_user(request.user)
 
     shipping_name = str(
         request.data.get("shippingName")
@@ -345,6 +346,55 @@ def checkout(request):
         or request.data.get("shipping_notes")
         or ""
     ).strip()
+
+    shipping_address_id = (
+        request.data.get("shippingAddressId")
+        or request.data.get("shipping_address_id")
+        or ""
+    )
+
+    if shipping_address_id:
+        try:
+            shipping_address_id = int(shipping_address_id)
+        except (TypeError, ValueError):
+            log_event(
+                "checkout_failed",
+                "Checkout rechazado por direccion guardada invalida.",
+                request=request,
+                severity="warning",
+                metadata={"shipping_address_id": str(shipping_address_id)},
+            )
+
+            return Response(
+                {"error": "La direccion guardada no es valida"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        saved_address = ShippingAddress.objects.filter(
+            id=shipping_address_id,
+            customer=customer,
+        ).first()
+
+        if not saved_address:
+            log_event(
+                "checkout_failed",
+                "Checkout rechazado por direccion guardada no encontrada.",
+                request=request,
+                user=request.user,
+                severity="warning",
+                metadata={"shipping_address_id": shipping_address_id},
+            )
+
+            return Response(
+                {"error": "La direccion guardada no existe o no pertenece a tu cuenta"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        shipping_name = shipping_name or saved_address.name
+        shipping_phone = shipping_phone or saved_address.phone
+        shipping_address = shipping_address or saved_address.address
+        shipping_city = shipping_city or saved_address.city
+        shipping_notes = shipping_notes or saved_address.notes
 
     shipping_error = validate_shipping_data(
         shipping_name,
@@ -386,8 +436,6 @@ def checkout(request):
             {"error": "Debes confirmar que cumples con la edad legal requerida"},
             status=status.HTTP_400_BAD_REQUEST
         )
-
-    customer = ensure_customer_for_user(request.user)
 
     try:
         product_ids = [int(pid) for pid in cart.keys()]

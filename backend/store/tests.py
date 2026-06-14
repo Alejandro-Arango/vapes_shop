@@ -53,6 +53,7 @@ from .models import (
     OrderStatusHistory,
     Product,
     ProductReview,
+    ShippingAddress,
 )
 from .throttles import (
     AuthAnonRateThrottle,
@@ -670,6 +671,129 @@ class StoreApiTests(APITestCase):
         self.assertTrue(
             EventLog.objects.filter(event_type="profile_update_success").exists()
         )
+
+    def test_shipping_addresses_crud_and_default_shipping(self):
+        unauthenticated_response = self.client.get(reverse("shipping_addresses"))
+
+        self.assertIn(
+            unauthenticated_response.status_code,
+            (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+        )
+
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        invalid_response = self.client.post(
+            reverse("shipping_addresses"),
+            {
+                "label": "Casa",
+                "name": "Cliente Prueba",
+                "phone": "telefono",
+                "address": "Calle 1",
+                "city": "Medellin",
+            },
+            format="json",
+        )
+
+        self.assertEqual(invalid_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone", invalid_response.data)
+
+        first_response = self.client.post(
+            reverse("shipping_addresses"),
+            {
+                "label": "Casa",
+                "name": "Cliente Prueba",
+                "phone": "3001234567",
+                "address": "Calle 1",
+                "city": "Medellin",
+                "notes": "Porteria",
+            },
+            format="json",
+        )
+        first_address = ShippingAddress.objects.get(label="Casa")
+
+        self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(first_address.is_default)
+        self.assertEqual(first_response.data["default_shipping"]["id"], first_address.id)
+
+        second_response = self.client.post(
+            reverse("shipping_addresses"),
+            {
+                "label": "Trabajo",
+                "name": "Cliente Oficina",
+                "phone": "3007654321",
+                "address": "Carrera 2",
+                "city": "Envigado",
+            },
+            format="json",
+        )
+        second_address = ShippingAddress.objects.get(label="Trabajo")
+
+        self.assertEqual(second_response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(second_address.is_default)
+
+        default_response = self.client.patch(
+            reverse("shipping_address_detail", args=[second_address.id]),
+            {"is_default": True},
+            format="json",
+        )
+        first_address.refresh_from_db()
+        second_address.refresh_from_db()
+
+        self.assertEqual(default_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(first_address.is_default)
+        self.assertTrue(second_address.is_default)
+        self.assertEqual(default_response.data["default_shipping"]["id"], second_address.id)
+
+        delete_response = self.client.delete(
+            reverse("shipping_address_detail", args=[second_address.id]),
+            format="json",
+        )
+        first_address.refresh_from_db()
+
+        self.assertEqual(delete_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(first_address.is_default)
+        self.assertEqual(delete_response.data["default_shipping"]["id"], first_address.id)
+        self.assertEqual(len(delete_response.data["shipping_addresses"]), 1)
+
+    def test_checkout_accepts_saved_shipping_address_id(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Guardado",
+            email=user.email,
+            phone="3001234567",
+        )
+        address = ShippingAddress.objects.create(
+            customer=customer,
+            label="Casa",
+            name="Cliente Guardado",
+            phone="3001234567",
+            address="Calle Guardada",
+            city="Medellin",
+            notes="Timbre 2",
+            is_default=True,
+        )
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingAddressId": address.id,
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+        order = Order.objects.get(id=response.data["order_id"])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(order.shipping_name, "Cliente Guardado")
+        self.assertEqual(order.shipping_phone, "3001234567")
+        self.assertEqual(order.shipping_address, "Calle Guardada")
+        self.assertEqual(order.shipping_city, "Medellin")
+        self.assertEqual(order.shipping_notes, "Timbre 2")
 
     def test_failed_login_creates_event_log(self):
         response = self.client.post(

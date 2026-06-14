@@ -84,4 +84,14 @@ urlpatterns = [
     path("api/auth/logout/", views_auth.logout_view, name="auth_logout"),
     path("api/auth/me/", views_auth.me, name="auth_me"),
     path("api/auth/profile/", views_auth.profile, name="auth_profile"),
+    path(
+        "api/auth/shipping-addresses/",
+        views_auth.shipping_addresses,
+        name="shipping_addresses",
+    ),
+    path(
+        "api/auth/shipping-addresses/<int:address_id>/",
+        views_auth.shipping_address_detail,
+        name="shipping_address_detail",
+    ),
 ]

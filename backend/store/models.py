@@ -35,6 +35,44 @@ class Customer(models.Model):
         )
 
 
+class ShippingAddress(models.Model):
+    """
+    Nombre: ShippingAddress
+    Descripcion: Guarda direcciones reutilizables para el checkout de un cliente.
+    """
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="shipping_addresses",
+    )
+    label = models.CharField(max_length=80, blank=True)
+    name = models.CharField(max_length=150)
+    phone = models.CharField(max_length=30)
+    address = models.CharField(max_length=200)
+    city = models.CharField(max_length=100)
+    notes = models.TextField(blank=True)
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-is_default", "-updated_at", "-id")
+        indexes = [
+            models.Index(
+                fields=["customer", "is_default"],
+                name="shipaddr_customer_default_idx",
+            ),
+            models.Index(
+                fields=["customer", "updated_at"],
+                name="shipaddr_customer_updated_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return self.label or f"{self.address} - {self.city}"
+
+
 class Category(models.Model):
     """
     Nombre: Category

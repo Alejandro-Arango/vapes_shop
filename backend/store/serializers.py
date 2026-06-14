@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from rest_framework import serializers
 
-from .models import Category, ContactLead, Customer, Product
+from .models import Category, ContactLead, Customer, Product, ShippingAddress
 
 
 CONTACT_MESSAGE_MAX_LENGTH = 1000
@@ -341,3 +341,83 @@ class CustomerProfileSerializer(serializers.Serializer):
             customer.save(update_fields=update_fields)
 
         return customer
+
+
+class ShippingAddressSerializer(serializers.ModelSerializer):
+    """
+    Nombre: ShippingAddressSerializer
+    Descripcion: Valida y expone direcciones guardadas para el checkout.
+    """
+
+    class Meta:
+        model = ShippingAddress
+        fields = (
+            "id",
+            "label",
+            "name",
+            "phone",
+            "address",
+            "city",
+            "notes",
+            "is_default",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+        )
+
+    def validate_label(self, value):
+        return value.strip()
+
+    def validate_name(self, value):
+        name = value.strip()
+
+        if not name:
+            raise serializers.ValidationError("El nombre de envio es obligatorio.")
+
+        return name
+
+    def validate_phone(self, value):
+        phone = value.strip()
+
+        if not phone:
+            raise serializers.ValidationError("El telefono de envio es obligatorio.")
+
+        allowed_chars = set("0123456789+() -")
+
+        if any(char not in allowed_chars for char in phone):
+            raise serializers.ValidationError(
+                "El telefono solo puede contener numeros, espacios, +, - y parentesis."
+            )
+
+        digits_count = sum(char.isdigit() for char in phone)
+
+        if digits_count < 7:
+            raise serializers.ValidationError("El telefono debe tener al menos 7 digitos.")
+
+        if digits_count > CONTACT_PHONE_MAX_DIGITS:
+            raise serializers.ValidationError("El telefono no puede superar 15 digitos.")
+
+        return phone
+
+    def validate_address(self, value):
+        address = value.strip()
+
+        if not address:
+            raise serializers.ValidationError("La direccion de envio es obligatoria.")
+
+        return address
+
+    def validate_city(self, value):
+        city = value.strip()
+
+        if not city:
+            raise serializers.ValidationError("La ciudad de envio es obligatoria.")
+
+        return city
+
+    def validate_notes(self, value):
+        return value.strip()

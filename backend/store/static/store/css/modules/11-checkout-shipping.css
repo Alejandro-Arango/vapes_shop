@@ -139,6 +139,56 @@ body.light-mode .checkout-success-summary strong {
     line-height: 1.5;
 }
 
+.shipping-address-book {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(20, 184, 166, 0.08);
+    border: 1px solid rgba(20, 184, 166, 0.2);
+}
+
+.shipping-address-book label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.shipping-address-row,
+.shipping-address-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.shipping-address-row select {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+}
+
+.shipping-address-status {
+    min-height: 18px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted-dark);
+}
+
+.shipping-address-status.success {
+    color: #6ee7b7;
+}
+
+.shipping-address-status.error {
+    color: #fecaca;
+}
+
 .shipping-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -193,6 +243,33 @@ body.light-mode .shipping-form {
 
 body.light-mode .shipping-form h4 {
     color: #222;
+}
+
+body.light-mode .shipping-address-book {
+    background: rgba(20, 184, 166, 0.08);
+    border-color: rgba(13, 148, 136, 0.22);
+}
+
+body.light-mode .shipping-address-book label {
+    color: #1f2937;
+}
+
+body.light-mode .shipping-address-row select {
+    background: #fff;
+    color: #222;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .shipping-address-status {
+    color: var(--muted-light);
+}
+
+body.light-mode .shipping-address-status.success {
+    color: #047857;
+}
+
+body.light-mode .shipping-address-status.error {
+    color: #b91c1c;
 }
 
 body.light-mode .shipping-field label {

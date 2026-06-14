@@ -73,7 +73,44 @@ Descripcion: Componente lateral que muestra el carrito, datos de envio, confirma
                 Completa la información necesaria para procesar tu pedido.
             </p>
 
+            <div id="shipping-address-book" class="shipping-address-book" style="display: none;">
+                <label for="shipping-address-select">Direcciones guardadas</label>
+
+                <div class="shipping-address-row">
+                    <select id="shipping-address-select">
+                        <option value="">Ingresar manualmente</option>
+                    </select>
+
+                    <button id="shipping-address-delete-btn" class="btn btn-outline small" type="button">
+                        Eliminar
+                    </button>
+                </div>
+
+                <div class="shipping-address-actions">
+                    <button id="shipping-address-save-btn" class="btn small" type="button">
+                        Guardar direccion
+                    </button>
+
+                    <button id="shipping-address-default-btn" class="btn btn-outline small" type="button">
+                        Predeterminada
+                    </button>
+                </div>
+
+                <p id="shipping-address-status" class="shipping-address-status" aria-live="polite"></p>
+            </div>
+
             <div class="shipping-grid">
+                <div class="shipping-field shipping-field-full">
+                    <label for="shipping-label">Nombre de esta direccion</label>
+
+                    <input
+                        id="shipping-label"
+                        type="text"
+                        placeholder="Casa, trabajo, oficina"
+                        autocomplete="off"
+                    />
+                </div>
+
                 <div class="shipping-field">
                     <label for="shipping-name">Nombre completo</label>
 
