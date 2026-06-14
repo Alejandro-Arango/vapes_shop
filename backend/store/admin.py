@@ -27,6 +27,7 @@ from .models import (
     OrderStatusHistory,
     ShippingAddress,
 )
+from .order_notifications import notify_order_status_changed
 from .order_status import record_order_status
 
 
@@ -798,6 +799,7 @@ class OrderAdmin(admin.ModelAdmin):
                 changed_by=request.user,
                 note="Estado actualizado desde admin.",
             )
+            self.notify_order_status_change(request, obj, previous_status)
 
     def apply_tracking_timestamps(self, order, new_status):
         """
@@ -822,12 +824,46 @@ class OrderAdmin(admin.ModelAdmin):
 
         return update_fields
 
+    def notify_order_status_change(self, request, order, previous_status):
+        """
+        Nombre: notify_order_status_change
+        Descripcion: Notifica al cliente cambios relevantes de estado desde admin.
+        """
+        sent = notify_order_status_changed(order)
+
+        if sent is None:
+            return False
+
+        event_type = (
+            "order_status_notification_sent"
+            if sent
+            else "order_status_notification_not_sent"
+        )
+        severity = "info" if sent else "warning"
+
+        log_event(
+            event_type,
+            "Notificacion de estado de pedido procesada.",
+            request=request,
+            user=request.user,
+            severity=severity,
+            metadata={
+                "order_id": order.id,
+                "previous_status": previous_status,
+                "new_status": order.status,
+                "email_sent": sent,
+            },
+        )
+
+        return sent
+
     def apply_status_action(self, request, queryset, new_status, completed, event_type):
         """
         Nombre: apply_status_action
         Descripcion: Cambia estados desde admin y registra un evento por cada orden afectada.
         """
         updated = 0
+        status_changes = []
 
         with transaction.atomic():
             orders = (
@@ -851,6 +887,7 @@ class OrderAdmin(admin.ModelAdmin):
                     note="Estado actualizado desde admin.",
                 )
                 updated += 1
+                status_changes.append((order, previous_status))
 
                 log_event(
                     event_type,
@@ -862,6 +899,9 @@ class OrderAdmin(admin.ModelAdmin):
                         "new_status": new_status,
                     },
                 )
+
+        for order, previous_status in status_changes:
+            self.notify_order_status_change(request, order, previous_status)
 
         return updated
 

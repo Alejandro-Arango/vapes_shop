@@ -2762,7 +2762,11 @@ class StoreApiTests(APITestCase):
             ).exists()
         )
 
-    def test_admin_status_actions_set_tracking_dates(self):
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="no-reply@example.com",
+    )
+    def test_admin_status_actions_set_tracking_dates_and_notify_customer(self):
         user = self.create_user()
         customer = Customer.objects.create(
             user=user,
@@ -2774,6 +2778,9 @@ class StoreApiTests(APITestCase):
             customer=customer,
             status="en_preparacion",
             completed=True,
+            tracking_carrier="Interrapidisimo",
+            tracking_number="IR123",
+            tracking_url="https://tracking.example.com/IR123",
         )
         admin_model = OrderAdmin(Order, self.admin_site)
         admin_model.message_user = lambda *args, **kwargs: None
@@ -2788,6 +2795,19 @@ class StoreApiTests(APITestCase):
         self.assertEqual(order.status, "enviado")
         self.assertIsNotNone(order.shipped_at)
         self.assertIsNone(order.delivered_at)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(
+            f"Actualizacion de pedido #{order.id}: Enviado",
+            mail.outbox[0].subject,
+        )
+        self.assertIn("Interrapidisimo", mail.outbox[0].body)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="order_status_notification_sent",
+                metadata__order_id=order.id,
+                metadata__new_status="enviado",
+            ).exists()
+        )
 
         shipped_at = order.shipped_at
 
@@ -2801,6 +2821,51 @@ class StoreApiTests(APITestCase):
         self.assertEqual(order.shipped_at, shipped_at)
         self.assertIsNotNone(order.delivered_at)
         self.assertEqual(order.status_history.count(), 2)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertIn(
+            f"Actualizacion de pedido #{order.id}: Entregado",
+            mail.outbox[1].subject,
+        )
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="no-reply@example.com",
+    )
+    def test_admin_save_model_notifies_status_change_to_sent(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="en_preparacion",
+            completed=True,
+        )
+        admin_model = OrderAdmin(Order, self.admin_site)
+        request = self.create_admin_request()
+
+        order.status = "enviado"
+        admin_model.save_model(request, order, form=None, change=True)
+        order.refresh_from_db()
+
+        self.assertEqual(order.status, "enviado")
+        self.assertIsNotNone(order.shipped_at)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(
+            f"Actualizacion de pedido #{order.id}: Enviado",
+            mail.outbox[0].subject,
+        )
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="order_status_notification_sent",
+                metadata__order_id=order.id,
+                metadata__previous_status="en_preparacion",
+                metadata__new_status="enviado",
+            ).exists()
+        )
 
     def test_log_event_redacts_sensitive_metadata(self):
         event = log_event(

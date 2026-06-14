@@ -11,6 +11,7 @@ from django.core.mail import send_mail
 
 
 logger = logging.getLogger(__name__)
+ORDER_STATUS_NOTIFICATION_STATUSES = {"enviado", "entregado"}
 
 
 def format_money(value):
@@ -95,6 +96,33 @@ def build_admin_order_message(order):
     )
 
 
+def build_order_status_message(order):
+    """
+    Nombre: build_order_status_message
+    Descripcion: Construye el correo para avisar avances relevantes del pedido.
+    """
+    tracking_lines = []
+
+    if order.tracking_carrier:
+        tracking_lines.append(f"Transportadora: {order.tracking_carrier}")
+
+    if order.tracking_number:
+        tracking_lines.append(f"Guia: {order.tracking_number}")
+
+    if order.tracking_url:
+        tracking_lines.append(f"Rastreo: {order.tracking_url}")
+
+    tracking_text = "\n".join(tracking_lines) or "Aun no hay datos de rastreo registrados."
+
+    return (
+        f"Hola {order.shipping_name or order.customer.first_name or 'Cliente'},\n\n"
+        f"Tu pedido #{order.id} ahora esta en estado: {order.get_status_display()}.\n\n"
+        f"{tracking_text}\n\n"
+        f"Total del pedido: {format_money(order.total_amount)}\n\n"
+        "Gracias por comprar en Vape Shop."
+    )
+
+
 def send_order_email(subject, message, recipient):
     """
     Nombre: send_order_email
@@ -147,3 +175,19 @@ def notify_order_created(order):
         "customer_email_sent": customer_email_sent,
         "admin_email_sent": admin_email_sent,
     }
+
+
+def notify_order_status_changed(order):
+    """
+    Nombre: notify_order_status_changed
+    Descripcion: Notifica al cliente cuando el pedido cambia a un estado relevante.
+    Retorna: True si se envio correo o None si el estado no requiere notificacion.
+    """
+    if order.status not in ORDER_STATUS_NOTIFICATION_STATUSES:
+        return None
+
+    return send_order_email(
+        subject=f"Actualizacion de pedido #{order.id}: {order.get_status_display()}",
+        message=build_order_status_message(order),
+        recipient=order.customer.email,
+    )
