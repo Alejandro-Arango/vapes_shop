@@ -1,0 +1,129 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Inicio</a>
+    &rsaquo; Auditoria operativa
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="module">
+        <h2>Buscar eventos</h2>
+
+        <form method="get" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: end;">
+            <div>
+                <label for="q">Busqueda</label>
+                <input id="q" name="q" type="search" value="{{ audit_query }}" placeholder="Tipo, mensaje, usuario, IP">
+            </div>
+
+            <div>
+                <label for="event_type">Tipo</label>
+                <select id="event_type" name="event_type">
+                    <option value="">Todos</option>
+                    {% for option in audit_event_types %}
+                    <option value="{{ option }}" {% if option == selected_event_type %}selected{% endif %}>
+                        {{ option }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="severity">Severidad</label>
+                <select id="severity" name="severity">
+                    <option value="">Todas</option>
+                    {% for value, label in severity_options %}
+                    <option value="{{ value }}" {% if value == selected_severity %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="date_from">Desde</label>
+                <input id="date_from" name="date_from" type="date" value="{{ report_date_from }}">
+            </div>
+
+            <div>
+                <label for="date_to">Hasta</label>
+                <input id="date_to" name="date_to" type="date" value="{{ report_date_to }}">
+            </div>
+
+            <button class="button" type="submit">Aplicar filtro</button>
+
+            <a class="button" href="{% url 'admin:store_audit_dashboard' %}">
+                Limpiar
+            </a>
+        </form>
+
+        <p style="margin-top: 12px;">
+            <a class="button" href="{{ audit_report_url }}">
+                Descargar eventos CSV
+            </a>
+        </p>
+    </div>
+
+    <div class="module">
+        <h2>Resumen</h2>
+
+        <p>Total de eventos encontrados: <strong>{{ audit_total }}</strong></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Severidad</th>
+                    <th>Eventos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in severity_rows %}
+                <tr>
+                    <td>{{ row.severity }}</td>
+                    <td>{{ row.total }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2">No hay eventos para los filtros seleccionados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="module">
+        <h2>Eventos recientes</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Severidad</th>
+                    <th>Usuario</th>
+                    <th>IP</th>
+                    <th>Mensaje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in audit_events %}
+                <tr>
+                    <td>{{ event.created_at }}</td>
+                    <td>{{ event.event_type }}</td>
+                    <td>{{ event.get_severity_display }}</td>
+                    <td>{{ event.user|default:"-" }}</td>
+                    <td>{{ event.ip_address|default:"-" }}</td>
+                    <td>{{ event.message }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">No hay eventos para mostrar.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

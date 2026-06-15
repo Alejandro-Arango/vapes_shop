@@ -3135,3 +3135,80 @@ class StoreApiTests(APITestCase):
         self.assertIn("eventos.csv", response["Content-Disposition"])
         self.assertIn("checkout_success", content)
         self.assertIn("Compra realizada correctamente.", content)
+
+    def test_admin_audit_dashboard_filters_and_exports_events(self):
+        user = self.create_user()
+        included_event = EventLog.objects.create(
+            event_type="checkout_failed",
+            severity="warning",
+            user=user,
+            message="Stock insuficiente para producto.",
+            path="/api/orders/checkout/",
+            ip_address="127.0.0.1",
+            metadata={"product_id": 1},
+        )
+        old_event = EventLog.objects.create(
+            event_type="checkout_success",
+            severity="info",
+            user=user,
+            message="Compra realizada correctamente.",
+            path="/api/orders/checkout/",
+            metadata={"order_id": 1},
+        )
+        formula_event = EventLog.objects.create(
+            event_type="=formula_event",
+            severity="error",
+            message="Evento para escape CSV.",
+            path="/admin/",
+        )
+        EventLog.objects.filter(id=old_event.id).update(
+            created_at=timezone.now() - timedelta(days=40)
+        )
+        admin_user = User.objects.create_superuser(
+            username="audit-admin",
+            email="audit-admin@example.com",
+            password="ClaveSegura123",
+        )
+        report_params = {
+            "date_from": timezone.now().date().isoformat(),
+            "date_to": timezone.now().date().isoformat(),
+            "event_type": "checkout_failed",
+            "severity": "warning",
+            "q": "Stock",
+        }
+
+        anonymous_response = self.client.get(reverse("admin:store_audit_dashboard"))
+
+        self.assertEqual(anonymous_response.status_code, 302)
+
+        self.client.force_login(admin_user)
+
+        dashboard_response = self.client.get(
+            reverse("admin:store_audit_dashboard"),
+            report_params,
+        )
+
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertContains(dashboard_response, "Auditoria operativa")
+        self.assertContains(dashboard_response, "Stock insuficiente")
+        self.assertNotContains(dashboard_response, "Compra realizada correctamente.")
+
+        csv_response = self.client.get(
+            reverse("admin:store_audit_events_report"),
+            report_params,
+        )
+        csv_content = csv_response.content.decode()
+
+        self.assertEqual(csv_response.status_code, 200)
+        self.assertIn("reporte-auditoria.csv", csv_response["Content-Disposition"])
+        self.assertIn(f"\r\n{included_event.id},", csv_content)
+        self.assertNotIn(f"\r\n{old_event.id},", csv_content)
+        self.assertNotIn(f"\r\n{formula_event.id},", csv_content)
+
+        formula_response = self.client.get(
+            reverse("admin:store_audit_events_report"),
+            {"event_type": formula_event.event_type},
+        )
+        formula_content = formula_response.content.decode()
+
+        self.assertIn("'=formula_event", formula_content)

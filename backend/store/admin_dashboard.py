@@ -5,13 +5,14 @@ Dependencias: Django admin, agregaciones ORM y modelos de store
 """
 
 import csv
+import json
 
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from urllib.parse import urlencode
 
 from django.contrib import admin
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum, Value
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
@@ -19,7 +20,7 @@ from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
-from .models import Customer, Order, OrderItem, Product
+from .models import Customer, EventLog, Order, OrderItem, Product
 
 
 REVENUE_STATUSES = (
@@ -150,6 +151,31 @@ def build_report_query(date_from, date_to):
         query["date_to"] = date_to.isoformat()
 
     return urlencode(query)
+
+
+def build_audit_report_query(date_from, date_to, event_type="", severity="", query=""):
+    """
+    Nombre: build_audit_report_query
+    Descripcion: Construye query string para reportes filtrados de auditoria.
+    """
+    params = {}
+
+    if date_from:
+        params["date_from"] = date_from.isoformat()
+
+    if date_to:
+        params["date_to"] = date_to.isoformat()
+
+    if event_type:
+        params["event_type"] = event_type
+
+    if severity:
+        params["severity"] = severity
+
+    if query:
+        params["q"] = query
+
+    return urlencode(params)
 
 
 def format_report_datetime(value):
@@ -305,6 +331,92 @@ def sold_products_report_csv_view(request):
     )
 
 
+def get_event_type_options():
+    """
+    Nombre: get_event_type_options
+    Descripcion: Lista tipos de evento existentes para filtros del reporte.
+    """
+    return (
+        EventLog.objects
+        .order_by("event_type")
+        .values_list("event_type", flat=True)
+        .distinct()
+    )
+
+
+def get_audit_events(date_from=None, date_to=None, event_type="", severity="", query=""):
+    """
+    Nombre: get_audit_events
+    Descripcion: Filtra eventos de auditoria por fecha, tipo, severidad y busqueda.
+    """
+    events = EventLog.objects.select_related("user").order_by("-created_at", "-id")
+    events = apply_report_date_range(events, date_from, date_to, field_name="created_at")
+
+    if event_type:
+        events = events.filter(event_type=event_type)
+
+    valid_severities = {
+        severity_key
+        for severity_key, _ in EventLog.SEVERITY_CHOICES
+    }
+
+    if severity in valid_severities:
+        events = events.filter(severity=severity)
+
+    if query:
+        events = events.filter(
+            Q(event_type__icontains=query)
+            | Q(message__icontains=query)
+            | Q(user__username__icontains=query)
+            | Q(user__email__icontains=query)
+            | Q(path__icontains=query)
+            | Q(ip_address__icontains=query)
+        )
+
+    return events
+
+
+def audit_events_csv_view(request):
+    """
+    Nombre: audit_events_csv_view
+    Descripcion: Descarga eventos de auditoria filtrados en CSV.
+    """
+    date_from, date_to = get_report_date_range(request)
+    event_type = str(request.GET.get("event_type") or "").strip()
+    severity = str(request.GET.get("severity") or "").strip()
+    query = str(request.GET.get("q") or "").strip()
+    rows = (
+        (
+            event.id,
+            event.event_type,
+            event.get_severity_display(),
+            event.user.username if event.user else "",
+            event.ip_address or "",
+            event.path,
+            event.message,
+            json.dumps(event.metadata, ensure_ascii=True),
+            format_report_datetime(event.created_at),
+        )
+        for event in get_audit_events(date_from, date_to, event_type, severity, query)
+    )
+
+    return build_csv_response(
+        "reporte-auditoria.csv",
+        (
+            "ID",
+            "Tipo",
+            "Severidad",
+            "Usuario",
+            "IP",
+            "Ruta",
+            "Mensaje",
+            "Metadata",
+            "Fecha",
+        ),
+        rows,
+    )
+
+
 def build_business_dashboard_context():
     """
     Nombre: build_business_dashboard_context
@@ -377,6 +489,58 @@ def business_dashboard_view(request, site=admin.site):
     )
 
 
+def audit_dashboard_view(request, site=admin.site):
+    """
+    Nombre: audit_dashboard_view
+    Descripcion: Renderiza busqueda y exportacion operativa de eventos.
+    """
+    date_from, date_to = get_report_date_range(request)
+    event_type = str(request.GET.get("event_type") or "").strip()
+    severity = str(request.GET.get("severity") or "").strip()
+    query = str(request.GET.get("q") or "").strip()
+    report_query = build_audit_report_query(
+        date_from,
+        date_to,
+        event_type,
+        severity,
+        query,
+    )
+    audit_report_url = reverse("admin:store_audit_events_report")
+
+    if report_query:
+        audit_report_url = f"{audit_report_url}?{report_query}"
+
+    events = get_audit_events(date_from, date_to, event_type, severity, query)
+    severity_rows = (
+        events
+        .order_by()
+        .values("severity")
+        .annotate(total=Count("id"))
+        .order_by("severity")
+    )
+    context = {
+        **site.each_context(request),
+        "title": "Auditoria operativa",
+        "audit_events": events[:50],
+        "audit_total": events.count(),
+        "audit_event_types": get_event_type_options(),
+        "severity_options": EventLog.SEVERITY_CHOICES,
+        "severity_rows": severity_rows,
+        "report_date_from": date_from.isoformat() if date_from else "",
+        "report_date_to": date_to.isoformat() if date_to else "",
+        "selected_event_type": event_type,
+        "selected_severity": severity,
+        "audit_query": query,
+        "audit_report_url": audit_report_url,
+    }
+
+    return TemplateResponse(
+        request,
+        "admin/store/audit_dashboard.html",
+        context,
+    )
+
+
 def register_business_dashboard(site=admin.site):
     """
     Nombre: register_business_dashboard
@@ -403,6 +567,16 @@ def register_business_dashboard(site=admin.site):
                 "store/resumen/productos-vendidos.csv",
                 site.admin_view(sold_products_report_csv_view),
                 name="store_business_products_report",
+            ),
+            path(
+                "store/auditoria/",
+                site.admin_view(lambda request: audit_dashboard_view(request, site)),
+                name="store_audit_dashboard",
+            ),
+            path(
+                "store/auditoria/eventos.csv",
+                site.admin_view(audit_events_csv_view),
+                name="store_audit_events_report",
             ),
         ]
 
