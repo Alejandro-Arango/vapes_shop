@@ -13,6 +13,8 @@ const api = {
     products: "/api/products/",
     authRegister: "/api/auth/register/",
     authLogin: "/api/auth/login/",
+    authPasswordResetRequest: "/api/auth/password-reset/request/",
+    authPasswordResetConfirm: "/api/auth/password-reset/confirm/",
     authLogout: "/api/auth/logout/",
     me: "/api/auth/me/",
     authProfile: "/api/auth/profile/",
@@ -623,6 +625,65 @@ async function loginUser(emailOrUsername, password) {
     }
 
     return await res.json();
+}
+
+/*
+ * Nombre: requestPasswordReset
+ * Descripcion: Solicita al backend el envio de un enlace para recuperar la cuenta.
+ */
+async function requestPasswordReset(email) {
+    const res = await fetch(api.authPasswordResetRequest, {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+        throw new Error(
+            data?.error ||
+            data?.detail ||
+            data?.message ||
+            "No se pudo solicitar la recuperacion."
+        );
+    }
+
+    return data;
+}
+
+/*
+ * Nombre: confirmPasswordReset
+ * Descripcion: Confirma el token de recuperacion y guarda una nueva contrasena.
+ */
+async function confirmPasswordReset(uid, token, password, passwordConfirm) {
+    const res = await fetch(api.authPasswordResetConfirm, {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify({
+            uid,
+            token,
+            password,
+            password_confirm: passwordConfirm,
+        }),
+    });
+    const data = await res.json().catch(() => ({}));
+    const passwordError = Array.isArray(data?.password)
+        ? data.password[0]
+        : data?.password;
+
+    if (!res.ok) {
+        throw new Error(
+            passwordError ||
+            data?.error ||
+            data?.detail ||
+            data?.message ||
+            "No se pudo actualizar la contrasena."
+        );
+    }
+
+    return data;
 }
 
 async function updateProfile(profileData) {
@@ -3502,6 +3563,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const authClose = document.getElementById("auth-close");
     const loginForm = document.getElementById("login-form");
     const registerForm = document.getElementById("register-form");
+    const passwordResetRequestForm = document.getElementById("password-reset-request-form");
+    const passwordResetConfirmForm = document.getElementById("password-reset-confirm-form");
     const profileBtn = document.getElementById("profile-btn");
     const profileModal = document.getElementById("profile-modal");
     const profileClose = document.getElementById("profile-close");
@@ -3528,6 +3591,47 @@ document.addEventListener("DOMContentLoaded", async () => {
     const checkoutSuccessContinue = document.getElementById("checkout-success-continue");
 
     let currentCheckoutStep = "cart";
+
+    function showAuthPanel(panel) {
+        const panels = {
+            login: loginForm,
+            register: registerForm,
+            resetRequest: passwordResetRequestForm,
+            resetConfirm: passwordResetConfirmForm,
+        };
+
+        Object.values(panels).forEach((form) => {
+            if (form) form.style.display = "none";
+        });
+
+        if (panels[panel]) {
+            panels[panel].style.display = "block";
+        }
+    }
+
+    function openPasswordResetConfirmFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const uid = params.get("uid") || "";
+        const token = params.get("token") || "";
+
+        if (params.get("reset_password") !== "1" || !uid || !token) {
+            return;
+        }
+
+        setInputValue("password-reset-uid", uid);
+        setInputValue("password-reset-token", token);
+        showAuthPanel("resetConfirm");
+        showAuthFeedback("Ingresa tu nueva contrasena.", "success");
+
+        authModal?.setAttribute("aria-hidden", "false");
+        authModal?.classList.add("open");
+
+        window.history.replaceState(
+            {},
+            document.title,
+            `${window.location.pathname}${window.location.hash}`
+        );
+    }
 
     function getActiveCheckoutStep() {
         const activeIndicator = document.querySelector(".checkout-step-indicator.active");
@@ -4141,6 +4245,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     btnOpenAuth?.addEventListener("click", () => {
         clearAuthFeedback();
+        showAuthPanel("login");
 
         authModal?.setAttribute("aria-hidden", "false");
         authModal?.classList.add("open");
@@ -4208,18 +4313,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         e.preventDefault();
 
         clearAuthFeedback();
-
-        if (loginForm) loginForm.style.display = "none";
-        if (registerForm) registerForm.style.display = "block";
+        showAuthPanel("register");
     });
 
     document.getElementById("show-login")?.addEventListener("click", (e) => {
         e.preventDefault();
 
         clearAuthFeedback();
+        showAuthPanel("login");
+    });
 
-        if (loginForm) loginForm.style.display = "block";
-        if (registerForm) registerForm.style.display = "none";
+    document.querySelectorAll(".show-login-link").forEach((link) => {
+        link.addEventListener("click", (e) => {
+            e.preventDefault();
+
+            clearAuthFeedback();
+            showAuthPanel("login");
+        });
+    });
+
+    document.getElementById("show-password-reset-request")?.addEventListener("click", (e) => {
+        e.preventDefault();
+
+        clearAuthFeedback();
+        showAuthPanel("resetRequest");
     });
 
     loginForm?.addEventListener("submit", async (e) => {
@@ -4301,6 +4418,96 @@ document.addEventListener("DOMContentLoaded", async () => {
             }, 800);
         } catch (err) {
             showAuthFeedback(err.message || "No se pudo registrar la cuenta.", "error");
+        }
+    });
+
+    passwordResetRequestForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        clearAuthFeedback();
+
+        const email = document.getElementById("password-reset-email")?.value || "";
+        const submitBtn = passwordResetRequestForm.querySelector("button[type='submit']");
+        const originalText = submitBtn?.textContent || "Enviar enlace";
+
+        if (isEmpty(email) || !isValidEmail(email)) {
+            showAuthFeedback("Ingresa un correo valido.", "error");
+            return;
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Enviando...";
+        }
+
+        try {
+            const data = await requestPasswordReset(email);
+            passwordResetRequestForm.reset();
+            showAuthFeedback(
+                data?.message ||
+                "Si el correo existe, enviaremos instrucciones para restablecer la contrasena.",
+                "success"
+            );
+        } catch (err) {
+            showAuthFeedback(
+                err.message || "No se pudo solicitar la recuperacion.",
+                "error"
+            );
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        }
+    });
+
+    passwordResetConfirmForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        clearAuthFeedback();
+
+        const uid = document.getElementById("password-reset-uid")?.value || "";
+        const token = document.getElementById("password-reset-token")?.value || "";
+        const password = document.getElementById("password-reset-new")?.value || "";
+        const passwordConfirm = document.getElementById("password-reset-confirm")?.value || "";
+        const submitBtn = passwordResetConfirmForm.querySelector("button[type='submit']");
+        const originalText = submitBtn?.textContent || "Guardar contrasena";
+
+        if (isEmpty(password)) {
+            showAuthFeedback("Ingresa una nueva contrasena.", "error");
+            return;
+        }
+
+        if (password.length < 6) {
+            showAuthFeedback("La contrasena debe tener al menos 6 caracteres.", "error");
+            return;
+        }
+
+        if (password !== passwordConfirm) {
+            showAuthFeedback("Las contrasenas no coinciden.", "error");
+            return;
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Guardando...";
+        }
+
+        try {
+            await confirmPasswordReset(uid, token, password, passwordConfirm);
+            passwordResetConfirmForm.reset();
+            showAuthPanel("login");
+            showAuthFeedback("Contrasena actualizada. Inicia sesion.", "success");
+        } catch (err) {
+            showAuthFeedback(
+                err.message || "No se pudo actualizar la contrasena.",
+                "error"
+            );
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
         }
     });
 
@@ -4504,4 +4711,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     setCheckoutStep("cart");
+    openPasswordResetConfirmFromUrl();
 });

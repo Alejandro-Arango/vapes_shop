@@ -18,11 +18,14 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.contrib.auth.models import User
+from django.contrib.auth.tokens import default_token_generator
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -259,6 +262,7 @@ class StoreApiTests(APITestCase):
         self.assertIsInstance(settings.SESSION_COOKIE_AGE, int)
         self.assertIsInstance(settings.EMAIL_TIMEOUT, int)
         self.assertIsInstance(settings.EMAIL_PORT, int)
+        self.assertIsInstance(settings.PASSWORD_RESET_TIMEOUT, int)
         self.assertIn(
             settings.CACHES["default"]["BACKEND"],
             (
@@ -272,6 +276,7 @@ class StoreApiTests(APITestCase):
         self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FILES, 0)
         self.assertGreaterEqual(settings.SESSION_COOKIE_AGE, 300)
         self.assertGreaterEqual(settings.EMAIL_TIMEOUT, 1)
+        self.assertGreaterEqual(settings.PASSWORD_RESET_TIMEOUT, 300)
 
     def test_hsts_seconds_is_configured_as_non_negative_integer(self):
         self.assertIsInstance(settings.SECURE_HSTS_SECONDS, int)
@@ -949,6 +954,116 @@ class StoreApiTests(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         finally:
             cache.clear()
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="no-reply@example.com",
+    )
+    def test_password_reset_request_sends_email_without_account_leak(self):
+        user = self.create_user()
+
+        response = self.client.post(
+            reverse("auth_password_reset_request"),
+            {"email": " CLIENTE@Example.COM "},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Recupera tu cuenta", mail.outbox[0].subject)
+        self.assertIn("reset_password=1", mail.outbox[0].body)
+        self.assertIn("uid=", mail.outbox[0].body)
+        self.assertIn("token=", mail.outbox[0].body)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="password_reset_requested",
+                user=user,
+                metadata__email_sent=True,
+            ).exists()
+        )
+
+        unknown_response = self.client.post(
+            reverse("auth_password_reset_request"),
+            {"email": "desconocido@example.com"},
+            format="json",
+        )
+
+        self.assertEqual(unknown_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(unknown_response.data, response.data)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="password_reset_requested",
+                metadata__account_found=False,
+            ).exists()
+        )
+
+    def test_password_reset_request_rejects_invalid_email(self):
+        response = self.client.post(
+            reverse("auth_password_reset_request"),
+            {"email": "correo-invalido"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="password_reset_request_invalid",
+            ).exists()
+        )
+
+    def test_password_reset_confirm_updates_password_and_rejects_invalid_token(self):
+        user = self.create_user()
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        invalid_response = self.client.post(
+            reverse("auth_password_reset_confirm"),
+            {
+                "uid": uid,
+                "token": "token-invalido",
+                "password": "NuevaClaveSegura123",
+                "password_confirm": "NuevaClaveSegura123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(invalid_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.post(
+            reverse("auth_password_reset_confirm"),
+            {
+                "uid": uid,
+                "token": token,
+                "password": "NuevaClaveSegura123",
+                "password_confirm": "NuevaClaveSegura123",
+            },
+            format="json",
+        )
+
+        user.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(user.check_password("NuevaClaveSegura123"))
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="password_reset_confirmed",
+                user=user,
+            ).exists()
+        )
+
+        reused_response = self.client.post(
+            reverse("auth_password_reset_confirm"),
+            {
+                "uid": uid,
+                "token": token,
+                "password": "OtraClaveSegura123",
+                "password_confirm": "OtraClaveSegura123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(reused_response.status_code, status.HTTP_400_BAD_REQUEST)
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",

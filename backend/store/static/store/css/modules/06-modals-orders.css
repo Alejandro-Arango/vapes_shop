@@ -62,6 +62,17 @@ body.light-mode .modal-content {
     border: none;
 }
 
+.auth-help {
+    margin: 0;
+    color: var(--muted-dark);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+body.light-mode .auth-help {
+    color: var(--muted-light);
+}
+
 .auth-feedback,
 .orders-feedback {
     margin: 10px 0 12px;

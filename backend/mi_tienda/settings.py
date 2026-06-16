@@ -628,6 +628,11 @@ EMAIL_TIMEOUT = env_int(
     10,
     minimum=1,
 )
+PASSWORD_RESET_TIMEOUT = env_int(
+    "DJANGO_PASSWORD_RESET_TIMEOUT",
+    3600,
+    minimum=300,
+)
 
 if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise ImproperlyConfigured(

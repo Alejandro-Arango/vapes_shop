@@ -38,6 +38,12 @@ Descripcion: Componente modal que permite iniciar sesion, registrar usuarios y m
                     ¿No tienes cuenta?
                     <a href="#" id="show-register">Regístrate</a>
                 </p>
+
+                <p>
+                    <a href="#" id="show-password-reset-request">
+                        Olvidé mi contraseña
+                    </a>
+                </p>
             </form>
 
             <form id="register-form" class="auth-form" style="display: none;">
@@ -70,6 +76,65 @@ Descripcion: Componente modal que permite iniciar sesion, registrar usuarios y m
                 <p>
                     ¿Ya tienes cuenta?
                     <a href="#" id="show-login">Inicia sesión</a>
+                </p>
+            </form>
+
+            <form id="password-reset-request-form" class="auth-form" style="display: none;">
+                <h3>Recuperar contraseña</h3>
+
+                <p class="auth-help">
+                    Ingresa tu correo y te enviaremos un enlace para crear una contraseña nueva.
+                </p>
+
+                <input
+                    id="password-reset-email"
+                    type="email"
+                    placeholder="Correo"
+                    autocomplete="email"
+                    required
+                />
+
+                <button class="btn" type="submit">
+                    Enviar enlace
+                </button>
+
+                <p>
+                    <a href="#" class="show-login-link">Volver a iniciar sesión</a>
+                </p>
+            </form>
+
+            <form id="password-reset-confirm-form" class="auth-form" style="display: none;">
+                <h3>Nueva contraseña</h3>
+
+                <p class="auth-help">
+                    Escribe una contraseña segura para recuperar el acceso a tu cuenta.
+                </p>
+
+                <input id="password-reset-uid" type="hidden" />
+                <input id="password-reset-token" type="hidden" />
+
+                <input
+                    id="password-reset-new"
+                    type="password"
+                    placeholder="Nueva contraseña"
+                    autocomplete="new-password"
+                    required
+                />
+
+                <input
+                    id="password-reset-confirm"
+                    type="password"
+                    placeholder="Confirmar contraseña"
+                    autocomplete="new-password"
+                    required
+                />
+
+                <button class="btn" type="submit">
+                    Guardar contraseña
+                </button>
+
+                <p>
+                    <a href="#" class="show-login-link">Volver a iniciar sesión</a>
                 </p>
             </form>
         </div>

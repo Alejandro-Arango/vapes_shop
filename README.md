@@ -27,6 +27,7 @@ El proyecto incluye:
 - Checkout por pasos.
 - Formulario de datos de envío.
 - Registro, login, logout y consulta del usuario actual.
+- Recuperacion de contrasena por correo con token temporal.
 - Modal de compra exitosa.
 - Historial de pedidos.
 - Cancelación de pedidos.
@@ -301,6 +302,7 @@ DJANGO_EMAIL_HOST_PASSWORD
 DJANGO_EMAIL_USE_TLS
 DJANGO_EMAIL_USE_SSL
 DJANGO_EMAIL_TIMEOUT
+DJANGO_PASSWORD_RESET_TIMEOUT
 DEFAULT_FROM_EMAIL
 CONTACT_NOTIFICATION_EMAIL
 CONTACT_WHATSAPP_NUMBER
@@ -311,7 +313,6 @@ CONTACT_WHATSAPP_NUMBER
 - Pasarela de pagos real.
 - Despliegue en producción.
 - PostgreSQL.
-- Recuperación de contraseña.
 - Sistema de roles.
 - Dashboard con métricas.
 - Categorías reales para productos.
@@ -333,6 +334,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Configuracion por variables de entorno usando `.env`.
 - Archivo `.env.example` como referencia segura.
 - Soporte configurable para base de datos `sqlite` o `mysql`.
+- Recuperacion de contrasena con enlace temporal y expiracion configurable.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.
 - Script local de validacion: `scripts\validate-backend.ps1`.
@@ -496,6 +498,7 @@ DJANGO_EMAIL_HOST_PASSWORD
 DJANGO_EMAIL_USE_TLS
 DJANGO_EMAIL_USE_SSL
 DJANGO_EMAIL_TIMEOUT
+DJANGO_PASSWORD_RESET_TIMEOUT
 DEFAULT_FROM_EMAIL
 CONTACT_NOTIFICATION_EMAIL
 CONTACT_WHATSAPP_NUMBER

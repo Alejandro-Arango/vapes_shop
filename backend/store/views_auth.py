@@ -4,9 +4,16 @@ Descripcion: Gestiona registro, inicio de sesion, cierre de sesion y consulta de
 Dependencias: Django auth, modelo User, Django REST Framework, serializers de usuario y modelo Customer
 """
 
-from django.contrib.auth import authenticate, login, logout
+from django.conf import settings
+from django.contrib.auth import authenticate, login, logout, password_validation
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.mail import send_mail
+from django.core.validators import validate_email
 from django.db import transaction
+from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -182,6 +189,53 @@ def normalize_login_password(value):
     return value
 
 
+def normalize_reset_email(value):
+    """
+    Nombre: normalize_reset_email
+    Descripcion: Normaliza el correo recibido para solicitar recuperacion de cuenta.
+    Retorna: Correo en minusculas o cadena vacia si el dato no es texto.
+    """
+    if not isinstance(value, str):
+        return ""
+
+    return value.strip().lower()
+
+
+def build_password_reset_url(request, user):
+    """
+    Nombre: build_password_reset_url
+    Descripcion: Crea un enlace firmado para restablecer contrasena desde el frontend.
+    """
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    path = f"/?reset_password=1&uid={uid}&token={token}"
+
+    return request.build_absolute_uri(path)
+
+
+def get_user_from_reset_token(uid, token):
+    """
+    Nombre: get_user_from_reset_token
+    Descripcion: Valida uid y token de recuperacion sin exponer detalles al cliente.
+    """
+    try:
+        user_id = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id, is_active=True)
+    except (
+        TypeError,
+        ValueError,
+        OverflowError,
+        DjangoUnicodeDecodeError,
+        User.DoesNotExist,
+    ):
+        return None
+
+    if not default_token_generator.check_token(user, token):
+        return None
+
+    return user
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @throttle_classes([AuthAnonRateThrottle])
@@ -303,6 +357,164 @@ def login_view(request):
     return Response(
         serialize_current_user(user),
         status=status.HTTP_200_OK
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([AuthAnonRateThrottle])
+def password_reset_request(request):
+    """
+    Nombre: password_reset_request
+    Descripcion: Envia enlace de recuperacion sin revelar si el correo existe.
+    """
+    email = normalize_reset_email(request.data.get("email"))
+
+    try:
+        validate_email(email)
+    except DjangoValidationError:
+        log_event(
+            "password_reset_request_invalid",
+            "Solicitud de recuperacion con correo invalido.",
+            request=request,
+            severity="warning",
+        )
+
+        return Response(
+            {"error": "Ingresa un correo valido."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    response_data = {
+        "message": (
+            "Si el correo existe, enviaremos instrucciones para restablecer "
+            "la contrasena."
+        )
+    }
+
+    if user is None:
+        log_event(
+            "password_reset_requested",
+            "Solicitud de recuperacion recibida para correo no registrado.",
+            request=request,
+            severity="info",
+            metadata={"account_found": False},
+        )
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    reset_url = build_password_reset_url(request, user)
+    email_sent = False
+
+    try:
+        email_sent = bool(
+            send_mail(
+                subject="Recupera tu cuenta de Vape Shop",
+                message=(
+                    "Recibimos una solicitud para restablecer tu contrasena.\n\n"
+                    f"Usa este enlace para crear una nueva contrasena:\n{reset_url}\n\n"
+                    "Si no solicitaste este cambio, puedes ignorar este mensaje."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        )
+    except Exception as exc:
+        log_event(
+            "password_reset_email_failed",
+            "No se pudo enviar el correo de recuperacion.",
+            request=request,
+            user=user,
+            severity="error",
+            metadata={"user_id": user.id, "error": exc.__class__.__name__},
+        )
+
+    log_event(
+        "password_reset_requested",
+        "Solicitud de recuperacion procesada.",
+        request=request,
+        user=user,
+        metadata={"user_id": user.id, "email_sent": email_sent},
+    )
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([AuthAnonRateThrottle])
+def password_reset_confirm(request):
+    """
+    Nombre: password_reset_confirm
+    Descripcion: Valida token de recuperacion y guarda una nueva contrasena.
+    """
+    uid = str(request.data.get("uid") or "").strip()
+    token = str(request.data.get("token") or "").strip()
+    password = normalize_login_password(request.data.get("password"))
+    password_confirm = normalize_login_password(request.data.get("password_confirm"))
+    user = get_user_from_reset_token(uid, token)
+
+    if user is None:
+        log_event(
+            "password_reset_confirm_failed",
+            "Token de recuperacion invalido o vencido.",
+            request=request,
+            severity="warning",
+        )
+
+        return Response(
+            {"error": "El enlace de recuperacion no es valido o ya expiro."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not password or password != password_confirm:
+        log_event(
+            "password_reset_confirm_failed",
+            "Confirmacion de recuperacion con contrasenas invalidas.",
+            request=request,
+            user=user,
+            severity="warning",
+            metadata={"user_id": user.id},
+        )
+
+        return Response(
+            {"error": "Las contrasenas no coinciden."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        password_validation.validate_password(password, user)
+    except DjangoValidationError as exc:
+        log_event(
+            "password_reset_confirm_failed",
+            "Nueva contrasena rechazada por validaciones.",
+            request=request,
+            user=user,
+            severity="warning",
+            metadata={"user_id": user.id},
+        )
+
+        return Response(
+            {"password": list(exc.messages)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.set_password(password)
+    user.save(update_fields=["password"])
+
+    log_event(
+        "password_reset_confirmed",
+        "Contrasena restablecida correctamente.",
+        request=request,
+        user=user,
+        metadata={"user_id": user.id},
+    )
+
+    return Response(
+        {"message": "Contrasena actualizada correctamente."},
+        status=status.HTTP_200_OK,
     )
 
 

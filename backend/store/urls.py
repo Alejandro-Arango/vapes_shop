@@ -81,6 +81,16 @@ urlpatterns = [
     # Autenticacion
     path("api/auth/register/", views_auth.register, name="auth_register"),
     path("api/auth/login/", views_auth.login_view, name="auth_login"),
+    path(
+        "api/auth/password-reset/request/",
+        views_auth.password_reset_request,
+        name="auth_password_reset_request",
+    ),
+    path(
+        "api/auth/password-reset/confirm/",
+        views_auth.password_reset_confirm,
+        name="auth_password_reset_confirm",
+    ),
     path("api/auth/logout/", views_auth.logout_view, name="auth_logout"),
     path("api/auth/me/", views_auth.me, name="auth_me"),
     path("api/auth/profile/", views_auth.profile, name="auth_profile"),
