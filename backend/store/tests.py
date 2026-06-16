@@ -3284,3 +3284,27 @@ class StoreApiTests(APITestCase):
         formula_content = formula_response.content.decode()
 
         self.assertIn("'=formula_event", formula_content)
+
+    def test_admin_reports_require_staff_access(self):
+        user = self.create_user()
+        protected_urls = (
+            reverse("admin:store_business_dashboard"),
+            reverse("admin:store_business_sales_report"),
+            reverse("admin:store_business_products_report"),
+            reverse("admin:store_audit_dashboard"),
+            reverse("admin:store_audit_events_report"),
+        )
+
+        for url in protected_urls:
+            with self.subTest(url=url, user="anonymous"):
+                response = self.client.get(url)
+
+                self.assertEqual(response.status_code, 302)
+
+        self.client.force_login(user)
+
+        for url in protected_urls:
+            with self.subTest(url=url, user="regular"):
+                response = self.client.get(url)
+
+                self.assertEqual(response.status_code, 302)
