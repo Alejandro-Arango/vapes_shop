@@ -159,7 +159,9 @@ python manage.py migrate
 
 ```powershell
 python manage.py check
+python manage.py makemigrations --check --dry-run
 python manage.py test store
+python manage.py production_check
 ```
 
 ### 7. Ejecutar servidor
@@ -224,18 +226,21 @@ Desde el panel se pueden gestionar:
 
 ## Validaciones Realizadas
 
-Última validación reportada:
+Validacion recomendada antes de entregar o subir cambios:
 
 ```powershell
 python manage.py check
+python manage.py makemigrations --check --dry-run
 python manage.py test store
+python manage.py production_check
 ```
 
 Resultado:
 
 - `System check identified no issues`.
-- `69 tests` ejecutados correctamente.
-- Resultado final: `OK`.
+- Suite de pruebas de `store` ejecutada correctamente.
+- Sin migraciones pendientes.
+- Configuracion productiva revisada con `production_check`.
 
 ## Seguridad y Producción
 
@@ -331,6 +336,83 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.
 - Script local de validacion: `scripts\validate-backend.ps1`.
+
+## Guia Operativa de Administracion
+
+Esta guia resume las tareas diarias que se pueden realizar desde el panel de administracion.
+
+### Acceso al panel
+
+En desarrollo el panel usa la ruta:
+
+```text
+http://127.0.0.1:8000/admin/
+```
+
+En produccion la ruta debe definirse con `DJANGO_ADMIN_URL_PATH` y el acceso puede limitarse con `DJANGO_ADMIN_ALLOWED_IPS`.
+
+### Pedidos
+
+Desde `Store > Ordenes` el administrador puede:
+
+- Revisar comprador, datos de envio, total, estado, fechas y productos del pedido.
+- Cambiar el estado de una orden.
+- Usar acciones masivas para marcar ordenes como pagadas, en preparacion, enviadas, entregadas, canceladas o reembolsadas.
+- Registrar datos de envio como transportadora, numero de guia y URL de seguimiento.
+- Exportar ordenes seleccionadas en CSV.
+
+Cuando una orden pasa a `enviado` o `entregado`, el sistema intenta notificar al cliente por correo si hay configuracion SMTP disponible.
+
+### Reportes del negocio
+
+Desde el inicio del admin se puede entrar a `Ver resumen del negocio`.
+
+El resumen incluye:
+
+- Ventas del periodo seleccionado.
+- Cantidad de pedidos por estado.
+- Productos mas vendidos.
+- Productos con bajo stock.
+- Pedidos recientes.
+
+Tambien se pueden descargar reportes CSV de ventas y productos usando filtros de fecha.
+
+### Auditoria operativa
+
+Desde el inicio del admin se puede entrar a `Ver auditoria operativa`.
+
+La auditoria permite:
+
+- Buscar eventos por texto.
+- Filtrar por tipo de evento, severidad y fechas.
+- Revisar usuario, IP, endpoint, metodo HTTP y metadata segura.
+- Descargar eventos filtrados en CSV.
+
+Los CSV de auditoria aplican proteccion contra formulas para evitar que valores peligrosos se ejecuten al abrirlos en hojas de calculo.
+
+### Mantenimiento de eventos
+
+Para revisar eventos antiguos sin eliminarlos:
+
+```powershell
+cd C:\dev\vapes_shop\backend
+.\.venv\Scripts\Activate.ps1
+python manage.py purge_event_logs --days 180
+```
+
+Para eliminar eventos antiguos de forma confirmada:
+
+```powershell
+python manage.py purge_event_logs --days 180 --confirm
+```
+
+Tambien se puede filtrar por severidad o tipo:
+
+```powershell
+python manage.py purge_event_logs --days 90 --severity info --event-type checkout_success --confirm
+```
+
+Sin `--confirm`, el comando solo muestra un resumen y no borra registros.
 
 ## Preparacion Produccion
 
