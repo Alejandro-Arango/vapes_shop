@@ -430,6 +430,78 @@ class StoreApiTests(APITestCase):
 
         self.assertIn("Configuracion de produccion validada", output.getvalue())
 
+    def test_purge_event_logs_dry_run_does_not_delete_events(self):
+        old_event = EventLog.objects.create(
+            event_type="checkout_failed",
+            severity="warning",
+            message="Evento antiguo.",
+        )
+        EventLog.objects.filter(id=old_event.id).update(
+            created_at=timezone.now() - timedelta(days=45)
+        )
+        output = StringIO()
+
+        call_command("purge_event_logs", "--days", "30", stdout=output)
+
+        self.assertTrue(EventLog.objects.filter(id=old_event.id).exists())
+        self.assertIn("Simulacion: 1 evento(s)", output.getvalue())
+
+    def test_purge_event_logs_confirm_deletes_filtered_old_events(self):
+        old_info = EventLog.objects.create(
+            event_type="checkout_success",
+            severity="info",
+            message="Evento antiguo a purgar.",
+        )
+        old_warning = EventLog.objects.create(
+            event_type="checkout_success",
+            severity="warning",
+            message="Evento antiguo que debe conservarse.",
+        )
+        recent_info = EventLog.objects.create(
+            event_type="checkout_success",
+            severity="info",
+            message="Evento reciente.",
+        )
+        EventLog.objects.filter(id__in=[old_info.id, old_warning.id]).update(
+            created_at=timezone.now() - timedelta(days=45)
+        )
+        output = StringIO()
+
+        call_command(
+            "purge_event_logs",
+            "--days",
+            "30",
+            "--severity",
+            "info",
+            "--event-type",
+            "checkout_success",
+            "--confirm",
+            stdout=output,
+        )
+
+        self.assertFalse(EventLog.objects.filter(id=old_info.id).exists())
+        self.assertTrue(EventLog.objects.filter(id=old_warning.id).exists())
+        self.assertTrue(EventLog.objects.filter(id=recent_info.id).exists())
+        self.assertIn("Purgado completado: 1 evento(s)", output.getvalue())
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="event_log_purge_completed",
+                metadata__deleted_count=1,
+                metadata__severity="info",
+                metadata__event_type="checkout_success",
+            ).exists()
+        )
+
+    def test_purge_event_logs_rejects_invalid_days(self):
+        with self.assertRaises(CommandError):
+            call_command(
+                "purge_event_logs",
+                "--days",
+                "0",
+                stdout=StringIO(),
+                stderr=StringIO(),
+            )
+
     def test_cart_audit_metadata_summarizes_payload(self):
         metadata = build_cart_audit_metadata(
             {
