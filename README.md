@@ -307,6 +307,8 @@ DJANGO_EMAIL_TIMEOUT
 DJANGO_PASSWORD_RESET_TIMEOUT
 DEFAULT_FROM_EMAIL
 CONTACT_NOTIFICATION_EMAIL
+ORDER_NOTIFICATION_EMAIL
+INVENTORY_NOTIFICATION_EMAIL
 CONTACT_WHATSAPP_NUMBER
 ```
 
@@ -339,6 +341,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Recuperacion de contrasena con enlace temporal y expiracion configurable.
 - Cambio de contrasena autenticado con validacion de contrasena actual.
 - Health check operativo para base de datos y cache.
+- Alerta operativa de inventario bajo con comando `notify_low_stock`.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.
 - Script local de validacion: `scripts\validate-backend.ps1`.
@@ -382,6 +385,24 @@ El resumen incluye:
 - Pedidos recientes.
 
 Tambien se pueden descargar reportes CSV de ventas y productos usando filtros de fecha.
+
+### Inventario
+
+Para revisar productos activos con bajo stock sin enviar correo:
+
+```powershell
+cd C:\dev\vapes_shop\backend
+.\.venv\Scripts\Activate.ps1
+python manage.py notify_low_stock --threshold 3
+```
+
+Para enviar la alerta al correo operativo configurado:
+
+```powershell
+python manage.py notify_low_stock --threshold 3 --send-email
+```
+
+El destinatario principal es `INVENTORY_NOTIFICATION_EMAIL`. Si no existe, usa `ORDER_NOTIFICATION_EMAIL`.
 
 ### Auditoria operativa
 
@@ -506,6 +527,8 @@ DJANGO_EMAIL_TIMEOUT
 DJANGO_PASSWORD_RESET_TIMEOUT
 DEFAULT_FROM_EMAIL
 CONTACT_NOTIFICATION_EMAIL
+ORDER_NOTIFICATION_EMAIL
+INVENTORY_NOTIFICATION_EMAIL
 CONTACT_WHATSAPP_NUMBER
 DJANGO_STORE_LOG_LEVEL
 DJANGO_REQUEST_LOG_LEVEL

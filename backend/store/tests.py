@@ -438,6 +438,7 @@ class StoreApiTests(APITestCase):
         DEFAULT_FROM_EMAIL="Vape Shop <no-reply@example.com>",
         CONTACT_NOTIFICATION_EMAIL="admin@example.com",
         ORDER_NOTIFICATION_EMAIL="orders@example.com",
+        INVENTORY_NOTIFICATION_EMAIL="inventory@example.com",
         CONTACT_WHATSAPP_NUMBER="573016604375",
     )
     def test_production_check_accepts_hardened_configuration(self):
@@ -515,6 +516,92 @@ class StoreApiTests(APITestCase):
                 "purge_event_logs",
                 "--days",
                 "0",
+                stdout=StringIO(),
+                stderr=StringIO(),
+            )
+
+    def test_notify_low_stock_dry_run_reports_active_products(self):
+        low_product = Product.objects.create(
+            name="Producto bajo inventario",
+            description="Descripcion",
+            price=Decimal("10.00"),
+            stock=2,
+        )
+        Product.objects.create(
+            name="Producto con stock suficiente",
+            description="Descripcion",
+            price=Decimal("10.00"),
+            stock=8,
+        )
+        Product.objects.create(
+            name="Producto inactivo sin stock",
+            description="Descripcion",
+            price=Decimal("10.00"),
+            stock=0,
+            is_active=False,
+        )
+        output = StringIO()
+
+        call_command("notify_low_stock", "--threshold", "3", stdout=output)
+
+        content = output.getvalue()
+
+        self.assertIn("Productos encontrados: 1", content)
+        self.assertIn(low_product.name, content)
+        self.assertNotIn("Producto con stock suficiente", content)
+        self.assertNotIn("Producto inactivo sin stock", content)
+        self.assertIn("Simulacion", content)
+        self.assertFalse(
+            EventLog.objects.filter(event_type="inventory_low_stock_report").exists()
+        )
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="no-reply@example.com",
+        INVENTORY_NOTIFICATION_EMAIL="inventario@example.com",
+    )
+    def test_notify_low_stock_sends_email_and_logs_event(self):
+        out_of_stock = Product.objects.create(
+            name="Producto agotado",
+            description="Descripcion",
+            price=Decimal("10.00"),
+            stock=0,
+        )
+        low_product = Product.objects.create(
+            name="Producto ultimas unidades",
+            description="Descripcion",
+            price=Decimal("10.00"),
+            stock=3,
+        )
+        output = StringIO()
+
+        call_command(
+            "notify_low_stock",
+            "--threshold",
+            "3",
+            "--send-email",
+            stdout=output,
+        )
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Alerta de inventario", mail.outbox[0].subject)
+        self.assertIn(out_of_stock.name, mail.outbox[0].body)
+        self.assertIn(low_product.name, mail.outbox[0].body)
+        self.assertIn("inventario@example.com", output.getvalue())
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="inventory_low_stock_report",
+                metadata__product_count=2,
+                metadata__email_sent=True,
+            ).exists()
+        )
+
+    def test_notify_low_stock_rejects_invalid_threshold(self):
+        with self.assertRaises(CommandError):
+            call_command(
+                "notify_low_stock",
+                "--threshold",
+                "-1",
                 stdout=StringIO(),
                 stderr=StringIO(),
             )

@@ -187,6 +187,7 @@ class Command(BaseCommand):
         default_from = getattr(settings, "DEFAULT_FROM_EMAIL", "")
         notification_email = getattr(settings, "CONTACT_NOTIFICATION_EMAIL", "")
         order_notification_email = getattr(settings, "ORDER_NOTIFICATION_EMAIL", "")
+        inventory_notification_email = getattr(settings, "INVENTORY_NOTIFICATION_EMAIL", "")
 
         if "vape-shop.local" in default_from:
             errors.append("DEFAULT_FROM_EMAIL no debe usar vape-shop.local.")
@@ -197,6 +198,9 @@ class Command(BaseCommand):
         if "vape-shop.local" in order_notification_email:
             errors.append("ORDER_NOTIFICATION_EMAIL no debe usar vape-shop.local.")
 
+        if "vape-shop.local" in inventory_notification_email:
+            errors.append("INVENTORY_NOTIFICATION_EMAIL no debe usar vape-shop.local.")
+
         if not default_from:
             warnings.append("DEFAULT_FROM_EMAIL esta vacio.")
 
@@ -205,6 +209,9 @@ class Command(BaseCommand):
 
         if not order_notification_email:
             warnings.append("ORDER_NOTIFICATION_EMAIL esta vacio.")
+
+        if not inventory_notification_email:
+            warnings.append("INVENTORY_NOTIFICATION_EMAIL esta vacio.")
 
     def check_contact(self, errors):
         whatsapp_number = getattr(settings, "CONTACT_WHATSAPP_NUMBER", "")
