@@ -255,6 +255,7 @@ El proyecto ya incluye una base de endurecimiento para preproduccion:
 - Rate limits en autenticacion, contacto, carrito y checkout.
 - Auditoria interna con redaccion de datos sensibles.
 - Validacion de IP en auditoria.
+- Health check de base de datos y cache en `/api/health/`.
 - Ruta de admin configurable.
 - Restriccion opcional del admin por IP.
 - Cache configurable para evitar `LocMemCache` en produccion.
@@ -337,6 +338,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Soporte configurable para base de datos `sqlite` o `mysql`.
 - Recuperacion de contrasena con enlace temporal y expiracion configurable.
 - Cambio de contrasena autenticado con validacion de contrasena actual.
+- Health check operativo para base de datos y cache.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.
 - Script local de validacion: `scripts\validate-backend.ps1`.

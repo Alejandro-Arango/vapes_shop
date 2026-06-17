@@ -147,9 +147,20 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "ok")
         self.assertEqual(response.data["database"], "available")
+        self.assertEqual(response.data["cache"], "available")
         self.assertEqual(response.headers["Cache-Control"], "no-store, max-age=0")
         self.assertEqual(response.headers["Pragma"], "no-cache")
         self.assertEqual(response.headers["Expires"], "0")
+
+    def test_health_check_reports_unavailable_cache(self):
+        with self.assertLogs("django.request", level="ERROR"):
+            with patch("store.views_api.cache.set", side_effect=RuntimeError):
+                response = self.client.get(reverse("health_check"))
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data["status"], "error")
+        self.assertEqual(response.data["database"], "available")
+        self.assertEqual(response.data["cache"], "unavailable")
 
     def test_sensitive_api_responses_are_not_cached(self):
         response = self.client.get(reverse("api_cart"))

@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.db import DatabaseError, connection
 from django.db.models import Avg, Count, Q
 
@@ -14,6 +15,7 @@ PRODUCT_STOCK_FILTERS = ("all", "available", "low", "empty")
 PRODUCT_DEFAULT_PAGE = 1
 PRODUCT_DEFAULT_PAGE_SIZE = 6
 PRODUCT_MAX_PAGE_SIZE = 24
+HEALTH_CACHE_KEY = "store:health-check"
 PRODUCT_ORDERING_OPTIONS = {
     "default": ("-created_at", "-id"),
     "price-asc": ("price", "id"),
@@ -169,12 +171,26 @@ def apply_private_cache_headers(response, request):
     return response
 
 
+def is_cache_available():
+    """
+    Nombre: is_cache_available
+    Descripcion: Verifica lectura y escritura basica del cache configurado.
+    """
+    marker = "ok"
+
+    try:
+        cache.set(HEALTH_CACHE_KEY, marker, timeout=5)
+        return cache.get(HEALTH_CACHE_KEY) == marker
+    except Exception:
+        return False
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
     """
     Nombre: health_check
-    Descripcion: Verifica que la aplicacion y la base de datos respondan.
+    Descripcion: Verifica que la aplicacion, base de datos y cache respondan.
     """
     try:
         connection.ensure_connection()
@@ -183,6 +199,17 @@ def health_check(request):
             {
                 "status": "error",
                 "database": "unavailable",
+                "cache": "not_checked",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    if not is_cache_available():
+        return Response(
+            {
+                "status": "error",
+                "database": "available",
+                "cache": "unavailable",
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
@@ -191,6 +218,7 @@ def health_check(request):
         {
             "status": "ok",
             "database": "available",
+            "cache": "available",
         },
         status=status.HTTP_200_OK,
     )
