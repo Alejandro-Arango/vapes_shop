@@ -317,7 +317,6 @@ CONTACT_WHATSAPP_NUMBER
 - Pasarela de pagos real.
 - Despliegue en producción.
 - PostgreSQL.
-- Sistema de roles.
 - Dashboard con métricas.
 - Categorías reales para productos.
 - Control avanzado de inventario.
@@ -342,6 +341,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Cambio de contrasena autenticado con validacion de contrasena actual.
 - Health check operativo para base de datos y cache.
 - Alerta operativa de inventario bajo con comando `notify_low_stock`.
+- Roles administrativos base con comando `setup_store_roles`.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.
 - Script local de validacion: `scripts\validate-backend.ps1`.
@@ -359,6 +359,31 @@ http://127.0.0.1:8000/admin/
 ```
 
 En produccion la ruta debe definirse con `DJANGO_ADMIN_URL_PATH` y el acceso puede limitarse con `DJANGO_ADMIN_ALLOWED_IPS`.
+
+### Roles administrativos
+
+El proyecto incluye grupos base para separar permisos dentro del panel:
+
+- `Operador pedidos`: gestion de ordenes, clientes y seguimiento.
+- `Gestor inventario`: gestion de productos, categorias y codigos de descuento.
+- `Atencion al cliente`: gestion de contactos, clientes y resenas.
+- `Auditor tienda`: permisos de solo lectura para revision operativa.
+
+Para revisar los roles sin modificar la base de datos:
+
+```powershell
+cd C:\dev\vapes_shop\backend
+.\.venv\Scripts\Activate.ps1
+python manage.py setup_store_roles
+```
+
+Para crear o actualizar los grupos:
+
+```powershell
+python manage.py setup_store_roles --apply
+```
+
+El comando es idempotente: puede ejecutarse varias veces sin duplicar permisos.
 
 ### Pedidos
 
@@ -457,8 +482,9 @@ Sin `--confirm`, el comando solo muestra un resumen y no borra registros.
 10. Ejecutar migraciones.
 11. Ejecutar `collectstatic`.
 12. Crear superusuario.
-13. Verificar `python manage.py check --deploy`.
-14. Verificar `python manage.py production_check`.
+13. Crear roles administrativos con `python manage.py setup_store_roles --apply`.
+14. Verificar `python manage.py check --deploy`.
+15. Verificar `python manage.py production_check`.
 
 Comandos recomendados:
 
@@ -468,6 +494,7 @@ python manage.py check --deploy
 python manage.py production_check
 python manage.py migrate
 python manage.py createcachetable
+python manage.py setup_store_roles --apply
 python manage.py collectstatic --noinput
 ```
 

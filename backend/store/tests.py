@@ -17,7 +17,7 @@ from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.contrib.auth.tokens import default_token_generator
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
@@ -611,6 +611,43 @@ class StoreApiTests(APITestCase):
                 stdout=StringIO(),
                 stderr=StringIO(),
             )
+
+    def test_setup_store_roles_dry_run_does_not_create_groups(self):
+        output = StringIO()
+
+        call_command("setup_store_roles", stdout=output)
+
+        self.assertFalse(Group.objects.filter(name="Operador pedidos").exists())
+        self.assertFalse(Group.objects.filter(name="Gestor inventario").exists())
+        self.assertIn("Simulacion", output.getvalue())
+
+    def test_setup_store_roles_apply_creates_groups_and_permissions(self):
+        output = StringIO()
+
+        call_command("setup_store_roles", "--apply", stdout=output)
+
+        order_role = Group.objects.get(name="Operador pedidos")
+        inventory_role = Group.objects.get(name="Gestor inventario")
+        first_permission_count = order_role.permissions.count()
+
+        self.assertTrue(order_role.permissions.filter(codename="view_order").exists())
+        self.assertTrue(order_role.permissions.filter(codename="change_order").exists())
+        self.assertFalse(order_role.permissions.filter(codename="delete_order").exists())
+        self.assertTrue(
+            inventory_role.permissions.filter(codename="change_product").exists()
+        )
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="store_roles_setup_completed",
+                metadata__role_count=4,
+            ).exists()
+        )
+
+        call_command("setup_store_roles", "--apply", stdout=StringIO())
+        order_role.refresh_from_db()
+
+        self.assertEqual(order_role.permissions.count(), first_permission_count)
+        self.assertIn("Roles administrativos actualizados", output.getvalue())
 
     def test_cart_audit_metadata_summarizes_payload(self):
         metadata = build_cart_audit_metadata(
