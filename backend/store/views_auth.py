@@ -5,7 +5,13 @@ Dependencias: Django auth, modelo User, Django REST Framework, serializers de us
 """
 
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout, password_validation
+from django.contrib.auth import (
+    authenticate,
+    login,
+    logout,
+    password_validation,
+    update_session_auth_hash,
+)
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -29,7 +35,7 @@ from .serializers import (
     UserRegisterSerializer,
     UserSerializer,
 )
-from .throttles import AuthAnonRateThrottle
+from .throttles import AuthAnonRateThrottle, AuthUserRateThrottle
 
 
 def get_customer_display_name(customer, user):
@@ -588,6 +594,85 @@ def profile(request):
     return Response(
         serialize_current_user(request.user),
         status=status.HTTP_200_OK
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@throttle_classes([AuthUserRateThrottle])
+def password_change(request):
+    """
+    Nombre: password_change
+    Descripcion: Permite cambiar contrasena desde una sesion autenticada.
+    """
+    current_password = normalize_login_password(request.data.get("current_password"))
+    new_password = normalize_login_password(request.data.get("new_password"))
+    new_password_confirm = normalize_login_password(
+        request.data.get("new_password_confirm")
+    )
+
+    if not current_password or not request.user.check_password(current_password):
+        log_event(
+            "password_change_failed",
+            "Cambio de contrasena rechazado por contrasena actual invalida.",
+            request=request,
+            user=request.user,
+            severity="warning",
+            metadata={"reason": "invalid_current_password"},
+        )
+
+        return Response(
+            {"error": "La contrasena actual no es correcta."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not new_password or new_password != new_password_confirm:
+        log_event(
+            "password_change_failed",
+            "Cambio de contrasena rechazado por confirmacion invalida.",
+            request=request,
+            user=request.user,
+            severity="warning",
+            metadata={"reason": "password_mismatch"},
+        )
+
+        return Response(
+            {"error": "Las contrasenas nuevas no coinciden."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        password_validation.validate_password(new_password, request.user)
+    except DjangoValidationError as exc:
+        log_event(
+            "password_change_failed",
+            "Cambio de contrasena rechazado por validaciones.",
+            request=request,
+            user=request.user,
+            severity="warning",
+            metadata={"reason": "weak_password"},
+        )
+
+        return Response(
+            {"password": list(exc.messages)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    request.user.set_password(new_password)
+    request.user.save(update_fields=["password"])
+    update_session_auth_hash(request, request.user)
+
+    log_event(
+        "password_change_success",
+        "Contrasena actualizada desde perfil.",
+        request=request,
+        user=request.user,
+        metadata={"user_id": request.user.id},
+    )
+
+    return Response(
+        {"message": "Contrasena actualizada correctamente."},
+        status=status.HTTP_200_OK,
     )
 
 

@@ -305,6 +305,7 @@ INSTALLED_APPS = [
 REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "auth_anon": env_throttle_rate("AUTH_THROTTLE_RATE", "20/min"),
+        "auth_user": env_throttle_rate("AUTH_USER_THROTTLE_RATE", "10/min"),
         "contact_anon": env_throttle_rate("CONTACT_THROTTLE_RATE", "10/hour"),
         "cart": env_throttle_rate("CART_THROTTLE_RATE", "60/min"),
         "checkout_user": env_throttle_rate("CHECKOUT_THROTTLE_RATE", "20/min"),

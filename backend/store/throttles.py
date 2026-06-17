@@ -16,6 +16,15 @@ class AuthAnonRateThrottle(AnonRateThrottle):
     scope = "auth_anon"
 
 
+class AuthUserRateThrottle(UserRateThrottle):
+    """
+    Nombre: AuthUserRateThrottle
+    Descripcion: Limita acciones sensibles de autenticacion para usuarios logueados.
+    """
+
+    scope = "auth_user"
+
+
 class ContactAnonRateThrottle(AnonRateThrottle):
     """
     Nombre: ContactAnonRateThrottle

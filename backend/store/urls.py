@@ -91,6 +91,11 @@ urlpatterns = [
         views_auth.password_reset_confirm,
         name="auth_password_reset_confirm",
     ),
+    path(
+        "api/auth/password-change/",
+        views_auth.password_change,
+        name="auth_password_change",
+    ),
     path("api/auth/logout/", views_auth.logout_view, name="auth_logout"),
     path("api/auth/me/", views_auth.me, name="auth_me"),
     path("api/auth/profile/", views_auth.profile, name="auth_profile"),

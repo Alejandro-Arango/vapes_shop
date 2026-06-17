@@ -18,6 +18,7 @@ const api = {
     authLogout: "/api/auth/logout/",
     me: "/api/auth/me/",
     authProfile: "/api/auth/profile/",
+    authPasswordChange: "/api/auth/password-change/",
     shippingAddresses: "/api/auth/shipping-addresses/",
     cartGet: "/api/cart/",
     cartAdd: "/api/cart/add/",
@@ -712,6 +713,31 @@ async function updateProfile(profileData) {
             phoneError ||
             data?.error ||
             "No se pudo actualizar el perfil."
+        );
+    }
+
+    return data;
+}
+
+async function changePassword(passwordData) {
+    const res = await fetch(api.authPasswordChange, {
+        method: "POST",
+        headers: csrfHeaders(),
+        credentials: "include",
+        body: JSON.stringify(passwordData),
+    });
+    const data = await res.json().catch(() => ({}));
+    const passwordError = Array.isArray(data?.password)
+        ? data.password[0]
+        : data?.password;
+
+    if (!res.ok) {
+        throw new Error(
+            passwordError ||
+            data?.error ||
+            data?.detail ||
+            data?.message ||
+            "No se pudo actualizar la contrasena."
         );
     }
 
@@ -3569,6 +3595,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const profileModal = document.getElementById("profile-modal");
     const profileClose = document.getElementById("profile-close");
     const profileForm = document.getElementById("profile-form");
+    const profilePasswordForm = document.getElementById("profile-password-form");
     const contactForm = document.getElementById("contact-form");
     const contactName = document.getElementById("contact-name");
     const contactEmail = document.getElementById("contact-email");
@@ -4263,6 +4290,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         fillProfileForm();
+        profilePasswordForm?.reset();
         profileModal?.setAttribute("aria-hidden", "false");
         profileModal?.classList.add("open");
     });
@@ -4299,6 +4327,71 @@ document.addEventListener("DOMContentLoaded", async () => {
         } catch (err) {
             showProfileFeedback(
                 err.message || "No se pudo actualizar el perfil.",
+                "error"
+            );
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        }
+    });
+
+    profilePasswordForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        clearProfileFeedback();
+
+        const currentPassword =
+            document.getElementById("profile-current-password")?.value || "";
+        const newPassword =
+            document.getElementById("profile-new-password")?.value || "";
+        const newPasswordConfirm =
+            document.getElementById("profile-new-password-confirm")?.value || "";
+        const submitBtn = profilePasswordForm.querySelector("button[type='submit']");
+        const originalText = submitBtn?.textContent || "Cambiar contrasena";
+
+        if (isEmpty(currentPassword)) {
+            showProfileFeedback("Ingresa tu contrasena actual.", "error");
+            return;
+        }
+
+        if (isEmpty(newPassword)) {
+            showProfileFeedback("Ingresa una nueva contrasena.", "error");
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            showProfileFeedback("La contrasena debe tener al menos 6 caracteres.", "error");
+            return;
+        }
+
+        if (newPassword !== newPasswordConfirm) {
+            showProfileFeedback("Las contrasenas nuevas no coinciden.", "error");
+            return;
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Guardando...";
+        }
+
+        try {
+            const data = await changePassword({
+                current_password: currentPassword,
+                new_password: newPassword,
+                new_password_confirm: newPasswordConfirm,
+            });
+
+            profilePasswordForm.reset();
+            showProfileFeedback(
+                data?.message || "Contrasena actualizada correctamente.",
+                "success"
+            );
+            showToast("Contrasena actualizada correctamente.", "success");
+        } catch (err) {
+            showProfileFeedback(
+                err.message || "No se pudo actualizar la contrasena.",
                 "error"
             );
         } finally {

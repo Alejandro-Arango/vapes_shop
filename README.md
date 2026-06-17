@@ -28,6 +28,7 @@ El proyecto incluye:
 - Formulario de datos de envío.
 - Registro, login, logout y consulta del usuario actual.
 - Recuperacion de contrasena por correo con token temporal.
+- Cambio de contrasena desde el perfil autenticado.
 - Modal de compra exitosa.
 - Historial de pedidos.
 - Cancelación de pedidos.
@@ -335,6 +336,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Archivo `.env.example` como referencia segura.
 - Soporte configurable para base de datos `sqlite` o `mysql`.
 - Recuperacion de contrasena con enlace temporal y expiracion configurable.
+- Cambio de contrasena autenticado con validacion de contrasena actual.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.
 - Script local de validacion: `scripts\validate-backend.ps1`.
@@ -487,6 +489,7 @@ DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY
 DJANGO_USE_X_FORWARDED_PROTO
 DJANGO_TRUST_X_FORWARDED_FOR
 AUTH_THROTTLE_RATE
+AUTH_USER_THROTTLE_RATE
 CONTACT_THROTTLE_RATE
 CART_THROTTLE_RATE
 CHECKOUT_THROTTLE_RATE

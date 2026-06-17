@@ -39,5 +39,39 @@ Descripcion: Componente modal para editar datos basicos del perfil del cliente a
                 Guardar cambios
             </button>
         </form>
+
+        <div class="profile-password-section">
+            <h3>Seguridad</h3>
+
+            <form id="profile-password-form" class="auth-form profile-form">
+                <input
+                    id="profile-current-password"
+                    type="password"
+                    placeholder="Contraseña actual"
+                    autocomplete="current-password"
+                    required
+                />
+
+                <input
+                    id="profile-new-password"
+                    type="password"
+                    placeholder="Nueva contraseña"
+                    autocomplete="new-password"
+                    required
+                />
+
+                <input
+                    id="profile-new-password-confirm"
+                    type="password"
+                    placeholder="Confirmar nueva contraseña"
+                    autocomplete="new-password"
+                    required
+                />
+
+                <button class="btn" type="submit">
+                    Cambiar contraseña
+                </button>
+            </form>
+        </div>
     </div>
 </div>

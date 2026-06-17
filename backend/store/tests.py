@@ -63,6 +63,7 @@ from .models import (
 )
 from .throttles import (
     AuthAnonRateThrottle,
+    AuthUserRateThrottle,
     CartRateThrottle,
     CheckoutUserRateThrottle,
     ContactAnonRateThrottle,
@@ -752,6 +753,129 @@ class StoreApiTests(APITestCase):
         self.assertTrue(
             EventLog.objects.filter(event_type="profile_update_success").exists()
         )
+
+    def test_password_change_requires_auth_and_updates_password(self):
+        unauthenticated_response = self.client.post(
+            reverse("auth_password_change"),
+            {
+                "current_password": "ClaveSegura123",
+                "new_password": "NuevaClaveSegura123",
+                "new_password_confirm": "NuevaClaveSegura123",
+            },
+            format="json",
+        )
+
+        self.assertIn(
+            unauthenticated_response.status_code,
+            (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+        )
+
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.post(
+            reverse("auth_password_change"),
+            {
+                "current_password": "ClaveSegura123",
+                "new_password": "NuevaClaveSegura123",
+                "new_password_confirm": "NuevaClaveSegura123",
+            },
+            format="json",
+        )
+
+        user.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(user.check_password("NuevaClaveSegura123"))
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="password_change_success",
+                user=user,
+            ).exists()
+        )
+        self.assertEqual(self.client.get(reverse("auth_me")).status_code, status.HTTP_200_OK)
+
+    def test_password_change_rejects_invalid_current_and_weak_password(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        invalid_current_response = self.client.post(
+            reverse("auth_password_change"),
+            {
+                "current_password": "ClaveIncorrecta123",
+                "new_password": "NuevaClaveSegura123",
+                "new_password_confirm": "NuevaClaveSegura123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(invalid_current_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        mismatch_response = self.client.post(
+            reverse("auth_password_change"),
+            {
+                "current_password": "ClaveSegura123",
+                "new_password": "NuevaClaveSegura123",
+                "new_password_confirm": "OtraClaveSegura123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(mismatch_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        weak_response = self.client.post(
+            reverse("auth_password_change"),
+            {
+                "current_password": "ClaveSegura123",
+                "new_password": "123",
+                "new_password_confirm": "123",
+            },
+            format="json",
+        )
+
+        user.refresh_from_db()
+
+        self.assertEqual(weak_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", weak_response.data)
+        self.assertTrue(user.check_password("ClaveSegura123"))
+        self.assertEqual(
+            EventLog.objects.filter(event_type="password_change_failed").count(),
+            3,
+        )
+
+    def test_password_change_is_rate_limited(self):
+        cache.clear()
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        try:
+            with patch.object(AuthUserRateThrottle, "rate", "2/min", create=True):
+                for _ in range(2):
+                    response = self.client.post(
+                        reverse("auth_password_change"),
+                        {
+                            "current_password": "ClaveIncorrecta123",
+                            "new_password": "NuevaClaveSegura123",
+                            "new_password_confirm": "NuevaClaveSegura123",
+                        },
+                        format="json",
+                    )
+
+                    self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+                response = self.client.post(
+                    reverse("auth_password_change"),
+                    {
+                        "current_password": "ClaveIncorrecta123",
+                        "new_password": "NuevaClaveSegura123",
+                        "new_password_confirm": "NuevaClaveSegura123",
+                    },
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
 
     def test_shipping_addresses_crud_and_default_shipping(self):
         unauthenticated_response = self.client.get(reverse("shipping_addresses"))

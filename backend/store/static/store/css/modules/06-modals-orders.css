@@ -112,6 +112,21 @@ body.light-mode .auth-help {
     width: min(560px, 100%);
 }
 
+.profile-password-section {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.profile-password-section h3 {
+    margin: 0 0 12px;
+    font-size: 18px;
+}
+
+body.light-mode .profile-password-section {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+
 .favorites-body {
     margin-top: 14px;
     max-height: calc(100vh - 210px);
