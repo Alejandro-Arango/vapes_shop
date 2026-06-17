@@ -44,7 +44,13 @@ from mi_tienda.settings import (
     env_throttle_rate,
 )
 
-from .admin import ContactLeadAdmin, EventLogAdmin, OrderAdmin, build_csv_response
+from .admin import (
+    ContactLeadAdmin,
+    EventLogAdmin,
+    OrderAdmin,
+    ProductAdmin,
+    build_csv_response,
+)
 from .admin_dashboard import build_business_dashboard_context
 from .audit import get_client_ip, log_event
 from .models import (
@@ -3075,6 +3081,33 @@ class StoreApiTests(APITestCase):
         self.assertIn("'-10", content)
         self.assertIn("'@usuario", content)
         self.assertIn("'  =SUM(2,2)", content)
+
+    def test_admin_exports_products_to_csv(self):
+        category = Category.objects.create(name="Pods", slug="pods")
+        formula_product = Product.objects.create(
+            name="=Producto inventario",
+            category=category,
+            description="+Descripcion sensible",
+            price=Decimal("15.00"),
+            stock=0,
+            is_active=False,
+        )
+        admin_model = ProductAdmin(Product, self.admin_site)
+
+        response = admin_model.export_products_csv(
+            self.create_admin_request(),
+            Product.objects.filter(id=formula_product.id),
+        )
+
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("productos.csv", response["Content-Disposition"])
+        self.assertIn("'=Producto inventario", content)
+        self.assertIn("'+Descripcion sensible", content)
+        self.assertIn("Pods", content)
+        self.assertIn("Sin stock", content)
+        self.assertIn("No", content)
 
     def test_admin_exports_orders_to_csv(self):
         user = self.create_user()

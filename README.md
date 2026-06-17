@@ -333,7 +333,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 
 - CI con GitHub Actions.
 - Trazabilidad interna mediante `EventLog`.
-- Exportacion CSV desde el admin para ordenes, contactos y eventos.
+- Exportacion CSV desde el admin para ordenes, contactos, eventos y productos.
 - Estados de pedido ampliados: `pendiente`, `pagado`, `en_preparacion`, `enviado`, `entregado`, `cancelado`, `reembolsado`.
 - Configuracion por variables de entorno usando `.env`.
 - Archivo `.env.example` como referencia segura.
@@ -371,6 +371,8 @@ Desde `Store > Ordenes` el administrador puede:
 - Exportar ordenes seleccionadas en CSV.
 
 Cuando una orden pasa a `enviado` o `entregado`, el sistema intenta notificar al cliente por correo si hay configuracion SMTP disponible.
+
+Desde `Store > Productos` el administrador puede exportar productos seleccionados en CSV para revisar inventario, estado, categoria, precio y stock.
 
 ### Reportes del negocio
 

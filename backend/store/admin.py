@@ -495,6 +495,7 @@ class ProductAdmin(admin.ModelAdmin):
         "deactivate_products",
         "mark_out_of_stock",
         "increase_stock_by_10",
+        "export_products_csv",
     )
 
     def get_stock_status(self, obj):
@@ -543,6 +544,39 @@ class ProductAdmin(admin.ModelAdmin):
         self.message_user(
             request,
             f"{queryset.count()} producto(s) actualizados con 10 unidades adicionales."
+        )
+
+    @admin.action(description="Exportar productos seleccionados a CSV")
+    def export_products_csv(self, request, queryset):
+        rows = (
+            (
+                product.id,
+                product.name,
+                product.category.name if product.category else "",
+                product.description,
+                str(product.price),
+                product.stock,
+                self.get_stock_status(product),
+                format_admin_bool(product.is_active),
+                format_admin_datetime(product.created_at),
+            )
+            for product in queryset.select_related("category").order_by("name", "id")
+        )
+
+        return build_csv_response(
+            "productos.csv",
+            (
+                "ID",
+                "Nombre",
+                "Categoria",
+                "Descripcion",
+                "Precio",
+                "Stock",
+                "Estado stock",
+                "Activo",
+                "Creado",
+            ),
+            rows,
         )
 
 
