@@ -1,6 +1,6 @@
 """
 Archivo: models.py
-Descripcion: Define los modelos principales de la aplicacion store para clientes, productos, ordenes e items de orden.
+Descripcion: Define los modelos principales de la aplicacion store para clientes, productos, ordenes, inventario e items de orden.
 Dependencias: Django settings y Django models
 """
 
@@ -531,7 +531,7 @@ class Order(models.Model):
         """
         return self.completed or self.status == "pagado"
 
-    def restore_items_stock(self):
+    def restore_items_stock(self, user=None):
         """
         Nombre: restore_items_stock
         Descripcion: Devuelve al inventario las unidades asociadas a los items de la orden.
@@ -553,8 +553,19 @@ class Order(models.Model):
             if not product:
                 continue
 
+            stock_before = product.stock
             product.stock += item.quantity
             product.save(update_fields=["stock"])
+            StockMovement.objects.create(
+                product=product,
+                order=self,
+                movement_type="cancel_restore",
+                quantity=item.quantity,
+                stock_before=stock_before,
+                stock_after=product.stock,
+                user=user,
+                reason="Restauracion por cancelacion de pedido.",
+            )
 
 
 class OrderStatusHistory(models.Model):
@@ -676,3 +687,62 @@ class OrderItem(models.Model):
     @property
     def get_total(self):
         return self.effective_unit_price * self.quantity
+
+
+class StockMovement(models.Model):
+    """
+    Nombre: StockMovement
+    Descripcion: Registra entradas y salidas de inventario para trazabilidad operativa.
+    """
+
+    MOVEMENT_TYPE_CHOICES = [
+        ("checkout", "Salida por compra"),
+        ("cancel_restore", "Entrada por cancelacion"),
+        ("admin_adjustment", "Ajuste administrativo"),
+    ]
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+        related_name="stock_movements",
+    )
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_movements",
+    )
+    movement_type = models.CharField(
+        max_length=30,
+        choices=MOVEMENT_TYPE_CHOICES,
+    )
+    quantity = models.IntegerField()
+    stock_before = models.PositiveIntegerField()
+    stock_after = models.PositiveIntegerField()
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_movements",
+    )
+    reason = models.CharField(max_length=180, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at", "-id")
+        indexes = [
+            models.Index(fields=["product", "created_at"], name="stockmov_product_date_idx"),
+            models.Index(fields=["movement_type", "created_at"], name="stockmov_type_date_idx"),
+            models.Index(fields=["order", "created_at"], name="stockmov_order_date_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__lt=0) | models.Q(quantity__gt=0),
+                name="stockmovement_quantity_not_zero",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.product} ({self.quantity:+d})"

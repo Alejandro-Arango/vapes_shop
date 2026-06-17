@@ -319,7 +319,7 @@ CONTACT_WHATSAPP_NUMBER
 - PostgreSQL.
 - Dashboard con métricas.
 - Categorías reales para productos.
-- Control avanzado de inventario.
+- Inventario por lotes o proveedores.
 - Notificaciones transaccionales por correo.
 - Facturación.
 - Docker.
@@ -341,6 +341,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Cambio de contrasena autenticado con validacion de contrasena actual.
 - Health check operativo para base de datos y cache.
 - Alerta operativa de inventario bajo con comando `notify_low_stock`.
+- Historial de movimientos de inventario desde checkout, cancelaciones y acciones admin.
 - Roles administrativos base con comando `setup_store_roles`.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.
@@ -414,6 +415,14 @@ El resumen incluye:
 Tambien se pueden descargar reportes CSV de ventas y productos usando filtros de fecha.
 
 ### Inventario
+
+Desde `Store > Movimientos de stock` el administrador puede consultar:
+
+- Producto afectado.
+- Tipo de movimiento: compra, cancelacion o ajuste administrativo.
+- Cantidad movida: negativa para salidas y positiva para entradas.
+- Stock antes y despues del movimiento.
+- Orden o usuario relacionado cuando aplique.
 
 Para revisar productos activos con bajo stock sin enviar correo:
 

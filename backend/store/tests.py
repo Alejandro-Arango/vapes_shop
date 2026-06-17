@@ -66,6 +66,7 @@ from .models import (
     Product,
     ProductReview,
     ShippingAddress,
+    StockMovement,
 )
 from .throttles import (
     AuthAnonRateThrottle,
@@ -635,6 +636,9 @@ class StoreApiTests(APITestCase):
         self.assertFalse(order_role.permissions.filter(codename="delete_order").exists())
         self.assertTrue(
             inventory_role.permissions.filter(codename="change_product").exists()
+        )
+        self.assertTrue(
+            inventory_role.permissions.filter(codename="view_stockmovement").exists()
         )
         self.assertTrue(
             EventLog.objects.filter(
@@ -2301,6 +2305,15 @@ class StoreApiTests(APITestCase):
         item = order.orderitem_set.get()
         self.assertEqual(item.product_name, "Producto prueba")
         self.assertEqual(item.unit_price, Decimal("10.00"))
+        movement = StockMovement.objects.get(
+            product=self.product,
+            order=order,
+            movement_type="checkout",
+        )
+        self.assertEqual(movement.quantity, -2)
+        self.assertEqual(movement.stock_before, 5)
+        self.assertEqual(movement.stock_after, 3)
+        self.assertEqual(movement.user, user)
         history = order.status_history.get()
         self.assertEqual(history.status, "pagado")
         self.assertEqual(history.previous_status, "")
@@ -2972,6 +2985,15 @@ class StoreApiTests(APITestCase):
         order.refresh_from_db()
         self.assertEqual(self.product.stock, 5)
         self.assertEqual(order.status, "cancelado")
+        movement = StockMovement.objects.get(
+            product=self.product,
+            order=order,
+            movement_type="cancel_restore",
+        )
+        self.assertEqual(movement.quantity, 2)
+        self.assertEqual(movement.stock_before, 3)
+        self.assertEqual(movement.stock_after, 5)
+        self.assertEqual(movement.user, user)
         history = order.status_history.get()
         self.assertEqual(history.previous_status, "pagado")
         self.assertEqual(history.status, "cancelado")
@@ -2988,6 +3010,14 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 5)
+        self.assertEqual(
+            StockMovement.objects.filter(
+                product=self.product,
+                order=order,
+                movement_type="cancel_restore",
+            ).count(),
+            1,
+        )
         self.assertTrue(
             EventLog.objects.filter(event_type="order_cancel_failed").exists()
         )
@@ -3145,6 +3175,45 @@ class StoreApiTests(APITestCase):
         self.assertIn("Pods", content)
         self.assertIn("Sin stock", content)
         self.assertIn("No", content)
+
+    def test_admin_stock_actions_create_inventory_movements(self):
+        admin_model = ProductAdmin(Product, self.admin_site)
+        admin_model.message_user = lambda *args, **kwargs: None
+        request = self.create_admin_request()
+
+        admin_model.increase_stock_by_10(
+            request,
+            Product.objects.filter(id=self.product.id),
+        )
+
+        self.product.refresh_from_db()
+        increase_movement = StockMovement.objects.get(
+            product=self.product,
+            movement_type="admin_adjustment",
+            stock_before=5,
+            stock_after=15,
+        )
+
+        self.assertEqual(self.product.stock, 15)
+        self.assertEqual(increase_movement.quantity, 10)
+        self.assertEqual(increase_movement.user, request.user)
+
+        admin_model.mark_out_of_stock(
+            request,
+            Product.objects.filter(id=self.product.id),
+        )
+
+        self.product.refresh_from_db()
+        zero_movement = StockMovement.objects.get(
+            product=self.product,
+            movement_type="admin_adjustment",
+            stock_before=15,
+            stock_after=0,
+        )
+
+        self.assertEqual(self.product.stock, 0)
+        self.assertEqual(zero_movement.quantity, -15)
+        self.assertEqual(StockMovement.objects.filter(product=self.product).count(), 2)
 
     def test_admin_exports_orders_to_csv(self):
         user = self.create_user()

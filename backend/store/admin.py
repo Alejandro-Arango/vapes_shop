@@ -27,6 +27,7 @@ from .models import (
     OrderItem,
     OrderStatusHistory,
     ShippingAddress,
+    StockMovement,
 )
 from .order_notifications import notify_order_status_changed
 from .order_status import record_order_status
@@ -508,6 +509,33 @@ class ProductAdmin(admin.ModelAdmin):
         return "Disponible"
     get_stock_status.short_description = "Estado stock"
 
+    def save_model(self, request, obj, form, change):
+        previous_stock = 0
+
+        if change and obj.pk:
+            previous_stock = (
+                Product.objects
+                .filter(pk=obj.pk)
+                .values_list("stock", flat=True)
+                .first()
+            )
+            previous_stock = previous_stock if previous_stock is not None else obj.stock
+
+        super().save_model(request, obj, form, change)
+
+        if obj.stock == previous_stock:
+            return
+
+        StockMovement.objects.create(
+            product=obj,
+            movement_type="admin_adjustment",
+            quantity=obj.stock - previous_stock,
+            stock_before=previous_stock,
+            stock_after=obj.stock,
+            user=request.user,
+            reason="Stock actualizado desde admin.",
+        )
+
     @admin.action(description="Activar productos seleccionados")
     def activate_products(self, request, queryset):
         updated = queryset.update(is_active=True)
@@ -528,7 +556,28 @@ class ProductAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar productos seleccionados sin stock")
     def mark_out_of_stock(self, request, queryset):
-        updated = queryset.update(stock=0)
+        updated = 0
+
+        with transaction.atomic():
+            products = queryset.select_for_update()
+
+            for product in products:
+                if product.stock == 0:
+                    continue
+
+                stock_before = product.stock
+                product.stock = 0
+                product.save(update_fields=["stock"])
+                StockMovement.objects.create(
+                    product=product,
+                    movement_type="admin_adjustment",
+                    quantity=-stock_before,
+                    stock_before=stock_before,
+                    stock_after=0,
+                    user=request.user,
+                    reason="Producto marcado sin stock desde admin.",
+                )
+                updated += 1
 
         self.message_user(
             request,
@@ -537,13 +586,29 @@ class ProductAdmin(admin.ModelAdmin):
 
     @admin.action(description="Aumentar stock en 10 unidades")
     def increase_stock_by_10(self, request, queryset):
-        for product in queryset:
-            product.stock += 10
-            product.save(update_fields=["stock"])
+        updated = 0
+
+        with transaction.atomic():
+            products = queryset.select_for_update()
+
+            for product in products:
+                stock_before = product.stock
+                product.stock += 10
+                product.save(update_fields=["stock"])
+                StockMovement.objects.create(
+                    product=product,
+                    movement_type="admin_adjustment",
+                    quantity=10,
+                    stock_before=stock_before,
+                    stock_after=product.stock,
+                    user=request.user,
+                    reason="Stock aumentado desde accion masiva del admin.",
+                )
+                updated += 1
 
         self.message_user(
             request,
-            f"{queryset.count()} producto(s) actualizados con 10 unidades adicionales."
+            f"{updated} producto(s) actualizados con 10 unidades adicionales."
         )
 
     @admin.action(description="Exportar productos seleccionados a CSV")
@@ -578,6 +643,62 @@ class ProductAdmin(admin.ModelAdmin):
             ),
             rows,
         )
+
+
+@admin.register(StockMovement)
+class StockMovementAdmin(admin.ModelAdmin):
+    """
+    Nombre: StockMovementAdmin
+    Descripcion: Permite consultar movimientos de inventario sin modificarlos.
+    """
+
+    list_display = (
+        "id",
+        "product",
+        "movement_type",
+        "quantity",
+        "stock_before",
+        "stock_after",
+        "order",
+        "user",
+        "created_at",
+    )
+
+    search_fields = (
+        "product__name",
+        "user__username",
+        "reason",
+    )
+
+    list_filter = (
+        "movement_type",
+        "created_at",
+    )
+
+    readonly_fields = (
+        "product",
+        "order",
+        "movement_type",
+        "quantity",
+        "stock_before",
+        "stock_after",
+        "user",
+        "reason",
+        "created_at",
+    )
+
+    ordering = (
+        "-created_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(FavoriteProduct)
@@ -1078,7 +1199,7 @@ class OrderAdmin(admin.ModelAdmin):
                 restored_stock = order.should_restore_stock_on_cancel()
 
                 if restored_stock:
-                    order.restore_items_stock()
+                    order.restore_items_stock(user=request.user)
 
                 previous_status = order.status
                 order.status = "cancelado"

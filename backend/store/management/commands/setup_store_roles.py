@@ -22,6 +22,7 @@ from store.models import (
     Product,
     ProductReview,
     ShippingAddress,
+    StockMovement,
 )
 
 
@@ -38,6 +39,7 @@ ROLE_DEFINITIONS = {
     "Gestor inventario": (
         (Category, ("view", "add", "change")),
         (Product, ("view", "add", "change")),
+        (StockMovement, ("view",)),
         (DiscountCode, ("view", "add", "change")),
         (Order, ("view",)),
         (OrderItem, ("view",)),
@@ -63,6 +65,7 @@ ROLE_DEFINITIONS = {
         (ProductReview, ("view",)),
         (FavoriteProduct, ("view",)),
         (EventLog, ("view",)),
+        (StockMovement, ("view",)),
     ),
 }
 

@@ -18,7 +18,7 @@ from .audit import log_event
 from .cart_utils import parse_positive_quantity, sync_cart_with_products
 from .customer_utils import ensure_customer_for_user
 from .discounts import COUPON_SESSION_KEY, build_pricing, quantize_money
-from .models import Product, Customer, Order, OrderItem, ShippingAddress
+from .models import Customer, Order, OrderItem, Product, ShippingAddress, StockMovement
 from .order_notifications import notify_order_created
 from .order_status import record_order_status, serialize_order_status_history
 from .throttles import CartRateThrottle, CheckoutUserRateThrottle
@@ -656,8 +656,19 @@ def checkout(request):
                 unit_price=unit_price,
             )
 
+            stock_before = locked_product.stock
             locked_product.stock -= qty
             locked_product.save(update_fields=["stock"])
+            StockMovement.objects.create(
+                product=locked_product,
+                order=order,
+                movement_type="checkout",
+                quantity=-qty,
+                stock_before=stock_before,
+                stock_after=locked_product.stock,
+                user=request.user,
+                reason="Salida por compra confirmada.",
+            )
 
         if pricing["discount_obj"]:
             discount_obj = pricing["discount_obj"]
@@ -1030,7 +1041,7 @@ def cancel_order(request, order_id):
             )
 
         if order.should_restore_stock_on_cancel():
-            order.restore_items_stock()
+            order.restore_items_stock(user=request.user)
             restored_stock = True
 
         previous_status = order.status
