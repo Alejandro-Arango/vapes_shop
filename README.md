@@ -260,6 +260,7 @@ El proyecto ya incluye una base de endurecimiento para preproduccion:
 - Consistencia matematica y direccional de movimientos de inventario.
 - Unicidad de producto por orden para evitar lineas duplicadas.
 - Limites de uso y vigencia de cupones protegidos en base de datos.
+- Secuencia valida de fechas de envio y entrega protegida en base de datos.
 - Auditoria interna con redaccion de datos sensibles.
 - Validacion de IP en auditoria.
 - Health check de base de datos y cache en `/api/health/`.
@@ -356,6 +357,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Movimientos de stock protegidos contra tipos, signos o balances inconsistentes.
 - Cada producto solo puede aparecer una vez dentro de la misma orden.
 - Cupones protegidos contra usos superiores al limite y fechas invertidas.
+- Una entrega requiere fecha de envio y no puede registrarse antes de ella.
 - Roles administrativos base con comando `setup_store_roles`.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.

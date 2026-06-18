@@ -607,6 +607,16 @@ class Order(models.Model):
                 condition=models.Q(discount_amount__lte=models.F("subtotal_amount")),
                 name="order_discount_not_above_subtotal",
             ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(delivered_at__isnull=True)
+                    | models.Q(
+                        shipped_at__isnull=False,
+                        delivered_at__gte=models.F("shipped_at"),
+                    )
+                ),
+                name="order_tracking_dates_valid",
+            ),
         ]
 
     def __str__(self):

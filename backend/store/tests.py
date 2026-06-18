@@ -414,6 +414,42 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(Order.objects.count(), 0)
 
+    def test_order_tracking_dates_require_valid_sequence(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Seguimiento",
+            email=user.email,
+        )
+        shipped_at = timezone.now()
+
+        valid_order = Order.objects.create(
+            customer=customer,
+            status="enviado",
+            shipped_at=shipped_at,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Order.objects.create(
+                    customer=customer,
+                    status="entregado",
+                    delivered_at=shipped_at,
+                )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Order.objects.create(
+                    customer=customer,
+                    status="entregado",
+                    shipped_at=shipped_at,
+                    delivered_at=shipped_at - timedelta(minutes=1),
+                )
+
+        self.assertTrue(Order.objects.filter(id=valid_order.id).exists())
+        self.assertEqual(Order.objects.count(), 1)
+
     def test_discount_constraints_reject_invalid_usage_and_dates(self):
         unlimited_discount = DiscountCode.objects.create(
             code="ILIMITADO",
