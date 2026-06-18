@@ -718,6 +718,19 @@ class StoreApiTests(APITestCase):
         self.assertGreaterEqual(settings.EMAIL_TIMEOUT, 1)
         self.assertGreaterEqual(settings.PASSWORD_RESET_TIMEOUT, 300)
 
+    def test_whitenoise_staticfiles_configuration_is_active(self):
+        self.assertEqual(
+            settings.STORAGES["staticfiles"]["BACKEND"],
+            "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        )
+        self.assertEqual(
+            settings.MIDDLEWARE[0:2],
+            [
+                "django.middleware.security.SecurityMiddleware",
+                "whitenoise.middleware.WhiteNoiseMiddleware",
+            ],
+        )
+
     def test_hsts_seconds_is_configured_as_non_negative_integer(self):
         self.assertIsInstance(settings.SECURE_HSTS_SECONDS, int)
         self.assertGreaterEqual(settings.SECURE_HSTS_SECONDS, 0)

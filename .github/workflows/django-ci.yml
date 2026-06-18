@@ -51,6 +51,9 @@ jobs:
       - name: Verificar migraciones pendientes
         run: python manage.py makemigrations --check --dry-run
 
+      - name: Recolectar archivos estaticos
+        run: python manage.py collectstatic --noinput
+
       - name: Ejecutar pruebas
         run: python manage.py test store
 
