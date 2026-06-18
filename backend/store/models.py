@@ -7,8 +7,9 @@ Dependencias: Django settings y Django models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models.functions import Cast
+from django.utils import timezone
 from django.utils.text import slugify
 
 from PIL import Image, UnidentifiedImageError
@@ -121,6 +122,71 @@ class ShippingAddress(models.Model):
 
     def __str__(self):
         return self.label or f"{self.address} - {self.city}"
+
+    @classmethod
+    def ensure_customer_default(cls, customer_id):
+        """
+        Nombre: ensure_customer_default
+        Descripcion: Promueve una direccion cuando el cliente no tiene predeterminada.
+        """
+        if cls.objects.filter(
+            customer_id=customer_id,
+            is_default=True,
+        ).exists():
+            return
+
+        fallback = (
+            cls.objects
+            .filter(customer_id=customer_id)
+            .order_by("-updated_at", "-id")
+            .first()
+        )
+
+        if fallback:
+            cls.objects.filter(id=fallback.id).update(
+                is_default=True,
+                updated_at=timezone.now(),
+            )
+
+    def save(self, *args, **kwargs):
+        """
+        Nombre: save
+        Descripcion: Mantiene una sola direccion predeterminada por cliente.
+        """
+        with transaction.atomic():
+            Customer.objects.select_for_update().get(id=self.customer_id)
+            result = super().save(*args, **kwargs)
+
+            if self.is_default:
+                ShippingAddress.objects.filter(id=self.id).update(
+                    is_default=True,
+                )
+                ShippingAddress.objects.filter(
+                    customer_id=self.customer_id,
+                    is_default=True,
+                ).exclude(id=self.id).update(is_default=False)
+            else:
+                self.ensure_customer_default(self.customer_id)
+                self.is_default = ShippingAddress.objects.filter(
+                    id=self.id,
+                    is_default=True,
+                ).exists()
+
+        return result
+
+    def delete(self, *args, **kwargs):
+        """
+        Nombre: delete
+        Descripcion: Promueve una direccion de respaldo al eliminar la predeterminada.
+        """
+        customer_id = self.customer_id
+
+        with transaction.atomic():
+            Customer.objects.select_for_update().get(id=customer_id)
+            result = super().delete(*args, **kwargs)
+            self.ensure_customer_default(customer_id)
+
+        return result
 
 
 class Category(models.Model):

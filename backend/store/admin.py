@@ -156,6 +156,14 @@ class ShippingAddressAdmin(admin.ModelAdmin):
         "-updated_at",
     )
 
+    def delete_queryset(self, request, queryset):
+        """
+        Nombre: delete_queryset
+        Descripcion: Elimina direcciones respetando la promocion de predeterminada.
+        """
+        for address in queryset.order_by("id"):
+            address.delete()
+
 
 @admin.register(ContactLead)
 class ContactLeadAdmin(admin.ModelAdmin):

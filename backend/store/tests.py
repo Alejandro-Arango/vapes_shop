@@ -53,6 +53,7 @@ from .admin import (
     EventLogAdmin,
     OrderAdmin,
     ProductAdmin,
+    ShippingAddressAdmin,
     build_csv_response,
 )
 from .admin_dashboard import build_business_dashboard_context
@@ -1471,6 +1472,91 @@ class StoreApiTests(APITestCase):
         self.assertTrue(first_address.is_default)
         self.assertEqual(delete_response.data["default_shipping"]["id"], first_address.id)
         self.assertEqual(len(delete_response.data["shipping_addresses"]), 1)
+
+    def test_shipping_address_model_keeps_single_default(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Direcciones",
+            email=user.email,
+        )
+        first_address = ShippingAddress.objects.create(
+            customer=customer,
+            label="Casa",
+            name="Cliente Direcciones",
+            phone="3001234567",
+            address="Calle 1",
+            city="Medellin",
+        )
+        second_address = ShippingAddress.objects.create(
+            customer=customer,
+            label="Trabajo",
+            name="Cliente Direcciones",
+            phone="3001234567",
+            address="Carrera 2",
+            city="Envigado",
+        )
+
+        first_address.refresh_from_db()
+        second_address.refresh_from_db()
+
+        self.assertTrue(first_address.is_default)
+        self.assertFalse(second_address.is_default)
+
+        second_address.is_default = True
+        second_address.save(update_fields=["is_default", "updated_at"])
+        first_address.refresh_from_db()
+        second_address.refresh_from_db()
+
+        self.assertFalse(first_address.is_default)
+        self.assertTrue(second_address.is_default)
+        self.assertEqual(
+            customer.shipping_addresses.filter(is_default=True).count(),
+            1,
+        )
+
+    def test_admin_delete_default_shipping_promotes_fallback(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Admin",
+            email=user.email,
+        )
+        default_address = ShippingAddress.objects.create(
+            customer=customer,
+            label="Casa",
+            name="Cliente Admin",
+            phone="3001234567",
+            address="Calle 1",
+            city="Medellin",
+        )
+        fallback_address = ShippingAddress.objects.create(
+            customer=customer,
+            label="Trabajo",
+            name="Cliente Admin",
+            phone="3001234567",
+            address="Carrera 2",
+            city="Envigado",
+        )
+        admin_model = ShippingAddressAdmin(ShippingAddress, self.admin_site)
+
+        admin_model.delete_queryset(
+            self.create_admin_request(),
+            ShippingAddress.objects.filter(id=default_address.id),
+        )
+
+        fallback_address.refresh_from_db()
+
+        self.assertFalse(
+            ShippingAddress.objects.filter(id=default_address.id).exists()
+        )
+        self.assertTrue(fallback_address.is_default)
+        self.assertEqual(
+            customer.shipping_addresses.filter(is_default=True).count(),
+            1,
+        )
 
     def test_checkout_accepts_saved_shipping_address_id(self):
         user = self.create_user()
