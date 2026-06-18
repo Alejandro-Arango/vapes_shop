@@ -427,6 +427,7 @@ class StoreApiTests(APITestCase):
         valid_order = Order.objects.create(
             customer=customer,
             status="enviado",
+            completed=True,
             shipped_at=shipped_at,
         )
 
@@ -435,6 +436,7 @@ class StoreApiTests(APITestCase):
                 Order.objects.create(
                     customer=customer,
                     status="entregado",
+                    completed=True,
                     delivered_at=shipped_at,
                 )
 
@@ -443,12 +445,45 @@ class StoreApiTests(APITestCase):
                 Order.objects.create(
                     customer=customer,
                     status="entregado",
+                    completed=True,
                     shipped_at=shipped_at,
                     delivered_at=shipped_at - timedelta(minutes=1),
                 )
 
         self.assertTrue(Order.objects.filter(id=valid_order.id).exists())
         self.assertEqual(Order.objects.count(), 1)
+
+    def test_order_status_and_completed_must_be_consistent(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Estados",
+            email=user.email,
+        )
+
+        invalid_orders = (
+            {"status": "pagado", "completed": False},
+            {"status": "enviado", "completed": False},
+            {"status": "pendiente", "completed": True},
+            {"status": "cancelado", "completed": True},
+            {"status": "reembolsado", "completed": True},
+        )
+
+        for order_data in invalid_orders:
+            with self.subTest(order_data=order_data):
+                with self.assertRaises(IntegrityError):
+                    with transaction.atomic():
+                        Order.objects.create(
+                            customer=customer,
+                            **order_data,
+                        )
+
+        order = Order(customer=customer, status="entregado", completed=False)
+        order.sync_completed_with_status()
+
+        self.assertTrue(order.completed)
+        self.assertEqual(Order.objects.count(), 0)
 
     def test_discount_constraints_reject_invalid_usage_and_dates(self):
         unlimited_discount = DiscountCode.objects.create(
@@ -3283,7 +3318,7 @@ class StoreApiTests(APITestCase):
             order = Order.objects.create(
                 customer=customer,
                 status=order_status,
-                completed=True,
+                completed=order_status in Order.COMPLETED_STATUSES,
             )
             OrderItem.objects.create(
                 order=order,
@@ -4043,10 +4078,12 @@ class StoreApiTests(APITestCase):
         request = self.create_admin_request()
 
         order.status = "enviado"
+        order.completed = False
         admin_model.save_model(request, order, form=None, change=True)
         order.refresh_from_db()
 
         self.assertEqual(order.status, "enviado")
+        self.assertTrue(order.completed)
         self.assertIsNotNone(order.shipped_at)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn(

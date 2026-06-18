@@ -516,6 +516,7 @@ class Order(models.Model):
     ]
     CANCELLABLE_STATUSES = {"pendiente", "pagado"}
     FINAL_STATUSES = {"entregado", "cancelado", "reembolsado"}
+    COMPLETED_STATUSES = {"pagado", "en_preparacion", "enviado", "entregado"}
 
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     checkout_token = models.UUIDField(
@@ -617,6 +618,28 @@ class Order(models.Model):
                 ),
                 name="order_tracking_dates_valid",
             ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status__in=[
+                            "pagado",
+                            "en_preparacion",
+                            "enviado",
+                            "entregado",
+                        ],
+                        completed=True,
+                    )
+                    | models.Q(
+                        status__in=[
+                            "pendiente",
+                            "cancelado",
+                            "reembolsado",
+                        ],
+                        completed=False,
+                    )
+                ),
+                name="order_status_completed_valid",
+            ),
         ]
 
     def __str__(self):
@@ -629,6 +652,13 @@ class Order(models.Model):
         Retorna: True si el estado permite cancelacion, false en caso contrario.
         """
         return self.status in self.CANCELLABLE_STATUSES
+
+    def sync_completed_with_status(self):
+        """
+        Nombre: sync_completed_with_status
+        Descripcion: Sincroniza el indicador completed con el estado operativo.
+        """
+        self.completed = self.status in self.COMPLETED_STATUSES
 
     def should_restore_stock_on_cancel(self):
         """

@@ -939,6 +939,7 @@ class OrderAdmin(admin.ModelAdmin):
                 .first()
             ) or ""
 
+        obj.sync_completed_with_status()
         self.apply_tracking_timestamps(obj, obj.status)
 
         super().save_model(request, obj, form, change)
