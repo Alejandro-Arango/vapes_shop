@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
+from django.db.models.functions import Cast
 from django.utils.text import slugify
 
 from PIL import Image, UnidentifiedImageError
@@ -822,6 +823,36 @@ class StockMovement(models.Model):
             models.CheckConstraint(
                 condition=models.Q(quantity__lt=0) | models.Q(quantity__gt=0),
                 name="stockmovement_quantity_not_zero",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    movement_type__in=[
+                        "checkout",
+                        "cancel_restore",
+                        "admin_adjustment",
+                    ]
+                ),
+                name="stockmovement_type_valid",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(movement_type="checkout", quantity__lt=0)
+                    | models.Q(movement_type="cancel_restore", quantity__gt=0)
+                    | models.Q(movement_type="admin_adjustment")
+                ),
+                name="stockmovement_direction_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    stock_after=(
+                        Cast(
+                            models.F("stock_before"),
+                            output_field=models.BigIntegerField(),
+                        )
+                        + models.F("quantity")
+                    )
+                ),
+                name="stockmovement_balance_valid",
             ),
         ]
 

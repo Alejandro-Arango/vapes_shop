@@ -257,6 +257,7 @@ El proyecto ya incluye una base de endurecimiento para preproduccion:
 - Proteccion referencial para impedir que eliminar un cliente borre sus pedidos.
 - Validacion de imagenes de producto por extension, contenido, peso y dimensiones.
 - Restricciones de base de datos para importes no negativos y descuentos validos.
+- Consistencia matematica y direccional de movimientos de inventario.
 - Auditoria interna con redaccion de datos sensibles.
 - Validacion de IP en auditoria.
 - Health check de base de datos y cache en `/api/health/`.
@@ -350,6 +351,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Conservacion de pedidos historicos aunque se elimine la cuenta de acceso.
 - Imagenes de producto limitadas a JPG, PNG, WEBP o AVIF, 5 MB y 5000px por lado.
 - Integridad financiera de subtotal, descuento y total protegida en base de datos.
+- Movimientos de stock protegidos contra tipos, signos o balances inconsistentes.
 - Roles administrativos base con comando `setup_store_roles`.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.

@@ -377,6 +377,54 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(Order.objects.count(), 0)
 
+    def test_stock_movement_constraints_enforce_inventory_balance(self):
+        valid_movement = StockMovement.objects.create(
+            product=self.product,
+            movement_type="checkout",
+            quantity=-2,
+            stock_before=5,
+            stock_after=3,
+        )
+
+        invalid_movements = (
+            {
+                "movement_type": "tipo_invalido",
+                "quantity": 1,
+                "stock_before": 5,
+                "stock_after": 6,
+            },
+            {
+                "movement_type": "checkout",
+                "quantity": 2,
+                "stock_before": 5,
+                "stock_after": 7,
+            },
+            {
+                "movement_type": "cancel_restore",
+                "quantity": -2,
+                "stock_before": 5,
+                "stock_after": 3,
+            },
+            {
+                "movement_type": "admin_adjustment",
+                "quantity": 10,
+                "stock_before": 5,
+                "stock_after": 14,
+            },
+        )
+
+        for movement_data in invalid_movements:
+            with self.subTest(movement_data=movement_data):
+                with self.assertRaises(IntegrityError):
+                    with transaction.atomic():
+                        StockMovement.objects.create(
+                            product=self.product,
+                            **movement_data,
+                        )
+
+        self.assertEqual(StockMovement.objects.count(), 1)
+        self.assertEqual(valid_movement.stock_after, 3)
+
     def test_customer_with_orders_cannot_be_deleted(self):
         user = self.create_user()
         customer = Customer.objects.create(
