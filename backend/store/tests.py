@@ -9,6 +9,7 @@ from datetime import timedelta
 from io import StringIO
 from decimal import Decimal
 from unittest.mock import patch
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.admin.sites import AdminSite
@@ -2362,6 +2363,137 @@ class StoreApiTests(APITestCase):
 
         with self.assertRaises(ProtectedError):
             self.product.delete()
+
+    def test_checkout_reuses_order_with_same_idempotency_key(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 2})
+        idempotency_key = str(uuid4())
+        payload = {
+            "shippingName": "Cliente Prueba",
+            "shippingPhone": "3000000000",
+            "shippingAddress": "Calle 1",
+            "shippingCity": "Medellin",
+            "shippingNotes": "",
+            "ageConfirmed": True,
+        }
+
+        first_response = self.client.post(
+            reverse("checkout"),
+            payload,
+            format="json",
+            HTTP_IDEMPOTENCY_KEY=idempotency_key,
+        )
+        second_response = self.client.post(
+            reverse("checkout"),
+            payload,
+            format="json",
+            HTTP_IDEMPOTENCY_KEY=idempotency_key,
+        )
+
+        order = Order.objects.get()
+        self.product.refresh_from_db()
+
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(first_response.data["order_id"], order.id)
+        self.assertEqual(second_response.data["order_id"], order.id)
+        self.assertFalse(first_response.data["idempotent_replay"])
+        self.assertTrue(second_response.data["idempotent_replay"])
+        self.assertEqual(str(order.checkout_token), idempotency_key)
+        self.assertEqual(Order.objects.count(), 1)
+        self.assertEqual(self.product.stock, 3)
+        self.assertEqual(
+            StockMovement.objects.filter(
+                order=order,
+                movement_type="checkout",
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            EventLog.objects.filter(event_type="checkout_success").count(),
+            1,
+        )
+        self.assertEqual(
+            EventLog.objects.filter(
+                event_type="checkout_idempotent_replay",
+                metadata__order_id=order.id,
+            ).count(),
+            1,
+        )
+
+    def test_checkout_rejects_invalid_idempotency_key(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingName": "Cliente Prueba",
+                "shippingPhone": "3000000000",
+                "shippingAddress": "Calle 1",
+                "shippingCity": "Medellin",
+                "shippingNotes": "",
+                "ageConfirmed": True,
+            },
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="clave-no-valida",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("idempotencia", response.data["error"])
+        self.assertEqual(Order.objects.count(), 0)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 5)
+
+    def test_checkout_rejects_idempotency_key_from_another_account(self):
+        first_user = self.create_user()
+        self.client.login(username=first_user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+        idempotency_key = str(uuid4())
+        payload = {
+            "shippingName": "Cliente Uno",
+            "shippingPhone": "3000000000",
+            "shippingAddress": "Calle 1",
+            "shippingCity": "Medellin",
+            "shippingNotes": "",
+            "ageConfirmed": True,
+        }
+
+        first_response = self.client.post(
+            reverse("checkout"),
+            payload,
+            format="json",
+            HTTP_IDEMPOTENCY_KEY=idempotency_key,
+        )
+
+        self.client.logout()
+        second_user = User.objects.create_user(
+            username="cliente-dos",
+            email="cliente-dos@example.com",
+            password="ClaveSegura123",
+        )
+        self.client.login(username=second_user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+
+        second_response = self.client.post(
+            reverse("checkout"),
+            payload,
+            format="json",
+            HTTP_IDEMPOTENCY_KEY=idempotency_key,
+        )
+
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(second_response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(Order.objects.count(), 1)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 4)
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="checkout_idempotency_conflict",
+            ).exists()
+        )
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",

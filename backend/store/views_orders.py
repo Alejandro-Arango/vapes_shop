@@ -6,6 +6,7 @@ Dependencias: Django transaction, Django REST Framework, modelos Product, Custom
 
 import re
 from decimal import Decimal
+from uuid import UUID
 
 from django.db import transaction
 
@@ -40,6 +41,108 @@ ORDER_STATUS_FILTERS = {
     status_key
     for status_key, _ in Order.STATUS_CHOICES
 }
+
+
+def get_checkout_idempotency_key(request):
+    """
+    Nombre: get_checkout_idempotency_key
+    Descripcion: Valida la clave UUID usada para evitar compras duplicadas.
+    Retorna: UUID normalizado y mensaje de error.
+    """
+    raw_key = (
+        request.headers.get("Idempotency-Key")
+        or request.data.get("idempotencyKey")
+        or request.data.get("idempotency_key")
+        or ""
+    )
+
+    if not raw_key:
+        return None, ""
+
+    try:
+        return UUID(str(raw_key).strip()), ""
+    except (ValueError, AttributeError, TypeError):
+        return None, "La clave de idempotencia no es valida"
+
+
+def build_checkout_success_response(order, notifications=None, replay=False):
+    """
+    Nombre: build_checkout_success_response
+    Descripcion: Construye una respuesta estable para compras nuevas o repetidas.
+    """
+    return Response(
+        {
+            "message": (
+                "Compra recuperada correctamente"
+                if replay
+                else "Compra realizada con exito"
+            ),
+            "order_id": order.id,
+            "subtotal": float(order.subtotal_amount),
+            "discount": float(order.discount_amount),
+            "coupon_code": order.coupon_code,
+            "total_pagado": float(order.total_amount),
+            "notifications": notifications or {
+                "customer_email_sent": False,
+                "admin_email_sent": False,
+            },
+            "idempotent_replay": replay,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+def get_existing_checkout_response(
+    request,
+    customer,
+    idempotency_key,
+    lock=False,
+):
+    """
+    Nombre: get_existing_checkout_response
+    Descripcion: Recupera una orden creada previamente con la misma clave.
+    Retorna: Response cuando existe una orden previa o None.
+    """
+    if not idempotency_key:
+        return None
+
+    orders = Order.objects.filter(
+        checkout_token=idempotency_key
+    ).select_related("customer")
+
+    if lock:
+        orders = orders.select_for_update()
+
+    existing_order = orders.first()
+
+    if not existing_order:
+        return None
+
+    if existing_order.customer_id != customer.id:
+        log_event(
+            "checkout_idempotency_conflict",
+            "Checkout rechazado porque la clave ya pertenece a otra cuenta.",
+            request=request,
+            severity="warning",
+        )
+
+        return Response(
+            {"error": "La clave de idempotencia ya fue utilizada"},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    request.session["cart"] = {}
+    request.session.pop(COUPON_SESSION_KEY, None)
+    request.session.modified = True
+
+    log_event(
+        "checkout_idempotent_replay",
+        "Se devolvio una orden existente para evitar una compra duplicada.",
+        request=request,
+        metadata={"order_id": existing_order.id},
+    )
+
+    return build_checkout_success_response(existing_order, replay=True)
 
 
 def parse_bool(value):
@@ -269,6 +372,31 @@ def checkout(request):
     Nombre: checkout
     Descripcion: Crea una orden usando el carrito almacenado en sesion, guarda datos de envio y descuenta el stock disponible.
     """
+    idempotency_key, idempotency_error = get_checkout_idempotency_key(request)
+
+    if idempotency_error:
+        log_event(
+            "checkout_failed",
+            "Checkout rechazado por clave de idempotencia invalida.",
+            request=request,
+            severity="warning",
+        )
+
+        return Response(
+            {"error": idempotency_error},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    customer = ensure_customer_for_user(request.user)
+    existing_response = get_existing_checkout_response(
+        request,
+        customer,
+        idempotency_key,
+    )
+
+    if existing_response is not None:
+        return existing_response
+
     cart = request.session.get("cart", {})
 
     if not cart:
@@ -316,7 +444,6 @@ def checkout(request):
         )
 
     cart = synced_cart
-    customer = ensure_customer_for_user(request.user)
 
     shipping_name = str(
         request.data.get("shippingName")
@@ -553,6 +680,16 @@ def checkout(request):
             for product in locked_products
         }
 
+        existing_response = get_existing_checkout_response(
+            request,
+            customer,
+            idempotency_key,
+            lock=True,
+        )
+
+        if existing_response is not None:
+            return existing_response
+
         for product, qty in order_lines:
             locked_product = locked_map.get(product.id)
 
@@ -624,6 +761,7 @@ def checkout(request):
 
         order = Order.objects.create(
             customer=customer,
+            checkout_token=idempotency_key,
             completed=True,
             status="pagado",
             shipping_name=shipping_name,
@@ -720,17 +858,9 @@ def checkout(request):
         },
     )
 
-    return Response(
-        {
-            "message": "Compra realizada con exito",
-            "order_id": order.id,
-            "subtotal": float(pricing["subtotal"]),
-            "discount": float(pricing["discount"]),
-            "coupon_code": order.coupon_code,
-            "total_pagado": total,
-            "notifications": notification_result,
-        },
-        status=status.HTTP_200_OK
+    return build_checkout_success_response(
+        order,
+        notifications=notification_result,
     )
 
 

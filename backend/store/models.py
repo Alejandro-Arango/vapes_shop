@@ -447,6 +447,12 @@ class Order(models.Model):
     FINAL_STATUSES = {"entregado", "cancelado", "reembolsado"}
 
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    checkout_token = models.UUIDField(
+        unique=True,
+        null=True,
+        blank=True,
+        editable=False,
+    )
     date_ordered = models.DateTimeField(auto_now_add=True)
     completed = models.BooleanField(default=False)
     status = models.CharField(
@@ -486,6 +492,10 @@ class Order(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=["date_ordered"], name="order_date_idx"),
+            models.Index(
+                fields=["customer", "checkout_token"],
+                name="order_customer_checkout_idx",
+            ),
             models.Index(
                 fields=["customer", "date_ordered"],
                 name="order_customer_date_idx",

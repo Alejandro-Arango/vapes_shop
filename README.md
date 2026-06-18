@@ -253,6 +253,7 @@ El proyecto ya incluye una base de endurecimiento para preproduccion:
 - HSTS, SSL redirect, Referrer-Policy, COOP y Permissions-Policy.
 - No-cache para APIs sensibles.
 - Rate limits en autenticacion, contacto, carrito y checkout.
+- Checkout idempotente para evitar ordenes y descuentos de stock duplicados.
 - Auditoria interna con redaccion de datos sensibles.
 - Validacion de IP en auditoria.
 - Health check de base de datos y cache en `/api/health/`.
@@ -342,6 +343,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Health check operativo para base de datos y cache.
 - Alerta operativa de inventario bajo con comando `notify_low_stock`.
 - Historial de movimientos de inventario desde checkout, cancelaciones y acciones admin.
+- Proteccion de checkout duplicado mediante claves de idempotencia UUID.
 - Roles administrativos base con comando `setup_store_roles`.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.

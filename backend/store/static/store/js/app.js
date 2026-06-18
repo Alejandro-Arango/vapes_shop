@@ -51,6 +51,7 @@ const shippingLimits = {
 };
 
 const shippingPhonePattern = /^[0-9\s()+-]+$/;
+const checkoutIdempotencyStorageKey = "checkout_idempotency";
 
 // =============================================================================
 //  UTILIDADES GENERALES
@@ -107,6 +108,92 @@ function csrfHeaders() {
         "Content-Type": "application/json",
         "X-CSRFToken": getCsrfToken(),
     };
+}
+
+/*
+ * Nombre: generateCheckoutIdempotencyKey
+ * Descripcion: Genera una clave UUID para identificar un intento unico de checkout.
+ */
+function generateCheckoutIdempotencyKey() {
+    if (window.crypto?.randomUUID) {
+        return window.crypto.randomUUID();
+    }
+
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+        const random = Math.floor(Math.random() * 16);
+        const value = char === "x" ? random : (random & 0x3) | 0x8;
+
+        return value.toString(16);
+    });
+}
+
+/*
+ * Nombre: buildCheckoutCartFingerprint
+ * Descripcion: Resume productos y cantidades para renovar la clave cuando cambia el carrito.
+ */
+function buildCheckoutCartFingerprint(serverCart, localCart) {
+    let entries = [];
+
+    if (Array.isArray(serverCart?.items) && serverCart.items.length) {
+        entries = serverCart.items.map((item) => [
+            String(item.product?.id || ""),
+            Number(item.quantity || 0),
+        ]);
+    } else {
+        entries = Object.entries(localCart || {}).map(([productId, quantity]) => [
+            String(productId),
+            Number(quantity || 0),
+        ]);
+    }
+
+    entries.sort((first, second) => first[0].localeCompare(second[0]));
+
+    return JSON.stringify(entries);
+}
+
+/*
+ * Nombre: getCheckoutIdempotencyKey
+ * Descripcion: Reutiliza la clave del mismo carrito o crea una nueva.
+ */
+function getCheckoutIdempotencyKey(cartFingerprint) {
+    try {
+        const storedValue = sessionStorage.getItem(checkoutIdempotencyStorageKey);
+        const storedData = storedValue ? JSON.parse(storedValue) : null;
+
+        if (
+            storedData?.key &&
+            storedData?.cartFingerprint === cartFingerprint
+        ) {
+            return storedData.key;
+        }
+    } catch {
+        // Si sessionStorage falla, se crea una clave nueva para este intento.
+    }
+
+    const key = generateCheckoutIdempotencyKey();
+
+    try {
+        sessionStorage.setItem(
+            checkoutIdempotencyStorageKey,
+            JSON.stringify({key, cartFingerprint})
+        );
+    } catch {
+        // El checkout puede continuar aunque sessionStorage no este disponible.
+    }
+
+    return key;
+}
+
+/*
+ * Nombre: clearCheckoutIdempotencyKey
+ * Descripcion: Elimina la clave una vez confirmada la compra.
+ */
+function clearCheckoutIdempotencyKey() {
+    try {
+        sessionStorage.removeItem(checkoutIdempotencyStorageKey);
+    } catch {
+        // No se requiere accion adicional.
+    }
 }
 
 function isEmpty(value) {
@@ -4160,6 +4247,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
+        const cartFingerprint = buildCheckoutCartFingerprint(
+            serverCart,
+            localCart
+        );
+        const idempotencyKey = getCheckoutIdempotencyKey(cartFingerprint);
+
         checkoutBtn.disabled = true;
         checkoutBtn.textContent = "Procesando...";
 
@@ -4168,7 +4261,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const res = await fetch(api.checkout, {
                 method: "POST",
-                headers: csrfHeaders(),
+                headers: {
+                    ...csrfHeaders(),
+                    "Idempotency-Key": idempotencyKey,
+                },
                 credentials: "include",
                 body: JSON.stringify({
                     ...shippingData,
@@ -4229,6 +4325,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             okData = await res.json();
+            clearCheckoutIdempotencyKey();
         } catch (err) {
             console.warn("checkout error:", err);
             showCartFeedback("No se pudo conectar con el servidor.", "error");
