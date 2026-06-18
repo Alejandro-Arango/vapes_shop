@@ -263,6 +263,7 @@ El proyecto ya incluye una base de endurecimiento para preproduccion:
 - Secuencia valida de fechas de envio y entrega protegida en base de datos.
 - Coherencia entre estado operativo y marca de pedido completado.
 - Direccion predeterminada unica y estable por cliente.
+- Historial de estados validado e inmutable desde el panel administrativo.
 - Auditoria interna con redaccion de datos sensibles.
 - Validacion de IP en auditoria.
 - Health check de base de datos y cache en `/api/health/`.
@@ -362,6 +363,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Una entrega requiere fecha de envio y no puede registrarse antes de ella.
 - El admin sincroniza automaticamente `completed` al cambiar el estado del pedido.
 - Guardados y eliminaciones mantienen una sola direccion predeterminada por cliente.
+- El historial rechaza estados invalidos o transiciones sin cambio real.
 - Roles administrativos base con comando `setup_store_roles`.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.

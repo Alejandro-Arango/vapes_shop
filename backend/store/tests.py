@@ -52,6 +52,7 @@ from .admin import (
     ContactLeadAdmin,
     EventLogAdmin,
     OrderAdmin,
+    OrderStatusHistoryAdmin,
     ProductAdmin,
     ShippingAddressAdmin,
     build_csv_response,
@@ -485,6 +486,59 @@ class StoreApiTests(APITestCase):
 
         self.assertTrue(order.completed)
         self.assertEqual(Order.objects.count(), 0)
+
+    def test_order_status_history_rejects_invalid_transitions(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Historial",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+        )
+        valid_history = OrderStatusHistory.objects.create(
+            order=order,
+            previous_status="",
+            status="pagado",
+        )
+        invalid_history = (
+            {
+                "previous_status": "estado_invalido",
+                "status": "pagado",
+            },
+            {
+                "previous_status": "pagado",
+                "status": "estado_invalido",
+            },
+            {
+                "previous_status": "pagado",
+                "status": "pagado",
+            },
+        )
+
+        for history_data in invalid_history:
+            with self.subTest(history_data=history_data):
+                with self.assertRaises(IntegrityError):
+                    with transaction.atomic():
+                        OrderStatusHistory.objects.create(
+                            order=order,
+                            **history_data,
+                        )
+
+        admin_model = OrderStatusHistoryAdmin(
+            OrderStatusHistory,
+            self.admin_site,
+        )
+        request = self.create_admin_request()
+
+        self.assertFalse(admin_model.has_add_permission(request))
+        self.assertFalse(admin_model.has_change_permission(request, valid_history))
+        self.assertFalse(admin_model.has_delete_permission(request, valid_history))
+        self.assertEqual(OrderStatusHistory.objects.count(), 1)
 
     def test_discount_constraints_reject_invalid_usage_and_dates(self):
         unlimited_discount = DiscountCode.objects.create(
@@ -4247,7 +4301,7 @@ class StoreApiTests(APITestCase):
 
     def test_admin_exports_events_to_csv(self):
         user = self.create_user()
-        EventLog.objects.create(
+        event = EventLog.objects.create(
             event_type="checkout_success",
             severity="info",
             user=user,
@@ -4256,14 +4310,18 @@ class StoreApiTests(APITestCase):
             metadata={"order_id": 1},
         )
         admin_model = EventLogAdmin(EventLog, self.admin_site)
+        request = self.create_admin_request()
 
         response = admin_model.export_events_csv(
-            self.create_admin_request(),
+            request,
             EventLog.objects.all(),
         )
 
         content = response.content.decode()
 
+        self.assertFalse(admin_model.has_add_permission(request))
+        self.assertFalse(admin_model.has_change_permission(request, event))
+        self.assertFalse(admin_model.has_delete_permission(request, event))
         self.assertEqual(response.status_code, 200)
         self.assertIn("eventos.csv", response["Content-Disposition"])
         self.assertIn("checkout_success", content)

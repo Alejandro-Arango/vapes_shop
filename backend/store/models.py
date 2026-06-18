@@ -812,6 +812,46 @@ class OrderStatusHistory(models.Model):
                 name="order_status_state_date_idx",
             ),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    status__in=[
+                        "pendiente",
+                        "pagado",
+                        "en_preparacion",
+                        "enviado",
+                        "entregado",
+                        "cancelado",
+                        "reembolsado",
+                    ]
+                ),
+                name="orderhistory_status_valid",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(previous_status="")
+                    | models.Q(
+                        previous_status__in=[
+                            "pendiente",
+                            "pagado",
+                            "en_preparacion",
+                            "enviado",
+                            "entregado",
+                            "cancelado",
+                            "reembolsado",
+                        ]
+                    )
+                ),
+                name="orderhistory_previous_status_valid",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(previous_status="")
+                    | ~models.Q(previous_status=models.F("status"))
+                ),
+                name="orderhistory_transition_changed",
+            ),
+        ]
 
     def __str__(self):
         return f"Orden #{self.order_id}: {self.previous_status or '-'} -> {self.status}"
