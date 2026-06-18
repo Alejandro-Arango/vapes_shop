@@ -5,8 +5,57 @@ Dependencias: Django settings y Django models
 """
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.utils.text import slugify
+
+from PIL import Image, UnidentifiedImageError
+
+
+PRODUCT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+PRODUCT_IMAGE_MAX_DIMENSION = 5000
+PRODUCT_IMAGE_ALLOWED_EXTENSIONS = ("jpg", "jpeg", "png", "webp", "avif")
+PRODUCT_IMAGE_FORMAT_BY_EXTENSION = {
+    "jpg": "JPEG",
+    "jpeg": "JPEG",
+    "png": "PNG",
+    "webp": "WEBP",
+    "avif": "AVIF",
+}
+
+
+def validate_product_image(image_file):
+    """
+    Nombre: validate_product_image
+    Descripcion: Valida tamano, contenido y dimensiones de imagenes de producto.
+    """
+    if image_file.size > PRODUCT_IMAGE_MAX_BYTES:
+        raise ValidationError("La imagen no puede superar 5 MB.")
+
+    initial_position = image_file.tell()
+
+    try:
+        image_file.seek(0)
+        image = Image.open(image_file)
+        image_format = image.format
+        width, height = image.size
+        image.verify()
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise ValidationError("El archivo no contiene una imagen valida.") from exc
+    finally:
+        image_file.seek(initial_position)
+
+    extension = str(image_file.name or "").rsplit(".", 1)[-1].lower()
+    expected_format = PRODUCT_IMAGE_FORMAT_BY_EXTENSION.get(extension)
+
+    if not expected_format or image_format != expected_format:
+        raise ValidationError("El formato real de la imagen no esta permitido.")
+
+    if width > PRODUCT_IMAGE_MAX_DIMENSION or height > PRODUCT_IMAGE_MAX_DIMENSION:
+        raise ValidationError(
+            f"La imagen no puede superar {PRODUCT_IMAGE_MAX_DIMENSION}px por lado."
+        )
 
 
 class Customer(models.Model):
@@ -132,7 +181,13 @@ class Product(models.Model):
     image = models.ImageField(
         upload_to="store/img/products/",
         blank=True,
-        null=True
+        null=True,
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=PRODUCT_IMAGE_ALLOWED_EXTENSIONS,
+            ),
+            validate_product_image,
+        ],
     )
     stock = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)

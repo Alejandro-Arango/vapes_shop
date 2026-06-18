@@ -255,6 +255,7 @@ El proyecto ya incluye una base de endurecimiento para preproduccion:
 - Rate limits en autenticacion, contacto, carrito y checkout.
 - Checkout idempotente para evitar ordenes y descuentos de stock duplicados.
 - Proteccion referencial para impedir que eliminar un cliente borre sus pedidos.
+- Validacion de imagenes de producto por extension, contenido, peso y dimensiones.
 - Auditoria interna con redaccion de datos sensibles.
 - Validacion de IP en auditoria.
 - Health check de base de datos y cache en `/api/health/`.
@@ -346,6 +347,7 @@ El proyecto ya incluye mejoras posteriores a la primera documentacion:
 - Historial de movimientos de inventario desde checkout, cancelaciones y acciones admin.
 - Proteccion de checkout duplicado mediante claves de idempotencia UUID.
 - Conservacion de pedidos historicos aunque se elimine la cuenta de acceso.
+- Imagenes de producto limitadas a JPG, PNG, WEBP o AVIF, 5 MB y 5000px por lado.
 - Roles administrativos base con comando `setup_store_roles`.
 - Validaciones actuales: `python manage.py check`, `python manage.py makemigrations --check --dry-run` y `python manage.py test store`.
 - Validacion de preproduccion: `python manage.py production_check`.

@@ -6,7 +6,7 @@ Dependencias: Django test, Django auth, Django urls, Django REST Framework y mod
 
 import os
 from datetime import timedelta
-from io import StringIO
+from io import BytesIO, StringIO
 from decimal import Decimal
 from unittest.mock import patch
 from uuid import uuid4
@@ -15,7 +15,7 @@ from django.conf import settings
 from django.contrib.admin.sites import AdminSite
 from django.core import mail
 from django.core.cache import cache
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.contrib.auth.models import Group, User
@@ -23,10 +23,13 @@ from django.contrib.auth.tokens import default_token_generator
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, override_settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+
+from PIL import Image as PillowImage
 
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -66,8 +69,10 @@ from .models import (
     OrderStatusHistory,
     Product,
     ProductReview,
+    PRODUCT_IMAGE_MAX_BYTES,
     ShippingAddress,
     StockMovement,
+    validate_product_image,
 )
 from .throttles import (
     AuthAnonRateThrottle,
@@ -107,6 +112,23 @@ class StoreApiTests(APITestCase):
         session = self.client.session
         session["cart"] = cart
         session.save()
+
+    def create_test_image_upload(self, name="producto.png", size=(10, 10)):
+        """
+        Nombre: create_test_image_upload
+        Descripcion: Crea una imagen PNG valida en memoria para pruebas.
+        """
+        image_buffer = BytesIO()
+        PillowImage.new("RGB", size, color="white").save(
+            image_buffer,
+            format="PNG",
+        )
+
+        return SimpleUploadedFile(
+            name,
+            image_buffer.getvalue(),
+            content_type="image/png",
+        )
 
     def create_user(self):
         """
@@ -214,6 +236,76 @@ class StoreApiTests(APITestCase):
                     price=Decimal("1.00"),
                     stock=-1,
                 )
+
+    def test_product_image_accepts_valid_upload(self):
+        product = Product(
+            name="Producto con imagen",
+            description="Imagen valida",
+            price=Decimal("10.00"),
+            stock=1,
+            image=self.create_test_image_upload(),
+        )
+
+        product.full_clean()
+
+    def test_product_image_rejects_invalid_extension_and_content(self):
+        invalid_extension_product = Product(
+            name="Producto extension invalida",
+            description="Imagen invalida",
+            price=Decimal("10.00"),
+            stock=1,
+            image=self.create_test_image_upload(name="producto.txt"),
+        )
+
+        with self.assertRaises(ValidationError):
+            invalid_extension_product.full_clean()
+
+        invalid_content_product = Product(
+            name="Producto contenido invalido",
+            description="Imagen invalida",
+            price=Decimal("10.00"),
+            stock=1,
+            image=SimpleUploadedFile(
+                "producto.png",
+                b"contenido-no-es-imagen",
+                content_type="image/png",
+            ),
+        )
+
+        with self.assertRaises(ValidationError):
+            invalid_content_product.full_clean()
+
+        mismatched_format_product = Product(
+            name="Producto formato inconsistente",
+            description="Imagen invalida",
+            price=Decimal("10.00"),
+            stock=1,
+            image=self.create_test_image_upload(name="producto.jpg"),
+        )
+
+        with self.assertRaises(ValidationError):
+            mismatched_format_product.full_clean()
+
+    def test_product_image_rejects_excessive_size_and_dimensions(self):
+        oversized_file = SimpleUploadedFile(
+            "producto.png",
+            b"x" * (PRODUCT_IMAGE_MAX_BYTES + 1),
+            content_type="image/png",
+        )
+
+        with self.assertRaises(ValidationError):
+            validate_product_image(oversized_file)
+
+        excessive_dimensions_product = Product(
+            name="Producto imagen extensa",
+            description="Imagen invalida",
+            price=Decimal("10.00"),
+            stock=1,
+            image=self.create_test_image_upload(size=(5001, 1)),
+        )
+
+        with self.assertRaises(ValidationError):
+            excessive_dimensions_product.full_clean()
 
     def test_order_item_constraints_reject_invalid_quantity_and_price(self):
         user = self.create_user()
