@@ -334,6 +334,43 @@ class StoreApiTests(APITestCase):
                     unit_price=Decimal("-1.00"),
                 )
 
+    def test_order_item_rejects_duplicate_product_in_same_order(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Items",
+            email=user.email,
+        )
+        order = Order.objects.create(customer=customer)
+        second_product = Product.objects.create(
+            name="Segundo producto",
+            description="Producto diferente",
+            price=Decimal("20.00"),
+            stock=3,
+        )
+
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=1,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=second_product,
+            quantity=1,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                OrderItem.objects.create(
+                    order=order,
+                    product=self.product,
+                    quantity=2,
+                )
+
+        self.assertEqual(order.orderitem_set.count(), 2)
+
     def test_order_constraints_reject_invalid_amounts(self):
         user = self.create_user()
         customer = Customer.objects.create(

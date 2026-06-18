@@ -714,13 +714,11 @@ class OrderItem(models.Model):
     )
 
     class Meta:
-        indexes = [
-            models.Index(
-                fields=["order", "product"],
-                name="orderitem_order_product_idx",
-            ),
-        ]
         constraints = [
+            models.UniqueConstraint(
+                fields=["order", "product"],
+                name="orderitem_order_product_unique",
+            ),
             models.CheckConstraint(
                 condition=models.Q(quantity__gte=1),
                 name="orderitem_quantity_positive",
