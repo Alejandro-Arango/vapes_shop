@@ -334,6 +334,49 @@ class StoreApiTests(APITestCase):
                     unit_price=Decimal("-1.00"),
                 )
 
+    def test_order_constraints_reject_invalid_amounts(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Totales",
+            email=user.email,
+        )
+
+        invalid_amounts = (
+            {
+                "subtotal_amount": Decimal("-1.00"),
+                "discount_amount": Decimal("0.00"),
+                "total_amount": Decimal("0.00"),
+            },
+            {
+                "subtotal_amount": Decimal("10.00"),
+                "discount_amount": Decimal("-1.00"),
+                "total_amount": Decimal("10.00"),
+            },
+            {
+                "subtotal_amount": Decimal("10.00"),
+                "discount_amount": Decimal("0.00"),
+                "total_amount": Decimal("-1.00"),
+            },
+            {
+                "subtotal_amount": Decimal("10.00"),
+                "discount_amount": Decimal("11.00"),
+                "total_amount": Decimal("0.00"),
+            },
+        )
+
+        for amounts in invalid_amounts:
+            with self.subTest(amounts=amounts):
+                with self.assertRaises(IntegrityError):
+                    with transaction.atomic():
+                        Order.objects.create(
+                            customer=customer,
+                            **amounts,
+                        )
+
+        self.assertEqual(Order.objects.count(), 0)
+
     def test_customer_with_orders_cannot_be_deleted(self):
         user = self.create_user()
         customer = Customer.objects.create(

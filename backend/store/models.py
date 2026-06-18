@@ -575,6 +575,22 @@ class Order(models.Model):
                 ),
                 name="order_status_valid",
             ),
+            models.CheckConstraint(
+                condition=models.Q(subtotal_amount__gte=0),
+                name="order_subtotal_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(discount_amount__gte=0),
+                name="order_discount_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(total_amount__gte=0),
+                name="order_total_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(discount_amount__lte=models.F("subtotal_amount")),
+                name="order_discount_not_above_subtotal",
+            ),
         ]
 
     def __str__(self):
