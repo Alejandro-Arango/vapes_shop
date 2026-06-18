@@ -414,6 +414,40 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(Order.objects.count(), 0)
 
+    def test_discount_constraints_reject_invalid_usage_and_dates(self):
+        unlimited_discount = DiscountCode.objects.create(
+            code="ILIMITADO",
+            discount_type="percent",
+            value=Decimal("10.00"),
+            max_uses=None,
+            used_count=25,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                DiscountCode.objects.create(
+                    code="EXCEDIDO",
+                    discount_type="fixed",
+                    value=Decimal("5.00"),
+                    max_uses=2,
+                    used_count=3,
+                )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                DiscountCode.objects.create(
+                    code="FECHAS",
+                    discount_type="percent",
+                    value=Decimal("10.00"),
+                    starts_at=timezone.now() + timedelta(days=2),
+                    ends_at=timezone.now() + timedelta(days=1),
+                )
+
+        self.assertTrue(
+            DiscountCode.objects.filter(id=unlimited_discount.id).exists()
+        )
+        self.assertEqual(DiscountCode.objects.count(), 1)
+
     def test_stock_movement_constraints_enforce_inventory_balance(self):
         valid_movement = StockMovement.objects.create(
             product=self.product,

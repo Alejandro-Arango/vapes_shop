@@ -473,6 +473,21 @@ class DiscountCode(models.Model):
                 condition=models.Q(min_order_total__gte=0),
                 name="discount_min_total_non_negative",
             ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(max_uses__isnull=True)
+                    | models.Q(used_count__lte=models.F("max_uses"))
+                ),
+                name="discount_usage_within_limit",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(starts_at__isnull=True)
+                    | models.Q(ends_at__isnull=True)
+                    | models.Q(starts_at__lte=models.F("ends_at"))
+                ),
+                name="discount_dates_valid",
+            ),
         ]
 
     def __str__(self):
