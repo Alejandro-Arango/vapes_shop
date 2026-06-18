@@ -446,7 +446,7 @@ class Order(models.Model):
     CANCELLABLE_STATUSES = {"pendiente", "pagado"}
     FINAL_STATUSES = {"entregado", "cancelado", "reembolsado"}
 
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     checkout_token = models.UUIDField(
         unique=True,
         null=True,

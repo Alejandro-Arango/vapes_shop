@@ -242,6 +242,46 @@ class StoreApiTests(APITestCase):
                     unit_price=Decimal("-1.00"),
                 )
 
+    def test_customer_with_orders_cannot_be_deleted(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Historico",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+        )
+
+        with self.assertRaises(ProtectedError):
+            customer.delete()
+
+        self.assertTrue(Customer.objects.filter(id=customer.id).exists())
+        self.assertTrue(Order.objects.filter(id=order.id).exists())
+
+    def test_deleting_user_preserves_customer_and_orders(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Historico",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+        )
+
+        user.delete()
+        customer.refresh_from_db()
+
+        self.assertIsNone(customer.user)
+        self.assertTrue(Order.objects.filter(id=order.id, customer=customer).exists())
+
     def test_status_constraints_reject_invalid_values(self):
         user = self.create_user()
         customer = Customer.objects.create(
