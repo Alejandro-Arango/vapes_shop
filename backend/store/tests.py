@@ -59,6 +59,7 @@ from .admin import (
 )
 from .admin_dashboard import build_business_dashboard_context
 from .audit import get_client_ip, log_event
+from .management.commands.production_check import Command as ProductionCheckCommand
 from .models import (
     Category,
     ContactLead,
@@ -172,6 +173,19 @@ class StoreApiTests(APITestCase):
             response.headers["Permissions-Policy"],
             "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
         )
+        self.assertEqual(
+            response.headers["Content-Security-Policy"],
+            settings.CONTENT_SECURITY_POLICY,
+        )
+        self.assertIn("script-src 'self'", settings.CONTENT_SECURITY_POLICY)
+        self.assertNotIn("'unsafe-eval'", settings.CONTENT_SECURITY_POLICY)
+
+        content = response.content.decode()
+
+        self.assertNotIn("cdnjs.cloudflare.com", content)
+        self.assertNotIn("unpkg.com", content)
+        self.assertNotIn("fonts.googleapis.com", content)
+        self.assertNotIn("<script>", content)
 
     def test_health_check_reports_available_service(self):
         response = self.client.get(reverse("health_check"))
@@ -841,6 +855,23 @@ class StoreApiTests(APITestCase):
                 stdout=StringIO(),
                 stderr=StringIO(),
             )
+
+    @override_settings(
+        CONTENT_SECURITY_POLICY="default-src *; script-src 'self' 'unsafe-eval'",
+    )
+    def test_production_check_rejects_insecure_content_security_policy(self):
+        errors = []
+
+        ProductionCheckCommand().check_content_security_policy(errors)
+
+        self.assertIn(
+            "DJANGO_CONTENT_SECURITY_POLICY debe incluir base-uri 'self'.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_CONTENT_SECURITY_POLICY no debe permitir 'unsafe-eval'.",
+            errors,
+        )
 
     @override_settings(
         DEBUG=False,

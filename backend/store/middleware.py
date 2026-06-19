@@ -51,6 +51,25 @@ class PermissionsPolicyMiddleware:
         return response
 
 
+class ContentSecurityPolicyMiddleware:
+    """
+    Nombre: ContentSecurityPolicyMiddleware
+    Descripcion: Restringe los origenes permitidos para scripts, estilos y otros recursos del navegador.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        policy = getattr(settings, "CONTENT_SECURITY_POLICY", "")
+
+        if policy:
+            response.headers.setdefault("Content-Security-Policy", policy)
+
+        return response
+
+
 class ApiCacheControlMiddleware:
     """
     Nombre: ApiCacheControlMiddleware

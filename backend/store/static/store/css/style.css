@@ -1,7 +1,7 @@
 /*
  * Archivo: style.css
  * Descripcion: Archivo indice de estilos de Vape Shop. Importa los modulos CSS en el mismo orden de cascada del dise?o original.
- * Dependencias: Google Fonts, Font Awesome, estructura HTML del proyecto y clases generadas desde app.js.
+ * Dependencias: Estructura HTML del proyecto y clases generadas desde app.js.
  *
  * Guia de organizacion:
  * 00-foundation.css: variables, reset y modos base.
@@ -21,8 +21,6 @@
  *
  * Nota: El orden de estos imports es importante porque conserva la cascada CSS del proyecto.
  */
-
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap");
 
 @import url("./modules/00-foundation.css");
 @import url("./modules/01-header-navigation.css");

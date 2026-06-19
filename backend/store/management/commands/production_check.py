@@ -53,6 +53,7 @@ class Command(BaseCommand):
         self.check_hosts(errors)
         self.check_csrf(errors)
         self.check_https(errors)
+        self.check_content_security_policy(errors)
         self.check_database(errors, options["allow_sqlite"])
         self.check_cache(errors)
         self.check_admin(errors, warnings)
@@ -132,6 +133,31 @@ class Command(BaseCommand):
 
         if not settings.SECURE_HSTS_PRELOAD:
             errors.append("DJANGO_SECURE_HSTS_PRELOAD debe ser True.")
+
+    def check_content_security_policy(self, errors):
+        policy = getattr(settings, "CONTENT_SECURITY_POLICY", "")
+        required_directives = (
+            "default-src 'self'",
+            "base-uri 'self'",
+            "object-src 'none'",
+            "frame-ancestors 'none'",
+            "script-src 'self'",
+        )
+
+        if not policy:
+            errors.append("DJANGO_CONTENT_SECURITY_POLICY debe estar configurada.")
+            return
+
+        for directive in required_directives:
+            if directive not in policy:
+                errors.append(
+                    f"DJANGO_CONTENT_SECURITY_POLICY debe incluir {directive}."
+                )
+
+        if "'unsafe-eval'" in policy:
+            errors.append(
+                "DJANGO_CONTENT_SECURITY_POLICY no debe permitir 'unsafe-eval'."
+            )
 
     def check_database(self, errors, allow_sqlite):
         database = settings.DATABASES["default"]

@@ -375,6 +375,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "store.middleware.AdminAccessMiddleware",
     "store.middleware.PermissionsPolicyMiddleware",
+    "store.middleware.ContentSecurityPolicyMiddleware",
     "store.middleware.ApiCacheControlMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -586,6 +587,23 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = env_lower_choice(
 PERMISSIONS_POLICY = os.environ.get(
     "DJANGO_PERMISSIONS_POLICY",
     "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+)
+CONTENT_SECURITY_POLICY = os.environ.get(
+    "DJANGO_CONTENT_SECURITY_POLICY",
+    (
+        "default-src 'self'; "
+        "base-uri 'self'; "
+        "object-src 'none'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "media-src 'self'; "
+        "worker-src 'self'"
+    ),
 )
 X_FRAME_OPTIONS = "DENY"
 

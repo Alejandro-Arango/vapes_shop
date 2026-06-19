@@ -1001,8 +1001,8 @@ function getFavoriteButtonLabel(product) {
         : "Agregar a favoritos";
 }
 
-function getFavoriteIconClass(product) {
-    return product?.is_favorite ? "fas" : "far";
+function getFavoriteIcon(product) {
+    return product?.is_favorite ? "♥" : "♡";
 }
 
 function renderFavoriteIconButton(product) {
@@ -1017,7 +1017,7 @@ function renderFavoriteIconButton(product) {
             aria-label="${label}"
             title="${label}"
         >
-            <i class="${getFavoriteIconClass(product)} fa-heart"></i>
+            <span class="favorite-icon" aria-hidden="true">${getFavoriteIcon(product)}</span>
         </button>
     `;
 }
@@ -1057,7 +1057,7 @@ function updateFavoriteButtons(productId, isFavorite) {
             const label = isFavorite
                 ? "Quitar de favoritos"
                 : "Agregar a favoritos";
-            const icon = btn.querySelector("i");
+            const icon = btn.querySelector(".favorite-icon");
             const text = btn.querySelector(".favorite-text");
 
             btn.classList.toggle("active", isFavorite);
@@ -1065,7 +1065,7 @@ function updateFavoriteButtons(productId, isFavorite) {
             btn.setAttribute("title", label);
 
             if (icon) {
-                icon.className = `${isFavorite ? "fas" : "far"} fa-heart`;
+                icon.textContent = isFavorite ? "♥" : "♡";
             }
 
             if (text) {
@@ -1286,9 +1286,9 @@ function renderProductRating(product) {
     const rounded = Math.round(average);
     const stars = Array.from({ length: 5 })
         .map((_, index) => {
-            const iconClass = index < rounded ? "fas" : "far";
+            const star = index < rounded ? "★" : "☆";
 
-            return `<i class="${iconClass} fa-star"></i>`;
+            return `<span class="rating-star" aria-hidden="true">${star}</span>`;
         })
         .join("");
     const label = count
@@ -2413,7 +2413,7 @@ function renderProductDetail(product) {
             aria-label="${getFavoriteButtonLabel(product)}"
             title="${getFavoriteButtonLabel(product)}"
         >
-            <i class="${getFavoriteIconClass(product)} fa-heart"></i>
+            <span class="favorite-icon" aria-hidden="true">${getFavoriteIcon(product)}</span>
             <span class="favorite-text">${product.is_favorite ? "Favorito" : "Guardar"}</span>
         </button>
     `;
@@ -3624,11 +3624,61 @@ function resetCheckoutSummary() {
 //  INICIALIZACION Y EVENTOS DE INTERFAZ
 // =============================================================================
 
+function initializeCarousel() {
+    const slides = document.querySelectorAll(".carousel-slide");
+    const prevBtn = document.querySelector(".prev");
+    const nextBtn = document.querySelector(".next");
+    let index = 0;
+
+    if (!slides.length) return;
+
+    const showSlide = (newIndex) => {
+        slides.forEach((slide) => slide.classList.remove("active"));
+        slides[newIndex].classList.add("active");
+    };
+
+    prevBtn?.addEventListener("click", () => {
+        index = index > 0 ? index - 1 : slides.length - 1;
+        showSlide(index);
+    });
+
+    nextBtn?.addEventListener("click", () => {
+        index = index < slides.length - 1 ? index + 1 : 0;
+        showSlide(index);
+    });
+
+    setInterval(() => {
+        index = index < slides.length - 1 ? index + 1 : 0;
+        showSlide(index);
+    }, 5000);
+
+    showSlide(index);
+}
+
+function initializeThemeToggle() {
+    const themeToggle = document.getElementById("theme-toggle");
+    const themeIcon = themeToggle?.querySelector(".theme-icon");
+
+    themeToggle?.addEventListener("click", () => {
+        document.body.classList.toggle("light-mode");
+        document.body.classList.toggle("dark-mode");
+
+        if (themeIcon) {
+            themeIcon.textContent = document.body.classList.contains("light-mode")
+                ? "☀"
+                : "☾";
+        }
+    });
+}
+
 /*
  * Nombre: Modulo de inicializacion y eventos de interfaz
  * Descripcion: Conecta los elementos del DOM con las funciones principales cuando la pagina termina de cargar.
  */
 document.addEventListener("DOMContentLoaded", async () => {
+    initializeCarousel();
+    initializeThemeToggle();
+
     const ageConfirmBtn = document.getElementById("age-confirm-btn");
     const ageDenyBtn = document.getElementById("age-deny-btn");
 

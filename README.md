@@ -251,6 +251,7 @@ El proyecto ya incluye una base de endurecimiento para preproduccion:
 - Validacion estricta de variables de entorno.
 - Cookies seguras configurables.
 - HSTS, SSL redirect, Referrer-Policy, COOP y Permissions-Policy.
+- Content Security Policy sin scripts inline ni dependencias CDN.
 - No-cache para APIs sensibles.
 - Rate limits en autenticacion, contacto, carrito y checkout.
 - Checkout idempotente para evitar ordenes y descuentos de stock duplicados.
@@ -305,6 +306,7 @@ DJANGO_SECURE_SSL_REDIRECT
 DJANGO_SECURE_HSTS_SECONDS
 DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS
 DJANGO_SECURE_HSTS_PRELOAD
+DJANGO_CONTENT_SECURITY_POLICY
 DJANGO_USE_X_FORWARDED_PROTO
 DJANGO_TRUST_X_FORWARDED_FOR
 DJANGO_EMAIL_BACKEND
@@ -569,6 +571,7 @@ DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS
 DJANGO_SECURE_HSTS_PRELOAD
 DJANGO_SECURE_REFERRER_POLICY
 DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY
+DJANGO_CONTENT_SECURITY_POLICY
 DJANGO_USE_X_FORWARDED_PROTO
 DJANGO_TRUST_X_FORWARDED_FOR
 AUTH_THROTTLE_RATE
