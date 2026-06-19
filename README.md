@@ -270,6 +270,8 @@ El proyecto ya incluye una base de endurecimiento para preproduccion:
 - Health check de base de datos y cache en `/api/health/`.
 - Ruta de admin configurable.
 - Restriccion opcional del admin por IP.
+- MFA TOTP obligatorio para el panel administrativo.
+- Sesiones administrativas cortas y bloqueo temporal de intentos fallidos.
 - Cache configurable para evitar `LocMemCache` en produccion.
 - Comando `production_check` para bloquear configuraciones inseguras.
 - CI con validaciones, pruebas y simulacion de configuracion productiva.
@@ -292,6 +294,12 @@ DJANGO_ALLOWED_HOSTS
 DJANGO_CSRF_TRUSTED_ORIGINS
 DJANGO_ADMIN_URL_PATH
 DJANGO_ADMIN_ALLOWED_IPS
+DJANGO_ADMIN_SESSION_COOKIE_AGE
+DJANGO_ADMIN_LOGIN_MAX_ATTEMPTS
+DJANGO_ADMIN_LOGIN_LOCKOUT_SECONDS
+DJANGO_OTP_TOTP_ISSUER
+DJANGO_OTP_TOTP_THROTTLE_FACTOR
+DJANGO_OTP_STATIC_THROTTLE_FACTOR
 DJANGO_DB_ENGINE
 DJANGO_DB_NAME
 DJANGO_DB_USER
@@ -410,6 +418,29 @@ python manage.py setup_store_roles --apply
 
 El comando es idempotente: puede ejecutarse varias veces sin duplicar permisos.
 
+### MFA administrativo
+
+El panel exige contrasena y un codigo TOTP. Despues de crear el superusuario,
+genera un dispositivo pendiente:
+
+```powershell
+python manage.py setup_admin_mfa NOMBRE_USUARIO
+```
+
+Agrega la clave mostrada a una aplicacion autenticadora y confirma con un
+codigo vigente:
+
+```powershell
+python manage.py setup_admin_mfa NOMBRE_USUARIO --token 123456
+```
+
+El comando entrega diez codigos de recuperacion de un solo uso. Deben guardarse
+fuera del servidor. Para reemplazar un dispositivo perdido:
+
+```powershell
+python manage.py setup_admin_mfa NOMBRE_USUARIO --replace
+```
+
 ### Pedidos
 
 Desde `Store > Ordenes` el administrador puede:
@@ -515,9 +546,10 @@ Sin `--confirm`, el comando solo muestra un resumen y no borra registros.
 10. Ejecutar migraciones.
 11. Ejecutar `collectstatic`.
 12. Crear superusuario.
-13. Crear roles administrativos con `python manage.py setup_store_roles --apply`.
-14. Verificar `python manage.py check --deploy`.
-15. Verificar `python manage.py production_check`.
+13. Configurar MFA con `python manage.py setup_admin_mfa NOMBRE_USUARIO`.
+14. Crear roles administrativos con `python manage.py setup_store_roles --apply`.
+15. Verificar `python manage.py check --deploy`.
+16. Verificar `python manage.py production_check`.
 
 Comandos recomendados:
 
@@ -527,6 +559,7 @@ python manage.py check --deploy
 python manage.py production_check
 python manage.py migrate
 python manage.py createcachetable
+python manage.py setup_admin_mfa NOMBRE_USUARIO
 python manage.py setup_store_roles --apply
 python manage.py collectstatic --noinput
 ```
@@ -554,6 +587,12 @@ DJANGO_ALLOWED_HOSTS
 DJANGO_CSRF_TRUSTED_ORIGINS
 DJANGO_ADMIN_URL_PATH
 DJANGO_ADMIN_ALLOWED_IPS
+DJANGO_ADMIN_SESSION_COOKIE_AGE
+DJANGO_ADMIN_LOGIN_MAX_ATTEMPTS
+DJANGO_ADMIN_LOGIN_LOCKOUT_SECONDS
+DJANGO_OTP_TOTP_ISSUER
+DJANGO_OTP_TOTP_THROTTLE_FACTOR
+DJANGO_OTP_STATIC_THROTTLE_FACTOR
 DJANGO_DB_ENGINE
 DJANGO_DB_NAME
 DJANGO_DB_USER

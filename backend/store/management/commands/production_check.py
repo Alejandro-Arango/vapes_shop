@@ -195,6 +195,46 @@ class Command(BaseCommand):
                 "DJANGO_TRUST_X_FORWARDED_FOR esta desactivado; activalo solo si tu proxy limpia esa cabecera."
             )
 
+        if settings.ADMIN_SESSION_COOKIE_AGE > 3600:
+            errors.append(
+                "DJANGO_ADMIN_SESSION_COOKIE_AGE no debe superar 3600 segundos."
+            )
+
+        if settings.ADMIN_LOGIN_MAX_ATTEMPTS > 10:
+            errors.append(
+                "DJANGO_ADMIN_LOGIN_MAX_ATTEMPTS no debe superar 10."
+            )
+
+        if settings.ADMIN_LOGIN_LOCKOUT_SECONDS < 300:
+            errors.append(
+                "DJANGO_ADMIN_LOGIN_LOCKOUT_SECONDS debe ser al menos 300."
+            )
+
+        if not getattr(settings, "OTP_ADMIN_HIDE_SENSITIVE_DATA", False):
+            errors.append("OTP_ADMIN_HIDE_SENSITIVE_DATA debe estar activo.")
+
+        required_apps = {
+            "django_otp",
+            "django_otp.plugins.otp_totp",
+            "django_otp.plugins.otp_static",
+        }
+
+        if not required_apps.issubset(set(settings.INSTALLED_APPS)):
+            errors.append(
+                "El admin debe tener django-otp, TOTP y codigos estaticos instalados."
+            )
+
+        required_middleware = {
+            "django_otp.middleware.OTPMiddleware",
+            "store.middleware.AdminSessionSecurityMiddleware",
+            "store.middleware.AdminLoginThrottleMiddleware",
+        }
+
+        if not required_middleware.issubset(set(settings.MIDDLEWARE)):
+            errors.append(
+                "El admin debe tener middleware OTP, sesion corta y bloqueo de intentos."
+            )
+
     def check_email(self, errors, warnings):
         email_backend = getattr(settings, "EMAIL_BACKEND", "")
 

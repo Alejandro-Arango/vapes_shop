@@ -12,6 +12,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from django.conf import settings
+from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.core import mail
 from django.core.cache import cache
@@ -28,6 +29,11 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+
+from django_otp import DEVICE_ID_SESSION_KEY
+from django_otp.oath import totp
+from django_otp.plugins.otp_static.models import StaticDevice
+from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from PIL import Image as PillowImage
 
@@ -47,6 +53,7 @@ from mi_tienda.settings import (
     env_port,
     env_throttle_rate,
 )
+from mi_tienda.admin import StoreOTPAdminSite
 
 from .admin import (
     ContactLeadAdmin,
@@ -161,6 +168,23 @@ class StoreApiTests(APITestCase):
 
         return request
 
+    def force_admin_otp_login(self, user):
+        """
+        Nombre: force_admin_otp_login
+        Descripcion: Inicia una sesion administrativa verificada para pruebas.
+        """
+        self.client.force_login(user)
+        device = TOTPDevice.objects.create(
+            user=user,
+            name="Dispositivo de prueba",
+            confirmed=True,
+        )
+        session = self.client.session
+        session[DEVICE_ID_SESSION_KEY] = device.persistent_id
+        session.save()
+
+        return device
+
     def test_home_sets_security_headers(self):
         response = self.client.get(reverse("home"))
 
@@ -233,6 +257,97 @@ class StoreApiTests(APITestCase):
         response = self.client.get("/admin/", REMOTE_ADDR="127.0.0.1")
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+
+    def test_admin_requires_verified_otp_and_uses_short_session(self):
+        admin_user = User.objects.create_superuser(
+            username="otp-admin",
+            email="otp-admin@example.com",
+            password="ClaveSegura123",
+        )
+        self.client.force_login(admin_user)
+
+        unverified_response = self.client.get(reverse("admin:index"))
+
+        self.assertEqual(unverified_response.status_code, status.HTTP_302_FOUND)
+
+        self.force_admin_otp_login(admin_user)
+        verified_response = self.client.get(reverse("admin:index"))
+
+        self.assertEqual(verified_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            verified_response.headers["Cache-Control"],
+            "no-store, max-age=0",
+        )
+        self.assertLessEqual(
+            self.client.session.get_expiry_age(),
+            settings.ADMIN_SESSION_COOKIE_AGE,
+        )
+        self.assertIsInstance(admin.site._wrapped, StoreOTPAdminSite)
+
+    def test_admin_login_accepts_password_and_valid_totp(self):
+        cache.clear()
+        admin_user = User.objects.create_superuser(
+            username="otp-login-admin",
+            email="otp-login-admin@example.com",
+            password="ClaveSegura123",
+        )
+        device = TOTPDevice.objects.create(
+            user=admin_user,
+            name="Autenticador principal",
+            confirmed=True,
+        )
+        current_token = totp(
+            device.bin_key,
+            step=device.step,
+            t0=device.t0,
+            digits=device.digits,
+            drift=device.drift,
+        )
+
+        response = self.client.post(
+            reverse("admin:login"),
+            {
+                "username": admin_user.username,
+                "password": "ClaveSegura123",
+                "otp_device": device.persistent_id,
+                "otp_token": f"{current_token:0{device.digits}d}",
+                "next": reverse("admin:index"),
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(response.url, reverse("admin:index"))
+        self.assertEqual(
+            self.client.get(reverse("admin:index")).status_code,
+            status.HTTP_200_OK,
+        )
+        cache.clear()
+
+    @override_settings(
+        ADMIN_LOGIN_MAX_ATTEMPTS=2,
+        ADMIN_LOGIN_LOCKOUT_SECONDS=60,
+    )
+    def test_admin_login_is_temporarily_locked_after_repeated_failures(self):
+        cache.clear()
+        login_url = reverse("admin:login")
+        credentials = {
+            "username": "admin-inexistente",
+            "password": "ClaveIncorrecta123",
+            "otp_token": "000000",
+        }
+
+        first_response = self.client.post(login_url, credentials)
+        second_response = self.client.post(login_url, credentials)
+        locked_response = self.client.post(login_url, credentials)
+
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(locked_response.status_code, 429)
+        self.assertEqual(locked_response.headers["Retry-After"], "60")
+        self.assertTrue(
+            EventLog.objects.filter(event_type="admin_login_locked").exists()
+        )
+        cache.clear()
 
     def test_product_constraints_reject_negative_values(self):
         with self.assertRaises(IntegrityError):
@@ -919,6 +1034,51 @@ class StoreApiTests(APITestCase):
         call_command("production_check", stdout=output)
 
         self.assertIn("Configuracion de produccion validada", output.getvalue())
+
+    def test_setup_admin_mfa_creates_and_confirms_totp_with_recovery_codes(self):
+        admin_user = User.objects.create_superuser(
+            username="mfa-setup-admin",
+            email="mfa-setup-admin@example.com",
+            password="ClaveSegura123",
+        )
+        setup_output = StringIO()
+
+        call_command(
+            "setup_admin_mfa",
+            admin_user.username,
+            stdout=setup_output,
+        )
+
+        device = TOTPDevice.objects.get(
+            user=admin_user,
+            name="Autenticador principal",
+        )
+        current_token = totp(
+            device.bin_key,
+            step=device.step,
+            t0=device.t0,
+            digits=device.digits,
+            drift=device.drift,
+        )
+        confirm_output = StringIO()
+
+        call_command(
+            "setup_admin_mfa",
+            admin_user.username,
+            token=str(current_token),
+            stdout=confirm_output,
+        )
+
+        device.refresh_from_db()
+        recovery_device = StaticDevice.objects.get(
+            user=admin_user,
+            name="Codigos de recuperacion",
+        )
+
+        self.assertTrue(device.confirmed)
+        self.assertEqual(recovery_device.token_set.count(), 10)
+        self.assertIn("Clave manual:", setup_output.getvalue())
+        self.assertIn("MFA confirmado", confirm_output.getvalue())
 
     def test_purge_event_logs_dry_run_does_not_delete_events(self):
         old_event = EventLog.objects.create(
@@ -4014,7 +4174,7 @@ class StoreApiTests(APITestCase):
             email="dashboard-admin@example.com",
             password="ClaveSegura123",
         )
-        self.client.force_login(admin_user)
+        self.force_admin_otp_login(admin_user)
 
         response = self.client.get(dashboard_url)
 
@@ -4090,7 +4250,7 @@ class StoreApiTests(APITestCase):
             "date_from": now.date().isoformat(),
             "date_to": now.date().isoformat(),
         }
-        self.client.force_login(admin_user)
+        self.force_admin_otp_login(admin_user)
 
         sales_response = self.client.get(
             reverse("admin:store_business_sales_report"),
@@ -4416,7 +4576,7 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(anonymous_response.status_code, 302)
 
-        self.client.force_login(admin_user)
+        self.force_admin_otp_login(admin_user)
 
         dashboard_response = self.client.get(
             reverse("admin:store_audit_dashboard"),

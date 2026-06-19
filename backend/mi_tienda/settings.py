@@ -286,7 +286,7 @@ if not DEBUG and not ALLOWED_HOSTS:
 # =============================================================================
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    "mi_tienda.apps.StoreAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -295,6 +295,9 @@ INSTALLED_APPS = [
 
     "store",
     "rest_framework",
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
 ]
 
 
@@ -381,6 +384,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",
+    "store.middleware.AdminSessionSecurityMiddleware",
+    "store.middleware.AdminLoginThrottleMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -396,6 +402,37 @@ WSGI_APPLICATION = "mi_tienda.wsgi.application"
 
 ADMIN_URL_PATH = env_admin_url_path("DJANGO_ADMIN_URL_PATH", "admin")
 ADMIN_ALLOWED_IPS = tuple(env_ip_list("DJANGO_ADMIN_ALLOWED_IPS", ""))
+ADMIN_SESSION_COOKIE_AGE = env_int(
+    "DJANGO_ADMIN_SESSION_COOKIE_AGE",
+    1800,
+    minimum=300,
+)
+ADMIN_LOGIN_MAX_ATTEMPTS = env_int(
+    "DJANGO_ADMIN_LOGIN_MAX_ATTEMPTS",
+    5,
+    minimum=1,
+)
+ADMIN_LOGIN_LOCKOUT_SECONDS = env_int(
+    "DJANGO_ADMIN_LOGIN_LOCKOUT_SECONDS",
+    900,
+    minimum=60,
+)
+
+OTP_TOTP_ISSUER = os.environ.get(
+    "DJANGO_OTP_TOTP_ISSUER",
+    "Vape Shop Admin",
+).strip()
+OTP_TOTP_THROTTLE_FACTOR = env_int(
+    "DJANGO_OTP_TOTP_THROTTLE_FACTOR",
+    1,
+    minimum=1,
+)
+OTP_STATIC_THROTTLE_FACTOR = env_int(
+    "DJANGO_OTP_STATIC_THROTTLE_FACTOR",
+    1,
+    minimum=1,
+)
+OTP_ADMIN_HIDE_SENSITIVE_DATA = True
 
 
 # =============================================================================
