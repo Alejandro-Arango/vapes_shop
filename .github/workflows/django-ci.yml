@@ -114,7 +114,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validar configuracion Compose
-        run: docker compose --env-file compose.env.example config --quiet
+        run: |
+          docker compose --env-file compose.env.example config --quiet
+
+          APP_IMAGE="ghcr.io/example/vapes-shop@sha256:$(printf '1%.0s' {1..64})" \
+          BACKUP_IMAGE="ghcr.io/example/vapes-shop-backup@sha256:$(printf '2%.0s' {1..64})" \
+          docker compose \
+            --env-file compose.production.env.example \
+            --file compose.yaml \
+            --file compose.production.yaml \
+            config \
+            --quiet
 
       - name: Construir imagen de aplicacion
         run: docker build --tag vapes-shop:test .

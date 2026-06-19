@@ -774,6 +774,63 @@ Remove-Item Env:PRODUCTION_HEALTH_URL
 El procedimiento de clasificación, diagnóstico, mitigación y cierre está en
 [docs/INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md).
 
+### Releases y despliegues controlados
+
+Al publicar una release en GitHub, el workflow `Publicar imagenes de release`
+construye y publica en GHCR:
+
+- `ghcr.io/ORGANIZACION/REPOSITORIO`
+- `ghcr.io/ORGANIZACION/REPOSITORIO-backup`
+
+No publica `latest`. Cada imagen recibe la etiqueta de la release, una etiqueta
+del commit y una atestacion de procedencia. Para desplegar se debe copiar del
+resumen del workflow la referencia completa por digest, no solo la etiqueta.
+La publicación solo continúa después de validar pruebas, migraciones pendientes
+y que la etiqueta use el formato `vMAJOR.MINOR.PATCH`.
+
+En el servidor, conserva el repositorio, copia
+`compose.production.env.example` como `compose.production.env`, reemplaza todos
+los valores de ejemplo y configura acceso de lectura a GHCR. Si el paquete es
+privado, inicia sesion con un token que tenga solo `read:packages`.
+Protege `compose.production.env` con permisos exclusivos del usuario de
+despliegue. El proxy TLS situado delante de Nginx debe reemplazar, no anexar,
+`X-Forwarded-For` y `X-Forwarded-Proto`.
+
+Despliegue:
+
+```powershell
+python .\scripts\deploy_production.py `
+  --deploy `
+  --app-image "ghcr.io/ORGANIZACION/REPOSITORIO@sha256:DIGEST_APP" `
+  --backup-image "ghcr.io/ORGANIZACION/REPOSITORIO-backup@sha256:DIGEST_OPS"
+```
+
+El proceso:
+
+1. valida Compose y descarga las imagenes;
+2. ejecuta `check --deploy` y `production_check` dentro de la imagen;
+3. inicia MySQL y crea un backup;
+4. ejecuta migraciones;
+5. actualiza `web` y `proxy`;
+6. verifica `/healthz`;
+7. si falla, recupera automáticamente la imagen anterior.
+
+Rollback manual:
+
+```powershell
+python .\scripts\deploy_production.py --rollback
+```
+
+El estado local se guarda en `.deploy/current.json` y
+`.deploy/previous.json`. No contiene secretos.
+Si queda `.deploy.lock` tras una interrupcion, elimínalo únicamente después de
+confirmar que no existe otro despliegue en ejecución.
+
+El rollback revierte contenedores, no migraciones. Toda migracion productiva
+debe ser compatible con la version anterior: primero agregar estructuras
+nuevas, despues migrar datos y solo en una release posterior retirar lo
+antiguo. Una migracion destructiva elimina la garantia de rollback automatico.
+
 ### Backups y recuperacion
 
 Los respaldos se guardan por defecto en `.\backups`, fuera de los volumenes

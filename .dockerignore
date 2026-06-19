@@ -6,7 +6,9 @@
 .env.*
 !*.env.example
 compose.env
+compose.production.env
 backups
+.deploy
 backend/.venv
 backend/db.sqlite3
 backend/db.sqlite3-journal

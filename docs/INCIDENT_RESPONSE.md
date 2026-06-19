@@ -67,7 +67,12 @@ proveedor de hosting.
 Priorizar cambios reversibles:
 
 1. Retirar trafico del servicio afectado.
-2. Corregir configuracion o volver a la imagen estable anterior.
+2. Corregir configuracion o volver a la imagen estable anterior:
+
+   ```powershell
+   python .\scripts\deploy_production.py --rollback
+   ```
+
 3. Ejecutar migraciones solo si corresponden al codigo desplegado.
 4. Restaurar datos unicamente si se confirma corrupcion o perdida.
 
