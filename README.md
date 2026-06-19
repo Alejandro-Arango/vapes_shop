@@ -280,7 +280,7 @@ Aspectos que siguen dependiendo del proveedor de despliegue:
 
 - Dominio real y certificado HTTPS.
 - Proxy correctamente configurado.
-- Base de datos productiva, backups y usuario limitado.
+- Base de datos productiva, usuario limitado y copia cifrada fuera del servidor.
 - Servidor de correo transaccional real.
 - Monitoreo externo de errores y disponibilidad.
 - Politicas legales para venta de productos de vapeo y verificacion de edad fuerte.
@@ -346,7 +346,7 @@ CONTACT_WHATSAPP_NUMBER
 - Inventario por lotes o proveedores.
 - Notificaciones transaccionales por correo.
 - Facturación.
-- Docker.
+- Orquestacion administrada y almacenamiento de objetos para media.
 - Pruebas frontend.
 - Optimización responsive adicional.
 
@@ -553,6 +553,8 @@ Sin `--confirm`, el comando solo muestra un resumen y no borra registros.
 14. Crear roles administrativos con `python manage.py setup_store_roles --apply`.
 15. Verificar `python manage.py check --deploy`.
 16. Verificar `python manage.py production_check`.
+17. Programar backups y copiar los respaldos cifrados fuera del servidor.
+18. Ejecutar periodicamente un simulacro de restauracion.
 
 Comandos recomendados:
 
@@ -655,9 +657,11 @@ El repositorio incluye una base reproducible que no depende de un proveedor:
 - Nginx como proxy y servidor de archivos media.
 - Migraciones, tabla de cache y roles ejecutados en una tarea de release.
 - Volumen persistente separado para imagenes subidas.
+- Backups versionados de MySQL y media con checksums.
+- Restauracion protegida por confirmacion exacta y respaldo de seguridad previo.
 - Health checks para Django, MySQL y Nginx.
 - Sistema de archivos de la aplicacion en modo solo lectura.
-- Validacion automatica de Docker y Compose en GitHub Actions.
+- Validacion automatica de Docker, Compose y recuperacion en GitHub Actions.
 
 Docker debe instalarse antes de ejecutar esta infraestructura localmente.
 
@@ -705,6 +709,58 @@ docker compose --env-file compose.env down
 
 Los volumenes `mysql_data` y `media_data` conservan base de datos e imagenes.
 No uses `down --volumes` salvo que quieras eliminarlos deliberadamente.
+
+### Backups y recuperacion
+
+Los respaldos se guardan por defecto en `.\backups`, fuera de los volumenes
+de MySQL y media. Cada directorio contiene:
+
+- `database.sql.gz`: volcado logico de MySQL.
+- `media.tar.gz`: archivos subidos por los usuarios.
+- `metadata.txt`: identificador y fecha UTC.
+- `manifest.sha256`: checksums verificados antes de restaurar.
+
+Para crear un respaldo:
+
+```powershell
+docker compose --env-file compose.env run --rm backup
+Get-Content .\backups\latest.txt
+```
+
+`BACKUP_RETENTION_DAYS` controla la retencion local. Su valor predeterminado
+es `14`; usa `0` para no eliminar respaldos automaticamente.
+
+El respaldo puede ejecutarse con la tienda activa porque MySQL usa una
+transaccion consistente. Si necesitas consistencia estricta entre una fila y
+su archivo media, detén temporalmente `web` mientras se genera el respaldo.
+
+La restauracion es destructiva y debe realizarse con la aplicacion detenida.
+Requiere confirmar exactamente el identificador UTC del respaldo:
+
+```powershell
+docker compose --env-file compose.env stop proxy web
+
+$env:RESTORE_BACKUP_ID = "20260618T230000Z"
+$env:RESTORE_CONFIRM = "RESTORE-$env:RESTORE_BACKUP_ID"
+
+docker compose --env-file compose.env run --rm restore
+docker compose --env-file compose.env run --rm migrate
+docker compose --env-file compose.env up -d web proxy
+
+Remove-Item Env:RESTORE_BACKUP_ID,Env:RESTORE_CONFIRM
+```
+
+Antes de sobrescribir datos, el proceso crea otro respaldo salvo que
+`RESTORE_CREATE_SAFETY_BACKUP=false`. No desactives esa proteccion en una
+restauracion real.
+
+El directorio local de backups protege frente a errores logicos y borrados de
+volumen, pero no frente a la perdida completa del servidor. En produccion,
+`BACKUP_PATH` debe apuntar a un disco independiente y los respaldos deben
+copiarse cifrados a almacenamiento externo con acceso restringido.
+
+El job `Probar respaldo y restauracion` del CI crea datos, genera un respaldo,
+altera la base y media, restaura y comprueba que ambos vuelven al valor original.
 
 Este Compose usa HTTP para desarrollo de infraestructura. En produccion se
 debe terminar TLS en el proxy o balanceador y activar cookies seguras, HSTS,

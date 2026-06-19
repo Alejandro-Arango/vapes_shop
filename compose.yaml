@@ -38,6 +38,18 @@ x-default-logging: &default-logging
     max-size: 10m
     max-file: "5"
 
+x-backup-environment: &backup-environment
+  MYSQL_HOST: db
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: ${MYSQL_DATABASE:?Define MYSQL_DATABASE in compose.env}
+  MYSQL_USER: ${MYSQL_USER:?Define MYSQL_USER in compose.env}
+  MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Define MYSQL_PASSWORD in compose.env}
+  BACKUP_ROOT: /backups
+  MEDIA_SOURCE: /source/media
+  MEDIA_UID: "10001"
+  MEDIA_GID: "10001"
+  BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+
 services:
   db:
     image: mysql:8.4.10
@@ -140,6 +152,62 @@ services:
     pids_limit: 128
     logging: *default-logging
     stop_grace_period: 30s
+
+  backup:
+    profiles:
+      - ops
+    build:
+      context: .
+      dockerfile: docker/backup.Dockerfile
+    image: vapes-shop-backup:local
+    command: ["/usr/local/bin/backup.sh"]
+    environment: *backup-environment
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media_data:/source/media:ro
+      - ${BACKUP_PATH:-./backups}:/backups
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+
+  restore:
+    profiles:
+      - ops
+    build:
+      context: .
+      dockerfile: docker/backup.Dockerfile
+    image: vapes-shop-backup:local
+    command: ["/usr/local/bin/restore.sh"]
+    environment:
+      <<: *backup-environment
+      RESTORE_BACKUP_ID: ${RESTORE_BACKUP_ID:-}
+      RESTORE_CONFIRM: ${RESTORE_CONFIRM:-}
+      RESTORE_CREATE_SAFETY_BACKUP: ${RESTORE_CREATE_SAFETY_BACKUP:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media_data:/source/media
+      - ${BACKUP_PATH:-./backups}:/backups
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    logging: *default-logging
 
 volumes:
   mysql_data:
