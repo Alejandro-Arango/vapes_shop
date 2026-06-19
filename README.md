@@ -746,6 +746,34 @@ y solicitudes se controlan con `DJANGO_STORE_LOG_LEVEL` y
 El monitoreo externo debe alertar como minimo por readiness `503`, respuestas
 `5xx`, reinicios repetidos de contenedores y fallos del job de recuperacion.
 
+El workflow `Monitor de produccion` consulta `/healthz` cada quince minutos,
+pero permanece inactivo hasta configurar en GitHub y publicar el workflow en
+la rama predeterminada:
+
+- Variable de repositorio `PRODUCTION_HEALTH_URL` con una URL HTTPS, por
+  ejemplo `https://tienda.example/healthz`.
+- Secret opcional `MONITOR_WEBHOOK_URL` para recibir alertas JSON.
+- Secret opcional `MONITOR_WEBHOOK_TOKEN` si el receptor exige Bearer token.
+
+El webhook incluye campos `text` y `content`, además del evento estructurado,
+para facilitar su conexión con un receptor HTTP o una automatización externa.
+No incluyas tokens ni datos sensibles en `PRODUCTION_HEALTH_URL`.
+
+Este workflow es una red de seguridad inicial. Los horarios de GitHub Actions
+pueden retrasarse y dependen de la disponibilidad de GitHub; una operacion real
+debe añadir un monitor de uptime independiente desde otra red o proveedor.
+
+El monitor también puede ejecutarse manualmente:
+
+```powershell
+$env:PRODUCTION_HEALTH_URL = "https://DOMINIO_REAL/healthz"
+python .\scripts\monitor_production.py
+Remove-Item Env:PRODUCTION_HEALTH_URL
+```
+
+El procedimiento de clasificación, diagnóstico, mitigación y cierre está en
+[docs/INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md).
+
 ### Backups y recuperacion
 
 Los respaldos se guardan por defecto en `.\backups`, fuera de los volumenes

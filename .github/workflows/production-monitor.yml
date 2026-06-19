@@ -1,0 +1,40 @@
+name: Monitor de produccion
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-readiness-monitor
+  cancel-in-progress: false
+
+jobs:
+  readiness:
+    name: Verificar disponibilidad externa
+    if: ${{ vars.PRODUCTION_HEALTH_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Consultar readiness y alertar
+        env:
+          PRODUCTION_HEALTH_URL: ${{ vars.PRODUCTION_HEALTH_URL }}
+          MONITOR_WEBHOOK_URL: ${{ secrets.MONITOR_WEBHOOK_URL }}
+          MONITOR_WEBHOOK_TOKEN: ${{ secrets.MONITOR_WEBHOOK_TOKEN }}
+        run: |
+          python scripts/monitor_production.py \
+            --attempts 3 \
+            --retry-delay 10 \
+            --timeout 10
