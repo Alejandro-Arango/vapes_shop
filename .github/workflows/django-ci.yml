@@ -94,3 +94,77 @@ jobs:
         run: |
           python manage.py check --deploy
           python manage.py production_check
+
+  container:
+    name: Validar imagen y Compose
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Validar configuracion Compose
+        run: docker compose --env-file compose.env.example config --quiet
+
+      - name: Construir imagen de aplicacion
+        run: docker build --tag vapes-shop:test .
+
+      - name: Verificar usuario no privilegiado
+        run: |
+          test "$(docker image inspect vapes-shop:test --format '{{.Config.User}}')" = "app"
+
+      - name: Validar scripts y proxy
+        run: |
+          docker run --rm --entrypoint sh vapes-shop:test \
+            -n /app/docker/start.sh /app/docker/release.sh
+          docker run --rm \
+            --user 101:101 \
+            --add-host web:127.0.0.1 \
+            --volume "$PWD/docker/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            --entrypoint nginx \
+            nginx:1.30.3-alpine \
+            -t
+
+      - name: Verificar dependencias productivas
+        run: |
+          docker run --rm --entrypoint gunicorn vapes-shop:test --version
+
+      - name: Probar servidor Gunicorn y health check
+        env:
+          DJANGO_SECRET_KEY: "container-smoke-secret-with-more-than-fifty-characters-1234567890"
+        run: |
+          container_id="$(
+            docker run --detach \
+              --publish 8000:8000 \
+              --env DJANGO_DEBUG=False \
+              --env DJANGO_SECRET_KEY \
+              --env DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1 \
+              --env DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:8000 \
+              --env DJANGO_DB_ENGINE=sqlite \
+              --env DJANGO_DB_NAME=/tmp/container-smoke.sqlite3 \
+              --env DJANGO_CACHE_BACKEND=locmem \
+              --env DJANGO_SESSION_COOKIE_SECURE=False \
+              --env DJANGO_CSRF_COOKIE_SECURE=False \
+              --env DJANGO_SECURE_SSL_REDIRECT=False \
+              vapes-shop:test
+          )"
+
+          cleanup() {
+            docker logs "$container_id" || true
+            docker rm --force "$container_id" || true
+          }
+
+          trap cleanup EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/api/health/; then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          exit 1

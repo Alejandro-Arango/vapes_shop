@@ -175,6 +175,29 @@ class Command(BaseCommand):
         ):
             errors.append("La base de datos productiva debe tener una contrasena real.")
 
+        if "mysql" in engine:
+            if database.get("CONN_MAX_AGE", 0) <= 0:
+                errors.append(
+                    "DJANGO_DB_CONN_MAX_AGE debe reutilizar conexiones MySQL."
+                )
+
+            if not database.get("CONN_HEALTH_CHECKS"):
+                errors.append(
+                    "La base de datos MySQL debe activar CONN_HEALTH_CHECKS."
+                )
+
+            options = database.get("OPTIONS", {})
+
+            if options.get("connect_timeout", 0) < 1:
+                errors.append(
+                    "DJANGO_DB_CONNECT_TIMEOUT debe limitar la conexion MySQL."
+                )
+
+            if "STRICT_TRANS_TABLES" not in options.get("init_command", ""):
+                errors.append(
+                    "MySQL debe usar STRICT_TRANS_TABLES para evitar truncamientos."
+                )
+
     def check_cache(self, errors):
         cache_backend = settings.CACHES["default"]["BACKEND"]
 

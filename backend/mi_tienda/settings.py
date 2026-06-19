@@ -485,8 +485,20 @@ elif DB_ENGINE == "mysql":
             "PASSWORD": os.environ.get("DJANGO_DB_PASSWORD", ""),
             "HOST": os.environ.get("DJANGO_DB_HOST", "127.0.0.1"),
             "PORT": env_port("DJANGO_DB_PORT", "3306"),
+            "CONN_MAX_AGE": env_int(
+                "DJANGO_DB_CONN_MAX_AGE",
+                60,
+                minimum=0,
+            ),
+            "CONN_HEALTH_CHECKS": True,
             "OPTIONS": {
                 "charset": "utf8mb4",
+                "connect_timeout": env_int(
+                    "DJANGO_DB_CONNECT_TIMEOUT",
+                    10,
+                    minimum=1,
+                ),
+                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
             },
         }
     }
@@ -549,7 +561,7 @@ STORAGES = {
 
 MEDIA_URL = "/media/"
 
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = env_path("DJANGO_MEDIA_ROOT", BASE_DIR / "media")
 
 
 # =============================================================================

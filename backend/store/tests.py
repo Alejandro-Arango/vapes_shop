@@ -21,7 +21,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.contrib.auth.models import Group, User
 from django.contrib.auth.tokens import default_token_generator
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, OperationalError, transaction
 from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -1007,6 +1007,12 @@ class StoreApiTests(APITestCase):
                 "PASSWORD": "valor-seguro-db-123",
                 "HOST": "127.0.0.1",
                 "PORT": "3306",
+                "CONN_MAX_AGE": 60,
+                "CONN_HEALTH_CHECKS": True,
+                "OPTIONS": {
+                    "connect_timeout": 10,
+                    "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+                },
             }
         },
         CACHES={
@@ -1079,6 +1085,41 @@ class StoreApiTests(APITestCase):
         self.assertEqual(recovery_device.token_set.count(), 10)
         self.assertIn("Clave manual:", setup_output.getvalue())
         self.assertIn("MFA confirmado", confirm_output.getvalue())
+
+    def test_wait_for_database_retries_until_connection_is_available(self):
+        output = StringIO()
+
+        with patch(
+            "store.management.commands.wait_for_database.connection.ensure_connection",
+            side_effect=(OperationalError("no disponible"), None),
+        ) as ensure_connection:
+            with patch(
+                "store.management.commands.wait_for_database.time.sleep"
+            ) as sleep:
+                call_command(
+                    "wait_for_database",
+                    attempts=2,
+                    delay=0,
+                    stdout=output,
+                )
+
+        self.assertEqual(ensure_connection.call_count, 2)
+        sleep.assert_called_once_with(0)
+        self.assertIn("Base de datos disponible", output.getvalue())
+
+    def test_wait_for_database_fails_after_attempt_limit(self):
+        with patch(
+            "store.management.commands.wait_for_database.connection.ensure_connection",
+            side_effect=OperationalError("no disponible"),
+        ):
+            with patch("store.management.commands.wait_for_database.time.sleep"):
+                with self.assertRaises(CommandError):
+                    call_command(
+                        "wait_for_database",
+                        attempts=2,
+                        delay=0,
+                        stdout=StringIO(),
+                    )
 
     def test_purge_event_logs_dry_run_does_not_delete_events(self):
         old_event = EventLog.objects.create(

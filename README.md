@@ -306,6 +306,9 @@ DJANGO_DB_USER
 DJANGO_DB_PASSWORD
 DJANGO_DB_HOST
 DJANGO_DB_PORT
+DJANGO_DB_CONN_MAX_AGE
+DJANGO_DB_CONNECT_TIMEOUT
+DJANGO_MEDIA_ROOT
 DJANGO_CACHE_BACKEND
 DJANGO_CACHE_TABLE
 DJANGO_SESSION_COOKIE_SECURE
@@ -599,6 +602,9 @@ DJANGO_DB_USER
 DJANGO_DB_PASSWORD
 DJANGO_DB_HOST
 DJANGO_DB_PORT
+DJANGO_DB_CONN_MAX_AGE
+DJANGO_DB_CONNECT_TIMEOUT
+DJANGO_MEDIA_ROOT
 DJANGO_CACHE_BACKEND
 DJANGO_CACHE_TABLE
 DJANGO_SESSION_COOKIE_SECURE
@@ -634,7 +640,75 @@ INVENTORY_NOTIFICATION_EMAIL
 CONTACT_WHATSAPP_NUMBER
 DJANGO_STORE_LOG_LEVEL
 DJANGO_REQUEST_LOG_LEVEL
+GUNICORN_WORKERS
+GUNICORN_THREADS
+GUNICORN_TIMEOUT
 ```
+
+## Infraestructura con contenedores
+
+El repositorio incluye una base reproducible que no depende de un proveedor:
+
+- Imagen Django no privilegiada basada en Python 3.13.
+- Gunicorn como servidor WSGI.
+- MySQL 8.4 LTS con volumen persistente y health check.
+- Nginx como proxy y servidor de archivos media.
+- Migraciones, tabla de cache y roles ejecutados en una tarea de release.
+- Volumen persistente separado para imagenes subidas.
+- Health checks para Django, MySQL y Nginx.
+- Sistema de archivos de la aplicacion en modo solo lectura.
+- Validacion automatica de Docker y Compose en GitHub Actions.
+
+Docker debe instalarse antes de ejecutar esta infraestructura localmente.
+
+Preparacion:
+
+```powershell
+Copy-Item compose.env.example compose.env
+```
+
+Antes de iniciar, reemplaza en `compose.env` la clave de Django y las
+contrasenas de MySQL.
+
+Construccion e inicio:
+
+```powershell
+docker compose --env-file compose.env up --build -d
+```
+
+Estado de los servicios:
+
+```powershell
+docker compose --env-file compose.env ps
+docker compose --env-file compose.env logs --follow web proxy
+```
+
+La aplicacion queda disponible en:
+
+```text
+http://127.0.0.1:8080/
+```
+
+Creacion del administrador y su MFA:
+
+```powershell
+docker compose --env-file compose.env exec web python manage.py createsuperuser
+docker compose --env-file compose.env exec web python manage.py setup_admin_mfa NOMBRE_USUARIO
+docker compose --env-file compose.env exec web python manage.py setup_admin_mfa NOMBRE_USUARIO --token 123456
+```
+
+Para detener los servicios sin borrar datos:
+
+```powershell
+docker compose --env-file compose.env down
+```
+
+Los volumenes `mysql_data` y `media_data` conservan base de datos e imagenes.
+No uses `down --volumes` salvo que quieras eliminarlos deliberadamente.
+
+Este Compose usa HTTP para desarrollo de infraestructura. En produccion se
+debe terminar TLS en el proxy o balanceador y activar cookies seguras, HSTS,
+redireccion HTTPS, dominio real, SMTP y allowlist administrativa.
 
 ## Autor
 
