@@ -374,6 +374,7 @@ DATA_UPLOAD_MAX_NUMBER_FILES = env_int(
 # =============================================================================
 
 MIDDLEWARE = [
+    "store.middleware.RequestObservabilityMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "store.middleware.AdminAccessMiddleware",
@@ -730,20 +731,38 @@ LOG_LEVEL_CHOICES = (
     "ERROR",
     "CRITICAL",
 )
+LOG_FORMAT_CHOICES = (
+    "simple",
+    "json",
+)
+LOG_FORMAT = env_lower_choice(
+    "DJANGO_LOG_FORMAT",
+    "simple",
+    LOG_FORMAT_CHOICES,
+)
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "simple": {
-            "format": "[{levelname}] {name}: {message}",
+            "format": "[{levelname}] {name} request_id={request_id}: {message}",
             "style": "{",
+        },
+        "json": {
+            "()": "store.logging_utils.JsonFormatter",
+        },
+    },
+    "filters": {
+        "request_context": {
+            "()": "store.logging_utils.RequestContextFilter",
         },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "simple",
+            "formatter": LOG_FORMAT,
+            "filters": ["request_context"],
         },
     },
     "loggers": {
@@ -757,6 +776,15 @@ LOGGING = {
             "propagate": False,
         },
         "django.request": {
+            "handlers": ["console"],
+            "level": env_choice(
+                "DJANGO_REQUEST_LOG_LEVEL",
+                "ERROR",
+                LOG_LEVEL_CHOICES,
+            ),
+            "propagate": False,
+        },
+        "store.request": {
             "handlers": ["console"],
             "level": env_choice(
                 "DJANGO_REQUEST_LOG_LEVEL",

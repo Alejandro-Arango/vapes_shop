@@ -1,6 +1,8 @@
 from django.core.cache import cache
 from django.db import DatabaseError, connection
 from django.db.models import Avg, Count, Q
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -185,12 +187,21 @@ def is_cache_available():
         return False
 
 
+@require_GET
+def liveness_check(request):
+    """
+    Nombre: liveness_check
+    Descripcion: Confirma que el proceso web puede responder sin consultar dependencias.
+    """
+    return JsonResponse({"status": "ok"})
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
     """
     Nombre: health_check
-    Descripcion: Verifica que la aplicacion, base de datos y cache respondan.
+    Descripcion: Verifica readiness de base de datos y cache.
     """
     try:
         connection.ensure_connection()

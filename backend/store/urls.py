@@ -23,6 +23,7 @@ urlpatterns = [
     path("", views.home, name="home"),
 
     # Salud del servicio
+    path("api/live/", views_api.liveness_check, name="liveness_check"),
     path("api/health/", views_api.health_check, name="health_check"),
 
     # Productos

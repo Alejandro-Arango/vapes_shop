@@ -12,5 +12,4 @@ exec gunicorn mi_tienda.wsgi:application \
     --keep-alive "${GUNICORN_KEEP_ALIVE:-5}" \
     --max-requests "${GUNICORN_MAX_REQUESTS:-1000}" \
     --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER:-100}" \
-    --access-logfile - \
     --error-logfile -

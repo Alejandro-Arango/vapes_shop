@@ -5,12 +5,79 @@ Dependencias: Django settings
 """
 
 import hashlib
+import logging
+import re
+from time import perf_counter
+from uuid import uuid4
 
 from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseForbidden
 
 from .audit import get_client_ip, log_event
+from .logging_utils import reset_request_id, set_request_id
+
+
+request_logger = logging.getLogger("store.request")
+REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{7,63}$")
+
+
+class RequestObservabilityMiddleware:
+    """
+    Nombre: RequestObservabilityMiddleware
+    Descripcion: Correlaciona solicitudes y registra estado y duracion sin datos sensibles.
+    """
+
+    QUIET_PATHS = (
+        "/api/live/",
+        "/api/health/",
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        received_request_id = request.headers.get("X-Request-ID", "").strip()
+
+        if REQUEST_ID_PATTERN.fullmatch(received_request_id):
+            request_id = received_request_id
+        else:
+            request_id = uuid4().hex
+
+        request.request_id = request_id
+        context_token = set_request_id(request_id)
+        started_at = perf_counter()
+
+        try:
+            response = self.get_response(request)
+            duration_ms = round((perf_counter() - started_at) * 1000, 2)
+            response.headers["X-Request-ID"] = request_id
+            log_level = self.get_log_level(request.path, response.status_code)
+            request_logger.log(
+                log_level,
+                "Solicitud HTTP completada.",
+                extra={
+                    "method": request.method,
+                    "path": request.path,
+                    "status_code": response.status_code,
+                    "duration_ms": duration_ms,
+                },
+            )
+            return response
+        finally:
+            reset_request_id(context_token)
+
+    def get_log_level(self, path, status_code):
+        if path in self.QUIET_PATHS and status_code < 400:
+            return logging.DEBUG
+
+        if status_code >= 500:
+            return logging.ERROR
+
+        if status_code >= 400:
+            return logging.WARNING
+
+        return logging.INFO
 
 
 class AdminAccessMiddleware:
@@ -197,6 +264,7 @@ class ApiCacheControlMiddleware:
         "/api/contact/",
         "/api/favorites/",
         "/api/health/",
+        "/api/live/",
         "/api/orders/",
     )
 

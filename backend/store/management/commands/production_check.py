@@ -56,6 +56,7 @@ class Command(BaseCommand):
         self.check_content_security_policy(errors)
         self.check_database(errors, options["allow_sqlite"])
         self.check_cache(errors)
+        self.check_observability(errors)
         self.check_admin(errors, warnings)
         self.check_email(errors, warnings)
         self.check_contact(errors)
@@ -204,6 +205,19 @@ class Command(BaseCommand):
         if cache_backend in UNSAFE_CACHE_BACKENDS:
             errors.append(
                 "El cache por defecto no debe ser LocMem/Dummy en produccion."
+            )
+
+    def check_observability(self, errors):
+        if getattr(settings, "LOG_FORMAT", "simple") != "json":
+            errors.append("DJANGO_LOG_FORMAT debe ser json en produccion.")
+
+        required_middleware = {
+            "store.middleware.RequestObservabilityMiddleware",
+        }
+
+        if not required_middleware.issubset(set(settings.MIDDLEWARE)):
+            errors.append(
+                "La aplicacion debe activar middleware de correlacion de solicitudes."
             )
 
     def check_admin(self, errors, warnings):

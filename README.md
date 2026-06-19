@@ -267,7 +267,9 @@ El proyecto ya incluye una base de endurecimiento para preproduccion:
 - Historial de estados validado e inmutable desde el panel administrativo.
 - Auditoria interna con redaccion de datos sensibles.
 - Validacion de IP en auditoria.
-- Health check de base de datos y cache en `/api/health/`.
+- Liveness del proceso en `/api/live/` y readiness de base de datos/cache en `/api/health/`.
+- Identificador `X-Request-ID` para correlacionar solicitudes entre proxy y Django.
+- Logs JSON configurables para agregadores externos.
 - Ruta de admin configurable.
 - Restriccion opcional del admin por IP.
 - MFA TOTP obligatorio para el panel administrativo.
@@ -334,6 +336,9 @@ CONTACT_NOTIFICATION_EMAIL
 ORDER_NOTIFICATION_EMAIL
 INVENTORY_NOTIFICATION_EMAIL
 CONTACT_WHATSAPP_NUMBER
+DJANGO_LOG_FORMAT
+DJANGO_STORE_LOG_LEVEL
+DJANGO_REQUEST_LOG_LEVEL
 ```
 
 ## Mejoras Futuras
@@ -642,6 +647,7 @@ INVENTORY_NOTIFICATION_EMAIL
 CONTACT_WHATSAPP_NUMBER
 DJANGO_STORE_LOG_LEVEL
 DJANGO_REQUEST_LOG_LEVEL
+DJANGO_LOG_FORMAT
 GUNICORN_WORKERS
 GUNICORN_THREADS
 GUNICORN_TIMEOUT
@@ -659,7 +665,9 @@ El repositorio incluye una base reproducible que no depende de un proveedor:
 - Volumen persistente separado para imagenes subidas.
 - Backups versionados de MySQL y media con checksums.
 - Restauracion protegida por confirmacion exacta y respaldo de seguridad previo.
-- Health checks para Django, MySQL y Nginx.
+- Liveness independiente para Django y Nginx.
+- Readiness de base de datos y cache en `/healthz`.
+- Logs JSON correlacionados mediante `X-Request-ID`.
 - Sistema de archivos de la aplicacion en modo solo lectura.
 - Validacion automatica de Docker, Compose y recuperacion en GitHub Actions.
 
@@ -709,6 +717,34 @@ docker compose --env-file compose.env down
 
 Los volumenes `mysql_data` y `media_data` conservan base de datos e imagenes.
 No uses `down --volumes` salvo que quieras eliminarlos deliberadamente.
+
+### Observabilidad
+
+El proxy y Django usan el mismo identificador por solicitud. El valor aparece
+en la cabecera `X-Request-ID` y en los logs JSON, lo que permite rastrear un
+error sin registrar cuerpos, contrasenas ni parametros de consulta.
+
+Los endpoints operativos tienen responsabilidades distintas:
+
+- `/livez`: confirma que Nginx puede responder.
+- `/api/live/`: confirma que el proceso Django puede responder.
+- `/healthz`: readiness externa; verifica Django, MySQL y cache.
+- `/api/health/`: readiness directa de Django.
+
+Comprobacion manual:
+
+```powershell
+curl.exe -i http://127.0.0.1:8080/livez
+curl.exe -i http://127.0.0.1:8080/healthz
+docker compose --env-file compose.env logs --follow web proxy
+```
+
+En produccion, `DJANGO_LOG_FORMAT` debe ser `json`. Los niveles de aplicacion
+y solicitudes se controlan con `DJANGO_STORE_LOG_LEVEL` y
+`DJANGO_REQUEST_LOG_LEVEL`.
+
+El monitoreo externo debe alertar como minimo por readiness `503`, respuestas
+`5xx`, reinicios repetidos de contenedores y fallos del job de recuperacion.
 
 ### Backups y recuperacion
 

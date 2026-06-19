@@ -28,6 +28,9 @@ x-app-environment: &app-environment
   DJANGO_TRUST_X_FORWARDED_FOR: "True"
   DJANGO_EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
   CONTACT_WHATSAPP_NUMBER: ${CONTACT_WHATSAPP_NUMBER:-573016604375}
+  DJANGO_LOG_FORMAT: json
+  DJANGO_STORE_LOG_LEVEL: ${DJANGO_STORE_LOG_LEVEL:-WARNING}
+  DJANGO_REQUEST_LOG_LEVEL: ${DJANGO_REQUEST_LOG_LEVEL:-ERROR}
   GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
   GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
   GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-60}
@@ -140,7 +143,7 @@ services:
         - wget
         - --quiet
         - --spider
-        - http://127.0.0.1:8080/healthz
+        - http://127.0.0.1:8080/livez
       interval: 30s
       timeout: 5s
       retries: 3

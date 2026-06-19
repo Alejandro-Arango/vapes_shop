@@ -4,6 +4,8 @@ Descripcion: Define pruebas automatizadas para los flujos principales de autenti
 Dependencias: Django test, Django auth, Django urls, Django REST Framework y modelos de store
 """
 
+import json
+import logging
 import os
 from datetime import timedelta
 from io import BytesIO, StringIO
@@ -66,6 +68,12 @@ from .admin import (
 )
 from .admin_dashboard import build_business_dashboard_context
 from .audit import get_client_ip, log_event
+from .logging_utils import (
+    JsonFormatter,
+    RequestContextFilter,
+    reset_request_id,
+    set_request_id,
+)
 from .management.commands.production_check import Command as ProductionCheckCommand
 from .models import (
     Category,
@@ -221,6 +229,42 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.headers["Cache-Control"], "no-store, max-age=0")
         self.assertEqual(response.headers["Pragma"], "no-cache")
         self.assertEqual(response.headers["Expires"], "0")
+
+    def test_liveness_check_does_not_query_dependencies(self):
+        with patch("store.views_api.connection.ensure_connection") as ensure_connection:
+            with patch("store.views_api.cache.set") as cache_set:
+                response = self.client.get(reverse("liveness_check"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), {"status": "ok"})
+        ensure_connection.assert_not_called()
+        cache_set.assert_not_called()
+
+    def test_request_id_is_generated_and_returned(self):
+        response = self.client.get(reverse("home"))
+        request_id = response.headers["X-Request-ID"]
+
+        self.assertRegex(request_id, r"^[0-9a-f]{32}$")
+
+    def test_valid_request_id_is_preserved(self):
+        request_id = "trace-1234567890"
+
+        response = self.client.get(
+            reverse("home"),
+            HTTP_X_REQUEST_ID=request_id,
+        )
+
+        self.assertEqual(response.headers["X-Request-ID"], request_id)
+
+    def test_invalid_request_id_is_replaced(self):
+        response = self.client.get(
+            reverse("home"),
+            HTTP_X_REQUEST_ID="short",
+        )
+        request_id = response.headers["X-Request-ID"]
+
+        self.assertNotEqual(request_id, "short")
+        self.assertRegex(request_id, r"^[0-9a-f]{32}$")
 
     def test_health_check_reports_unavailable_cache(self):
         with self.assertLogs("django.request", level="ERROR"):
@@ -853,12 +897,42 @@ class StoreApiTests(APITestCase):
             "whitenoise.storage.CompressedManifestStaticFilesStorage",
         )
         self.assertEqual(
-            settings.MIDDLEWARE[0:2],
+            settings.MIDDLEWARE[0:3],
             [
+                "store.middleware.RequestObservabilityMiddleware",
                 "django.middleware.security.SecurityMiddleware",
                 "whitenoise.middleware.WhiteNoiseMiddleware",
             ],
         )
+
+    def test_json_log_formatter_includes_request_context(self):
+        token = set_request_id("trace-logging-123")
+
+        try:
+            record = logging.LogRecord(
+                name="store.request",
+                level=logging.INFO,
+                pathname=__file__,
+                lineno=1,
+                msg="Solicitud completada",
+                args=(),
+                exc_info=None,
+            )
+            record.method = "GET"
+            record.path = "/api/products/"
+            record.status_code = 200
+            record.duration_ms = 12.5
+            RequestContextFilter().filter(record)
+            payload = json.loads(JsonFormatter().format(record))
+        finally:
+            reset_request_id(token)
+
+        self.assertEqual(payload["request_id"], "trace-logging-123")
+        self.assertEqual(payload["method"], "GET")
+        self.assertEqual(payload["path"], "/api/products/")
+        self.assertEqual(payload["status_code"], 200)
+        self.assertEqual(payload["duration_ms"], 12.5)
+        self.assertTrue(payload["timestamp"].endswith("Z"))
 
     def test_hsts_seconds_is_configured_as_non_negative_integer(self):
         self.assertIsInstance(settings.SECURE_HSTS_SECONDS, int)
@@ -989,6 +1063,24 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        LOG_FORMAT="simple",
+        MIDDLEWARE=[],
+    )
+    def test_production_check_rejects_missing_observability(self):
+        errors = []
+
+        ProductionCheckCommand().check_observability(errors)
+
+        self.assertIn(
+            "DJANGO_LOG_FORMAT debe ser json en produccion.",
+            errors,
+        )
+        self.assertIn(
+            "La aplicacion debe activar middleware de correlacion de solicitudes.",
+            errors,
+        )
+
+    @override_settings(
         DEBUG=False,
         SECRET_KEY="prod-ready-value-with-more-than-fifty-characters-1234567890",
         ALLOWED_HOSTS=["example.com", "www.example.com"],
@@ -1033,6 +1125,7 @@ class StoreApiTests(APITestCase):
         ORDER_NOTIFICATION_EMAIL="orders@example.com",
         INVENTORY_NOTIFICATION_EMAIL="inventory@example.com",
         CONTACT_WHATSAPP_NUMBER="573016604375",
+        LOG_FORMAT="json",
     )
     def test_production_check_accepts_hardened_configuration(self):
         output = StringIO()
