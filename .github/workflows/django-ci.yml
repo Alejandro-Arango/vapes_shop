@@ -47,7 +47,9 @@ jobs:
 
       - name: Verificar higiene de secretos
         working-directory: ${{ github.workspace }}
-        run: python scripts/check_secret_files.py
+        run: |
+          python scripts/check_secret_files.py
+          python scripts/check_zap_rules.py
 
       - name: Probar monitor operativo
         working-directory: ${{ github.workspace }}

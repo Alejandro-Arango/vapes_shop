@@ -1,0 +1,10 @@
+10010	FAIL	Cookie No HttpOnly Flag
+10011	FAIL	Cookie Without Secure Flag
+10019	FAIL	Content-Type Header Missing
+10020	FAIL	X-Frame-Options Header
+10021	FAIL	X-Content-Type-Options Header Missing
+10023	FAIL	Information Disclosure - Debug Error Messages
+10035	IGNORE	Strict-Transport-Security se valida en el proxy TLS real
+10038	FAIL	Content Security Policy Header Not Set
+10063	FAIL	Permissions Policy Header Not Set
+90022	FAIL	Application Error Disclosure

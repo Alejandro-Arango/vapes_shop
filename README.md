@@ -896,6 +896,33 @@ revision de `CODEOWNERS`, private vulnerability reporting, secret scanning y
 push protection. Un secreto detectado debe revocarse antes de intentar limpiar
 el historial.
 
+### Analisis de codigo y seguridad dinamica
+
+`CodeQL` analiza Python y JavaScript en cada push, pull request y semanalmente
+con las consultas `security-extended`. Los resultados se publican en la vista
+de seguridad de GitHub y deben configurarse como check requerido.
+
+`DAST pasivo` construye una imagen efimera, aplica migraciones sobre SQLite,
+crea un producto de prueba y ejecuta OWASP ZAP Baseline. El escaneo usa spider
+tradicional y Ajax, pero solo análisis pasivo: no ejecuta ataques activos ni
+usa datos productivos.
+
+La politica `.zap/rules.tsv` bloquea problemas de cookies, CSP, framing,
+MIME sniffing, Permissions-Policy y divulgacion de errores. HSTS se ignora solo
+en esa instancia HTTP efimera porque TLS termina fuera de Django; debe
+verificarse contra el dominio real antes de producción.
+
+Validacion local de la politica:
+
+```powershell
+python .\scripts\check_zap_rules.py
+python -m unittest discover -s scripts\tests -v
+```
+
+Los reportes ZAP y logs de la aplicación se conservan como artefactos del
+workflow. Una alerta solo debe ignorarse con regla concreta, justificacion y
+fecha de revisión.
+
 ### Backups y recuperacion
 
 Los respaldos se guardan por defecto en `.\backups`, fuera de los volumenes
