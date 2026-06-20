@@ -7,6 +7,7 @@ exec gunicorn mi_tienda.wsgi:application \
     --bind "0.0.0.0:${PORT:-8000}" \
     --workers "${GUNICORN_WORKERS:-3}" \
     --threads "${GUNICORN_THREADS:-2}" \
+    --backlog "${GUNICORN_BACKLOG:-256}" \
     --timeout "${GUNICORN_TIMEOUT:-60}" \
     --graceful-timeout "${GUNICORN_GRACEFUL_TIMEOUT:-30}" \
     --keep-alive "${GUNICORN_KEEP_ALIVE:-5}" \

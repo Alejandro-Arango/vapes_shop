@@ -34,6 +34,12 @@ La prueba `performance/image_pipeline.py` procesa 100 cargas con 8 workers.
 Exige nombres UUID sin rutas del cliente, ausencia de colisiones, decodificacion
 completa y eliminacion de metadatos o contenido anexado antes de almacenar.
 
+La prueba `performance/recovery.js` supera deliberadamente el limite por IP de
+Nginx. Acepta respuestas `429` como descarga controlada, exige que tambien haya
+trafico servido y verifica readiness estable despues de la presion. Luego mata
+el contenedor web y exige que `restart: always` lo recupere en menos de 30
+segundos.
+
 Las sesiones y los productos se generan en una base dedicada cuyo nombre debe
 incluir `performance`. La utilidad se niega a operar sin
 `CHECKOUT_LOAD_TEST_ENABLED=true`, y el workflow elimina el archivo de sesiones
@@ -110,6 +116,9 @@ La prueba falla cuando:
 - se duplican movimientos o transiciones de cancelacion.
 - dos imagenes reciben el mismo nombre o escapan de la ruta de productos;
 - una imagen conserva metadatos, datos anexados o no puede decodificarse.
+- la saturacion no produce descarga controlada o solo produce errores;
+- readiness no recupera tres respuestas consecutivas dentro del presupuesto;
+- el contenedor no incrementa su contador de reinicios tras una caida.
 
 Los resultados y el consumo puntual del contenedor se guardan como artefactos
 de GitHub Actions durante 30 dias.
@@ -162,5 +171,5 @@ permanezca sobre 70 %, memoria supere 80 %, existan reinicios por OOM o la base
 de datos agote conexiones. Primero se identifica el cuello de botella; aumentar
 workers sin memoria o conexiones suficientes puede empeorar la estabilidad.
 
-Antes del lanzamiento tambien hace falta probar recuperacion tras saturacion
-del proceso web, almacenamiento y base de datos.
+Antes del lanzamiento hace falta repetir estas pruebas sobre staging y agregar
+fallas controladas de almacenamiento y base de datos administrada.

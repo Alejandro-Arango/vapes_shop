@@ -286,6 +286,87 @@ def validate_media_proxy(nginx_text):
     ]
 
 
+def validate_recovery_script(recovery_text):
+    required_fragments = (
+        "executor: 'constant-arrival-rate'",
+        "pressure_accepted",
+        "pressure_shed",
+        "pressure_unexpected",
+        "http.expectedStatuses(200, 429, 502, 503, 504)",
+        "recovery-pressure-summary.json",
+    )
+
+    return [
+        f"performance/recovery.js no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in recovery_text
+    ]
+
+
+def validate_recovery_verifier(verifier_text):
+    required_fragments = (
+        "consecutive_successes",
+        "status\": \"recovered\"",
+        "status\": \"timeout\"",
+        "check_readiness",
+        "elapsed_seconds",
+    )
+
+    return [
+        f"scripts/verify_recovery.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in verifier_text
+    ]
+
+
+def validate_resilience_config(
+    start_text,
+    nginx_text,
+    compose_text,
+    local_env_text,
+    production_env_text,
+):
+    required_gunicorn_keys = (
+        "GUNICORN_BACKLOG",
+        "GUNICORN_GRACEFUL_TIMEOUT",
+        "GUNICORN_KEEP_ALIVE",
+        "GUNICORN_MAX_REQUESTS",
+        "GUNICORN_MAX_REQUESTS_JITTER",
+    )
+    findings = []
+
+    if '--backlog "${GUNICORN_BACKLOG:-256}"' not in start_text:
+        findings.append("docker/start.sh no configura backlog de Gunicorn")
+
+    for key in required_gunicorn_keys:
+        if key not in compose_text:
+            findings.append(f"compose.yaml no propaga {key}")
+
+        if key not in parse_env_keys(local_env_text):
+            findings.append(f"compose.env.example no define {key}")
+
+        if key not in parse_env_keys(production_env_text):
+            findings.append(f"compose.production.env.example no define {key}")
+
+    nginx_fragments = (
+        "limit_req_zone $binary_remote_addr",
+        "limit_conn_zone $binary_remote_addr",
+        "limit_req_status 429;",
+        "limit_conn_status 429;",
+        "limit_req zone=per_ip_requests burst=100 nodelay;",
+        "limit_conn per_ip_connections 32;",
+        "proxy_connect_timeout 5s;",
+        "proxy_send_timeout 30s;",
+        "proxy_read_timeout 65s;",
+    )
+
+    for fragment in nginx_fragments:
+        if fragment not in nginx_text:
+            findings.append(f"docker/nginx.conf no contiene {fragment}")
+
+    return findings
+
+
 def validate_workflow(workflow_text):
     findings = []
 
@@ -314,6 +395,12 @@ def validate_workflow(workflow_text):
         "/performance/image_pipeline.py",
         "IMAGE_PIPELINE_TEST_ENABLED=true",
         "image-pipeline.json",
+        "name: Probar recuperacion automatica",
+        "run /scripts/recovery.js",
+        "post-pressure-recovery.json",
+        "post-crash-recovery.json",
+        "docker exec \"$RESILIENCE_WEB_ID\" sh -c \"kill -KILL 1\"",
+        "container-restart.json",
         "rm -f performance-runtime/checkout-fixture.json",
         "rm -f performance-runtime/coupon-fixture.json",
         "rm -f performance-runtime/cancel-fixture.json",
@@ -350,6 +437,9 @@ def find_capacity_findings(project_root):
         "image_pipeline": (
             project_root / "performance" / "image_pipeline.py"
         ),
+        "recovery": project_root / "performance" / "recovery.js",
+        "recovery_verifier": project_root / "scripts" / "verify_recovery.py",
+        "start": project_root / "docker" / "start.sh",
         "nginx": project_root / "docker" / "nginx.conf",
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
     }
@@ -419,6 +509,25 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_media_proxy(
             paths["nginx"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_recovery_script(
+            paths["recovery"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_recovery_verifier(
+            paths["recovery_verifier"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_resilience_config(
+            paths["start"].read_text(encoding="utf-8"),
+            paths["nginx"].read_text(encoding="utf-8"),
+            paths["compose"].read_text(encoding="utf-8"),
+            paths["local_env"].read_text(encoding="utf-8"),
+            paths["production_env"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

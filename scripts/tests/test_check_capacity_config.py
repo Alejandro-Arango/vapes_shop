@@ -203,6 +203,73 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_recovery_script_without_load_shedding_is_rejected(self):
+        recovery_text = (
+            PROJECT_ROOT / "performance" / "recovery.js"
+        ).read_text(encoding="utf-8")
+        invalid_text = recovery_text.replace(
+            "pressure_shed",
+            "pressure_not_measured",
+        )
+
+        findings = capacity.validate_recovery_script(invalid_text)
+
+        self.assertIn(
+            "performance/recovery.js no contiene pressure_shed",
+            findings,
+        )
+
+    def test_recovery_verifier_without_stability_is_rejected(self):
+        verifier_text = (
+            PROJECT_ROOT / "scripts" / "verify_recovery.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = verifier_text.replace(
+            "consecutive_successes",
+            "single_success",
+        )
+
+        findings = capacity.validate_recovery_verifier(invalid_text)
+
+        self.assertIn(
+            "scripts/verify_recovery.py no contiene consecutive_successes",
+            findings,
+        )
+
+    def test_resilience_config_without_backlog_is_rejected(self):
+        start_text = (
+            PROJECT_ROOT / "docker" / "start.sh"
+        ).read_text(encoding="utf-8")
+        nginx_text = (
+            PROJECT_ROOT / "docker" / "nginx.conf"
+        ).read_text(encoding="utf-8")
+        compose_text = (
+            PROJECT_ROOT / "compose.yaml"
+        ).read_text(encoding="utf-8")
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_start = start_text.replace(
+            '    --backlog "${GUNICORN_BACKLOG:-256}" \\\n',
+            "",
+            1,
+        )
+
+        findings = capacity.validate_resilience_config(
+            invalid_start,
+            nginx_text,
+            compose_text,
+            local_env_text,
+            production_env_text,
+        )
+
+        self.assertIn(
+            "docker/start.sh no configura backlog de Gunicorn",
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

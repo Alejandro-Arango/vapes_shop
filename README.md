@@ -650,7 +650,12 @@ DJANGO_REQUEST_LOG_LEVEL
 DJANGO_LOG_FORMAT
 GUNICORN_WORKERS
 GUNICORN_THREADS
+GUNICORN_BACKLOG
 GUNICORN_TIMEOUT
+GUNICORN_GRACEFUL_TIMEOUT
+GUNICORN_KEEP_ALIVE
+GUNICORN_MAX_REQUESTS
+GUNICORN_MAX_REQUESTS_JITTER
 ```
 
 ## Infraestructura con contenedores
@@ -729,6 +734,8 @@ publico y un checkout concurrente sobre MySQL, incluyendo stock limitado,
 rechazos controlados, idempotencia, limites globales de cupones y cancelacion
 con restauracion unica de inventario. Tambien valida normalizacion y escritura
 concurrente de imagenes sin conservar nombres ni metadatos del cliente.
+El mismo workflow aplica presion controlada, comprueba recuperacion estable de
+readiness y fuerza una caida para validar el reinicio automatico del contenedor.
 
 Validacion estatica local:
 
