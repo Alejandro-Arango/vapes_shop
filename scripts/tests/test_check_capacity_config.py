@@ -133,6 +133,41 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_cancel_without_closed_rejection_is_rejected(self):
+        cancel_text = (
+            PROJECT_ROOT / "performance" / "cancel.js"
+        ).read_text(encoding="utf-8")
+        invalid_text = cancel_text.replace(
+            "body.error.toLowerCase().includes('cerrada')",
+            "body.error.toLowerCase().includes('otra-causa')",
+            1,
+        )
+
+        findings = capacity.validate_cancel_script(invalid_text)
+
+        self.assertIn(
+            "performance/cancel.js no contiene "
+            "body.error.toLowerCase().includes('cerrada')",
+            findings,
+        )
+
+    def test_cancel_fixture_without_unique_restore_is_rejected(self):
+        fixture_text = (
+            PROJECT_ROOT / "performance" / "cancel_fixture.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = fixture_text.replace(
+            "restore_movement_created_once",
+            "restore_movement_not_checked",
+        )
+
+        findings = capacity.validate_cancel_fixture(invalid_text)
+
+        self.assertIn(
+            "performance/cancel_fixture.py no contiene "
+            "restore_movement_created_once",
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

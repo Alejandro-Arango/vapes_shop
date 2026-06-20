@@ -215,6 +215,43 @@ def validate_coupon_fixture(fixture_text):
     ]
 
 
+def validate_cancel_script(cancel_text):
+    required_fragments = (
+        "executor: 'per-vu-iterations'",
+        "http.expectedStatuses(200, 400)",
+        "cancel_successes",
+        "cancel_rejections",
+        "cancel_unexpected",
+        "/api/orders/cancel/${fixture.order_id}/",
+        "body.error.toLowerCase().includes('cerrada')",
+        "cancel-summary.json",
+    )
+
+    return [
+        f"performance/cancel.js no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in cancel_text
+    ]
+
+
+def validate_cancel_fixture(fixture_text):
+    required_fragments = (
+        "CHECKOUT_LOAD_TEST_ENABLED",
+        "performance",
+        "movement_type=\"checkout\"",
+        "cancel_history_created_once",
+        "product_stock_restored_once",
+        "restore_movement_created_once",
+        "success_event_created_once",
+    )
+
+    return [
+        f"performance/cancel_fixture.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in fixture_text
+    ]
+
+
 def validate_workflow(workflow_text):
     findings = []
 
@@ -236,8 +273,12 @@ def validate_workflow(workflow_text):
         "coupon_fixture.py",
         "run /scripts/coupon.js",
         "coupon-invariants.json",
+        "cancel_fixture.py",
+        "run /scripts/cancel.js",
+        "cancel-invariants.json",
         "rm -f performance-runtime/checkout-fixture.json",
         "rm -f performance-runtime/coupon-fixture.json",
+        "rm -f performance-runtime/cancel-fixture.json",
     )
 
     for fragment in required_fragments:
@@ -263,6 +304,10 @@ def find_capacity_findings(project_root):
         "coupon": project_root / "performance" / "coupon.js",
         "coupon_fixture": (
             project_root / "performance" / "coupon_fixture.py"
+        ),
+        "cancel": project_root / "performance" / "cancel.js",
+        "cancel_fixture": (
+            project_root / "performance" / "cancel_fixture.py"
         ),
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
     }
@@ -312,6 +357,16 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_coupon_fixture(
             paths["coupon_fixture"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_cancel_script(
+            paths["cancel"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_cancel_fixture(
+            paths["cancel_fixture"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

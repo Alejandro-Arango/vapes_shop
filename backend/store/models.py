@@ -739,36 +739,37 @@ class Order(models.Model):
         Nombre: restore_items_stock
         Descripcion: Devuelve al inventario las unidades asociadas a los items de la orden.
         """
-        items = list(self.orderitem_set.all())
-        product_ids = [item.product_id for item in items]
+        with transaction.atomic():
+            items = list(self.orderitem_set.all())
+            product_ids = [item.product_id for item in items]
 
-        locked_products = Product.objects.select_for_update().filter(
-            id__in=product_ids
-        )
-        product_map = {
-            product.id: product
-            for product in locked_products
-        }
-
-        for item in items:
-            product = product_map.get(item.product_id)
-
-            if not product:
-                continue
-
-            stock_before = product.stock
-            product.stock += item.quantity
-            product.save(update_fields=["stock"])
-            StockMovement.objects.create(
-                product=product,
-                order=self,
-                movement_type="cancel_restore",
-                quantity=item.quantity,
-                stock_before=stock_before,
-                stock_after=product.stock,
-                user=user,
-                reason="Restauracion por cancelacion de pedido.",
+            locked_products = Product.objects.select_for_update().filter(
+                id__in=product_ids
             )
+            product_map = {
+                product.id: product
+                for product in locked_products
+            }
+
+            for item in items:
+                product = product_map.get(item.product_id)
+
+                if not product:
+                    continue
+
+                stock_before = product.stock
+                product.stock += item.quantity
+                product.save(update_fields=["stock"])
+                StockMovement.objects.create(
+                    product=product,
+                    order=self,
+                    movement_type="cancel_restore",
+                    quantity=item.quantity,
+                    stock_before=stock_before,
+                    stock_after=product.stock,
+                    user=user,
+                    reason="Restauracion por cancelacion de pedido.",
+                )
 
 
 class OrderStatusHistory(models.Model):
@@ -979,6 +980,10 @@ class StockMovement(models.Model):
             models.Index(fields=["order", "created_at"], name="stockmov_order_date_idx"),
         ]
         constraints = [
+            models.UniqueConstraint(
+                fields=["order", "product", "movement_type"],
+                name="stockmov_order_prod_type_uniq",
+            ),
             models.CheckConstraint(
                 condition=models.Q(quantity__lt=0) | models.Q(quantity__gt=0),
                 name="stockmovement_quantity_not_zero",

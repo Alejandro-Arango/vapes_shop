@@ -726,7 +726,8 @@ Compose incluye una linea base de recursos para un host de al menos 2 vCPU y
 4 GB de RAM. El workflow `Rendimiento y capacidad` ejecuta un perfil `smoke`
 en cada cambio y un perfil `baseline` semanal o manual. Prueba el catalogo
 publico y un checkout concurrente sobre MySQL, incluyendo stock limitado,
-rechazos controlados, idempotencia y limites globales de cupones.
+rechazos controlados, idempotencia, limites globales de cupones y cancelacion
+con restauracion unica de inventario.
 
 Validacion estatica local:
 

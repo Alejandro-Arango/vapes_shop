@@ -795,6 +795,86 @@ class StoreApiTests(APITestCase):
         self.assertEqual(StockMovement.objects.count(), 1)
         self.assertEqual(valid_movement.stock_after, 3)
 
+    def test_stock_movement_rejects_duplicate_order_product_and_type(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Inventario",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+        )
+        StockMovement.objects.create(
+            product=self.product,
+            order=order,
+            movement_type="cancel_restore",
+            quantity=2,
+            stock_before=3,
+            stock_after=5,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                StockMovement.objects.create(
+                    product=self.product,
+                    order=order,
+                    movement_type="cancel_restore",
+                    quantity=2,
+                    stock_before=5,
+                    stock_after=7,
+                )
+
+        self.assertEqual(
+            StockMovement.objects.filter(
+                product=self.product,
+                order=order,
+                movement_type="cancel_restore",
+            ).count(),
+            1,
+        )
+
+    def test_restore_items_stock_rolls_back_duplicate_attempt(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Restauracion",
+            email=user.email,
+        )
+        self.product.stock = 3
+        self.product.save(update_fields=["stock"])
+        order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=2,
+        )
+
+        order.restore_items_stock(user=user)
+
+        with self.assertRaises(IntegrityError):
+            order.restore_items_stock(user=user)
+
+        self.product.refresh_from_db()
+
+        self.assertEqual(self.product.stock, 5)
+        self.assertEqual(
+            StockMovement.objects.filter(
+                product=self.product,
+                order=order,
+                movement_type="cancel_restore",
+            ).count(),
+            1,
+        )
+
     def test_customer_with_orders_cannot_be_deleted(self):
         user = self.create_user()
         customer = Customer.objects.create(

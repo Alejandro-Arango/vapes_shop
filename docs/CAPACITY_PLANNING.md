@@ -26,6 +26,10 @@ contra un mismo cupon limitado. Al no compartir inventario, la serializacion
 depende del bloqueo del cupon y permite detectar usos por encima de
 `max_uses`.
 
+La prueba `performance/cancel.js` envia varias cancelaciones simultaneas sobre
+una orden pagada. Solo una debe devolver inventario; las demas deben esperar el
+bloqueo de la orden y recibir un rechazo controlado cuando ya esta cerrada.
+
 Las sesiones y los productos se generan en una base dedicada cuyo nombre debe
 incluir `performance`. La utilidad se niega a operar sin
 `CHECKOUT_LOAD_TEST_ENABLED=true`, y el workflow elimina el archivo de sesiones
@@ -81,6 +85,10 @@ El escenario de cupon usa las mismas cantidades: 4 compradores y 2 usos en
 producto diferente con stock propio; exactamente `max_uses` ordenes deben
 obtener el descuento.
 
+La cancelacion usa 4 solicitudes en `smoke` y 20 en `baseline`. Debe producir
+un solo `200`, un movimiento `cancel_restore`, una transicion a `cancelado` y
+el resto de respuestas `400`.
+
 La prueba falla cuando:
 
 - al menos 1 % de las solicitudes HTTP falla;
@@ -94,6 +102,8 @@ La prueba falla cuando:
 - MySQL no termina con stock cero y registros contables consistentes.
 - el contador del cupon supera `max_uses` o no coincide con las ordenes;
 - una orden aceptada omite el descuento o un rechazo consume inventario.
+- una cancelacion restaura inventario mas de una vez;
+- se duplican movimientos o transiciones de cancelacion.
 
 Los resultados y el consumo puntual del contenedor se guardan como artefactos
 de GitHub Actions durante 30 dias.
@@ -146,5 +156,5 @@ permanezca sobre 70 %, memoria supere 80 %, existan reinicios por OOM o la base
 de datos agote conexiones. Primero se identifica el cuello de botella; aumentar
 workers sin memoria o conexiones suficientes puede empeorar la estabilidad.
 
-Antes del lanzamiento tambien hacen falta escenarios de cancelacion de
-pedidos, carga de imagenes y recuperacion tras saturacion.
+Antes del lanzamiento tambien hacen falta escenarios de carga de imagenes y
+recuperacion tras saturacion.
