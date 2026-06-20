@@ -831,6 +831,47 @@ debe ser compatible con la version anterior: primero agregar estructuras
 nuevas, despues migrar datos y solo en una release posterior retirar lo
 antiguo. Una migracion destructiva elimina la garantia de rollback automatico.
 
+### Seguridad de dependencias e imagenes
+
+El workflow `Seguridad de dependencias e imagenes` se ejecuta en pushes, pull
+requests, manualmente y cada lunes. Realiza:
+
+- auditoria bloqueante de dependencias Python con `pip-audit`;
+- construccion de las imagenes de aplicacion y operaciones;
+- SBOM SPDX JSON de cada imagen;
+- escaneo de vulnerabilidades de paquetes del sistema y Python;
+- bloqueo ante vulnerabilidades criticas con correccion disponible;
+- conservacion de SBOM y reportes durante 30 dias.
+
+Las releases adjuntan los dos SBOM como artefactos y assets de la release,
+ademas de las atestaciones de procedencia de GHCR.
+
+Dependabot revisa semanalmente dependencias Python, imagenes Docker y acciones
+de GitHub. Las actualizaciones menores y parches se agrupan por ecosistema.
+No existe merge automatico: cada PR debe superar CI y revisarse antes de
+integrarse.
+
+En GitHub se deben marcar como checks requeridos al menos `Django CI` y
+`Seguridad de dependencias e imagenes` antes de permitir merge a la rama
+principal. Las releases deben crearse únicamente desde commits que hayan
+superado ambos workflows.
+
+Auditoria Python manual:
+
+```powershell
+cd C:\dev\vapes_shop
+.\backend\.venv\Scripts\python.exe -m pip install -r backend\requirements-security.txt
+.\backend\.venv\Scripts\python.exe -m pip_audit `
+  --requirement backend\requirements-production.txt `
+  --no-deps `
+  --strict `
+  --progress-spinner off
+```
+
+Un hallazgo solo puede ignorarse con un identificador concreto, una
+justificacion documentada, alcance revisado y fecha de expiracion. No se deben
+desactivar globalmente las auditorias para desbloquear una release.
+
 ### Backups y recuperacion
 
 Los respaldos se guardan por defecto en `.\backups`, fuera de los volumenes

@@ -1,0 +1,118 @@
+name: Seguridad de dependencias e imagenes
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "23 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-dependencies:
+    name: Auditar dependencias Python
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: |
+            backend/requirements-production.txt
+            backend/requirements-security.txt
+
+      - name: Instalar auditor
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements-security.txt
+          python -m pip check
+
+      - name: Auditar dependencias fijadas
+        run: |
+          python -m pip_audit \
+            --requirement backend/requirements-production.txt \
+            --no-deps \
+            --strict \
+            --progress-spinner off
+
+  container-images:
+    name: SBOM y vulnerabilidades de imagenes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Construir imagenes
+        run: |
+          docker build --tag vapes-shop:security .
+          docker build \
+            --file docker/backup.Dockerfile \
+            --tag vapes-shop-backup:security \
+            .
+
+      - name: Generar SBOM de aplicacion
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: vapes-shop:security
+          format: spdx-json
+          output-file: app-sbom.spdx.json
+          artifact-name: app-sbom
+          upload-artifact: true
+          upload-artifact-retention: 30
+          upload-release-assets: false
+
+      - name: Escanear aplicacion
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          sbom: app-sbom.spdx.json
+          fail-build: true
+          severity-cutoff: critical
+          only-fixed: true
+          output-format: json
+          output-file: app-vulnerabilities.json
+
+      - name: Generar SBOM de operaciones
+        if: always()
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: vapes-shop-backup:security
+          format: spdx-json
+          output-file: backup-sbom.spdx.json
+          artifact-name: backup-sbom
+          upload-artifact: true
+          upload-artifact-retention: 30
+          upload-release-assets: false
+
+      - name: Escanear operaciones
+        if: always()
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          sbom: backup-sbom.spdx.json
+          fail-build: true
+          severity-cutoff: critical
+          only-fixed: true
+          output-format: json
+          output-file: backup-vulnerabilities.json
+
+      - name: Conservar reportes de vulnerabilidades
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulnerability-reports
+          path: |
+            app-vulnerabilities.json
+            backup-vulnerabilities.json
+          if-no-files-found: warn
+          retention-days: 30
