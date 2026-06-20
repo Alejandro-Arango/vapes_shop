@@ -63,6 +63,41 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_checkout_without_csrf_is_rejected(self):
+        checkout_text = (
+            PROJECT_ROOT / "performance" / "checkout.js"
+        ).read_text(encoding="utf-8")
+        invalid_text = checkout_text.replace(
+            "'X-CSRFToken': buyer.csrf_token,\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_checkout_script(invalid_text)
+
+        self.assertIn(
+            "performance/checkout.js no contiene "
+            "'X-CSRFToken': buyer.csrf_token",
+            findings,
+        )
+
+    def test_checkout_fixture_without_database_guard_is_rejected(self):
+        fixture_text = (
+            PROJECT_ROOT / "performance" / "checkout_fixture.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = fixture_text.replace(
+            "CHECKOUT_LOAD_TEST_ENABLED",
+            "UNSAFE_LOAD_TEST_ENABLED",
+        )
+
+        findings = capacity.validate_checkout_fixture(invalid_text)
+
+        self.assertIn(
+            "performance/checkout_fixture.py no contiene "
+            "CHECKOUT_LOAD_TEST_ENABLED",
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

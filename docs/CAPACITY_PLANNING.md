@@ -6,16 +6,25 @@ base de datos, volumen de datos y trafico real.
 
 ## Alcance actual
 
-La prueba `performance/catalog.js` cubre solamente lectura anonima:
+La prueba `performance/catalog.js` cubre lectura anonima:
 
 - pagina principal;
 - categorias;
 - catalogo paginado con 24 productos;
 - liveness y readiness.
 
-No genera pedidos, sesiones, escritura de carrito, correo ni carga
-administrativa. Esos flujos necesitan escenarios separados y datos
-descartables antes de abrir la tienda.
+La prueba `performance/checkout.js` cubre escritura autenticada sobre MySQL:
+
+- sesiones independientes con carrito preparado;
+- compradores concurrentes compitiendo por inventario limitado;
+- bloqueo de producto y rechazo controlado al agotarse el stock;
+- reintento con la misma clave de idempotencia;
+- consistencia entre ordenes, items, historial y movimientos de inventario.
+
+Las sesiones y los productos se generan en una base dedicada cuyo nombre debe
+incluir `performance`. La utilidad se niega a operar sin
+`CHECKOUT_LOAD_TEST_ENABLED=true`, y el workflow elimina el archivo de sesiones
+antes de publicar artefactos.
 
 ## Host de referencia inicial
 
@@ -56,6 +65,12 @@ pull requests para detectar regresiones gruesas.
 semana o manualmente. Sus resultados sirven para comparar commits bajo el
 mismo entorno efimero, no para predecir trafico de Internet.
 
+Para checkout, `smoke` enfrenta 4 compradores contra 2 unidades y `baseline`
+enfrenta 20 compradores contra 10 unidades. Cada comprador ejecuta una sola
+iteracion con una sesion distinta. Debe haber exactamente tantas compras
+exitosas como unidades iniciales, y el resto debe recibir un rechazo `400`
+controlado.
+
 La prueba falla cuando:
 
 - al menos 1 % de las solicitudes HTTP falla;
@@ -63,9 +78,18 @@ La prueba falla cuando:
 - p95 del catalogo supera 750 ms o p99 supera 1500 ms;
 - p95 de la pagina principal supera 1000 ms;
 - p95 de health supera 300 ms.
+- checkout vende mas o menos unidades que el inventario inicial;
+- un rechazo devuelve un estado inesperado, como `403`, `429` o `5xx`;
+- un reintento idempotente crea otra orden o devuelve una orden diferente;
+- MySQL no termina con stock cero y registros contables consistentes.
 
 Los resultados y el consumo puntual del contenedor se guardan como artefactos
 de GitHub Actions durante 30 dias.
+
+Los `400` por agotamiento son parte esperada del escenario de contencion. k6
+los clasifica como respuestas controladas, pero un verificador independiente
+consulta MySQL al terminar y exige el conteo exacto de exitos, rechazos,
+replays, items, movimientos y eventos.
 
 ## Ejecucion local
 
@@ -110,5 +134,6 @@ permanezca sobre 70 %, memoria supere 80 %, existan reinicios por OOM o la base
 de datos agote conexiones. Primero se identifica el cuello de botella; aumentar
 workers sin memoria o conexiones suficientes puede empeorar la estabilidad.
 
-Antes del lanzamiento tambien hacen falta escenarios de checkout autenticado,
-cancelacion de pedidos, carga de imagenes y recuperacion tras saturacion.
+Antes del lanzamiento tambien hacen falta escenarios de cancelacion de
+pedidos, cupones concurrentes, carga de imagenes y recuperacion tras
+saturacion.

@@ -167,3 +167,260 @@ jobs:
           path: performance-results/
           if-no-files-found: warn
           retention-days: 30
+
+  checkout:
+    name: Probar checkout concurrente
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.4.10
+        env:
+          MYSQL_DATABASE: vapes_shop_performance
+          MYSQL_USER: vapes_user
+          MYSQL_PASSWORD: performance-user-password
+          MYSQL_ROOT_PASSWORD: performance-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root
+          --password=performance-root-password --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+          --health-start-period=30s
+
+    env:
+      DJANGO_SECRET_KEY: "checkout-performance-secret-with-more-than-fifty-characters-1234567890"
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      DJANGO_CSRF_TRUSTED_ORIGINS: "http://localhost:8000"
+      DJANGO_ADMIN_URL_PATH: "panel-performance/"
+      DJANGO_DB_ENGINE: "mysql"
+      DJANGO_DB_NAME: "vapes_shop_performance"
+      DJANGO_DB_USER: "vapes_user"
+      DJANGO_DB_PASSWORD: "performance-user-password"
+      DJANGO_DB_HOST: "127.0.0.1"
+      DJANGO_DB_PORT: "3306"
+      DJANGO_CACHE_BACKEND: "database"
+      DJANGO_CACHE_TABLE: "django_cache"
+      DJANGO_SESSION_COOKIE_SECURE: "False"
+      DJANGO_CSRF_COOKIE_SECURE: "False"
+      DJANGO_SECURE_SSL_REDIRECT: "False"
+      DJANGO_SECURE_HSTS_SECONDS: "0"
+      DJANGO_EMAIL_BACKEND: "django.core.mail.backends.dummy.EmailBackend"
+      DJANGO_LOG_FORMAT: "json"
+      CHECKOUT_LOAD_TEST_ENABLED: "true"
+      DJANGO_PROJECT_ROOT: "/app/backend"
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Seleccionar tamano de prueba
+        env:
+          PROFILE_INPUT: ${{ inputs.profile }}
+        run: |
+          case "$GITHUB_EVENT_NAME" in
+            schedule)
+              profile="baseline"
+              ;;
+            workflow_dispatch)
+              profile="${PROFILE_INPUT:-smoke}"
+              ;;
+            *)
+              profile="smoke"
+              ;;
+          esac
+
+          if [[ "$profile" == "baseline" ]]; then
+            buyers=20
+            stock=10
+          else
+            buyers=4
+            stock=2
+          fi
+
+          echo "LOAD_PROFILE=$profile" >> "$GITHUB_ENV"
+          echo "CHECKOUT_BUYERS=$buyers" >> "$GITHUB_ENV"
+          echo "CHECKOUT_STOCK=$stock" >> "$GITHUB_ENV"
+
+      - name: Construir imagen
+        run: docker build --tag vapes-shop:checkout-performance .
+
+      - name: Preparar esquema y sesiones efimeras
+        run: |
+          mkdir -p performance-runtime performance-results
+          chmod 0777 performance-runtime performance-results
+
+          env_args=(
+            --env DJANGO_SECRET_KEY
+            --env DJANGO_DEBUG
+            --env DJANGO_ALLOWED_HOSTS
+            --env DJANGO_CSRF_TRUSTED_ORIGINS
+            --env DJANGO_ADMIN_URL_PATH
+            --env DJANGO_DB_ENGINE
+            --env DJANGO_DB_NAME
+            --env DJANGO_DB_USER
+            --env DJANGO_DB_PASSWORD
+            --env DJANGO_DB_HOST
+            --env DJANGO_DB_PORT
+            --env DJANGO_CACHE_BACKEND
+            --env DJANGO_CACHE_TABLE
+            --env DJANGO_SESSION_COOKIE_SECURE
+            --env DJANGO_CSRF_COOKIE_SECURE
+            --env DJANGO_SECURE_SSL_REDIRECT
+            --env DJANGO_SECURE_HSTS_SECONDS
+            --env DJANGO_EMAIL_BACKEND
+            --env DJANGO_LOG_FORMAT
+            --env CHECKOUT_LOAD_TEST_ENABLED
+            --env DJANGO_PROJECT_ROOT
+          )
+
+          docker run --rm \
+            --network host \
+            "${env_args[@]}" \
+            --entrypoint /app/docker/release.sh \
+            vapes-shop:checkout-performance
+
+          docker run --rm \
+            --network host \
+            "${env_args[@]}" \
+            --volume "$PWD/performance:/performance:ro" \
+            --volume "$PWD/performance-runtime:/runtime" \
+            --entrypoint python \
+            vapes-shop:checkout-performance \
+            /performance/checkout_fixture.py \
+            prepare \
+            --buyers "$CHECKOUT_BUYERS" \
+            --stock "$CHECKOUT_STOCK" \
+            --output /runtime/checkout-fixture.json
+
+      - name: Iniciar aplicacion con MySQL
+        run: |
+          env_args=(
+            --env DJANGO_SECRET_KEY
+            --env DJANGO_DEBUG
+            --env DJANGO_ALLOWED_HOSTS
+            --env DJANGO_CSRF_TRUSTED_ORIGINS
+            --env DJANGO_ADMIN_URL_PATH
+            --env DJANGO_DB_ENGINE
+            --env DJANGO_DB_NAME
+            --env DJANGO_DB_USER
+            --env DJANGO_DB_PASSWORD
+            --env DJANGO_DB_HOST
+            --env DJANGO_DB_PORT
+            --env DJANGO_CACHE_BACKEND
+            --env DJANGO_CACHE_TABLE
+            --env DJANGO_SESSION_COOKIE_SECURE
+            --env DJANGO_CSRF_COOKIE_SECURE
+            --env DJANGO_SECURE_SSL_REDIRECT
+            --env DJANGO_SECURE_HSTS_SECONDS
+            --env DJANGO_EMAIL_BACKEND
+            --env DJANGO_LOG_FORMAT
+          )
+
+          container_id="$(
+            docker run --detach \
+              --name vapes-shop-checkout-performance \
+              --network host \
+              --memory 512m \
+              --cpus 1.0 \
+              --pids-limit 256 \
+              "${env_args[@]}" \
+              vapes-shop:checkout-performance
+          )"
+
+          echo "CHECKOUT_CONTAINER_ID=$container_id" >> "$GITHUB_ENV"
+
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8000/api/health/; then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          docker logs "$container_id"
+          exit 1
+
+      - name: Ejecutar contencion e idempotencia
+        run: |
+          docker run --rm \
+            --network host \
+            --volume "$PWD/performance:/scripts:ro" \
+            --volume "$PWD/performance-runtime:/runtime:ro" \
+            --volume "$PWD/performance-results:/results" \
+            --workdir /results \
+            --env BASE_URL=http://127.0.0.1:8000 \
+            --env CHECKOUT_FIXTURE_PATH=/runtime/checkout-fixture.json \
+            grafana/k6:2.0.0@sha256:a33a0cfdc4d2483d6b7a3a22e726a499ff2831a671a49239104cd34a9937523c \
+            run /scripts/checkout.js
+
+      - name: Verificar invariantes en MySQL
+        if: ${{ always() && !cancelled() && env.CHECKOUT_CONTAINER_ID != '' }}
+        run: |
+          env_args=(
+            --env DJANGO_SECRET_KEY
+            --env DJANGO_DEBUG
+            --env DJANGO_ALLOWED_HOSTS
+            --env DJANGO_CSRF_TRUSTED_ORIGINS
+            --env DJANGO_ADMIN_URL_PATH
+            --env DJANGO_DB_ENGINE
+            --env DJANGO_DB_NAME
+            --env DJANGO_DB_USER
+            --env DJANGO_DB_PASSWORD
+            --env DJANGO_DB_HOST
+            --env DJANGO_DB_PORT
+            --env DJANGO_CACHE_BACKEND
+            --env DJANGO_CACHE_TABLE
+            --env CHECKOUT_LOAD_TEST_ENABLED
+            --env DJANGO_PROJECT_ROOT
+          )
+
+          docker run --rm \
+            --network host \
+            "${env_args[@]}" \
+            --volume "$PWD/performance:/performance:ro" \
+            --volume "$PWD/performance-runtime:/runtime:ro" \
+            --volume "$PWD/performance-results:/results" \
+            --entrypoint python \
+            vapes-shop:checkout-performance \
+            /performance/checkout_fixture.py \
+            verify \
+            --fixture /runtime/checkout-fixture.json \
+            --output /results/checkout-invariants.json
+
+      - name: Conservar metricas y logs
+        if: always()
+        run: |
+          mkdir -p performance-results
+
+          if [[ -n "${CHECKOUT_CONTAINER_ID:-}" ]]; then
+            docker stats \
+              --no-stream \
+              --format '{{json .}}' \
+              "$CHECKOUT_CONTAINER_ID" \
+              > performance-results/checkout-container-stats.jsonl || true
+            docker logs "$CHECKOUT_CONTAINER_ID" \
+              > performance-results/checkout-application.log 2>&1 || true
+          fi
+
+      - name: Eliminar sesiones efimeras y limpiar
+        if: always()
+        run: |
+          rm -f performance-runtime/checkout-fixture.json
+
+          if [[ -n "${CHECKOUT_CONTAINER_ID:-}" ]]; then
+            docker rm --force "$CHECKOUT_CONTAINER_ID" || true
+          fi
+
+      - name: Subir resultados de checkout
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkout-performance-${{ env.LOAD_PROFILE }}
+          path: performance-results/
+          if-no-files-found: warn
+          retention-days: 30

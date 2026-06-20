@@ -134,6 +134,47 @@ def validate_load_script(load_text):
     ]
 
 
+def validate_checkout_script(checkout_text):
+    required_fragments = (
+        "executor: 'per-vu-iterations'",
+        "http.expectedStatuses(200, 400)",
+        "checkout_successes",
+        "checkout_rejections",
+        "checkout_replays",
+        "checkout_unexpected",
+        "'Idempotency-Key': buyer.idempotency_key",
+        "'X-CSRFToken': buyer.csrf_token",
+        "/api/orders/checkout/",
+        "checkout-summary.json",
+    )
+
+    return [
+        f"performance/checkout.js no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in checkout_text
+    ]
+
+
+def validate_checkout_fixture(fixture_text):
+    required_fragments = (
+        "CHECKOUT_LOAD_TEST_ENABLED",
+        "performance",
+        "Client(enforce_csrf_checks=True)",
+        "client.force_login(user)",
+        "session[\"cart\"]",
+        "order_count_matches_initial_stock",
+        "product_stock_is_zero",
+        "idempotency_replays_match_orders",
+        "movement_quantity_matches_stock",
+    )
+
+    return [
+        f"performance/checkout_fixture.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in fixture_text
+    ]
+
+
 def validate_workflow(workflow_text):
     findings = []
 
@@ -146,6 +187,21 @@ def validate_workflow(workflow_text):
                 f"performance.yml no selecciona el perfil {profile_name}"
             )
 
+    required_fragments = (
+        "image: mysql:8.4.10",
+        "name: Probar checkout concurrente",
+        "checkout_fixture.py",
+        "verify",
+        "checkout-invariants.json",
+        "rm -f performance-runtime/checkout-fixture.json",
+    )
+
+    for fragment in required_fragments:
+        if fragment not in workflow_text:
+            findings.append(
+                f"performance.yml no contiene {fragment}"
+            )
+
     return findings
 
 
@@ -156,6 +212,10 @@ def find_capacity_findings(project_root):
         "local_env": project_root / "compose.env.example",
         "production_env": project_root / "compose.production.env.example",
         "load": project_root / "performance" / "catalog.js",
+        "checkout": project_root / "performance" / "checkout.js",
+        "checkout_fixture": (
+            project_root / "performance" / "checkout_fixture.py"
+        ),
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
     }
     missing_paths = [
@@ -185,6 +245,16 @@ def find_capacity_findings(project_root):
     )
     findings.extend(
         validate_load_script(paths["load"].read_text(encoding="utf-8"))
+    )
+    findings.extend(
+        validate_checkout_script(
+            paths["checkout"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_checkout_fixture(
+            paths["checkout_fixture"].read_text(encoding="utf-8")
+        )
     )
     findings.extend(
         validate_workflow(paths["workflow"].read_text(encoding="utf-8"))

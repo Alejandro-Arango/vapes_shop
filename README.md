@@ -724,8 +724,9 @@ No uses `down --volumes` salvo que quieras eliminarlos deliberadamente.
 
 Compose incluye una linea base de recursos para un host de al menos 2 vCPU y
 4 GB de RAM. El workflow `Rendimiento y capacidad` ejecuta un perfil `smoke`
-en cada cambio y un perfil `baseline` semanal o manual. Ambos prueban pagina
-principal, categorias, catalogo paginado y endpoints operativos.
+en cada cambio y un perfil `baseline` semanal o manual. Prueba el catalogo
+publico y un checkout concurrente sobre MySQL, incluyendo stock limitado,
+rechazos controlados e idempotencia.
 
 Validacion estatica local:
 

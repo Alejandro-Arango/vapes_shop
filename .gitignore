@@ -41,6 +41,7 @@ backups/
 .deploy/
 .deploy.lock/
 performance-results/
+performance-runtime/
 
 
 # =============================================================================
