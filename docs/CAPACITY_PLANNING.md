@@ -30,6 +30,10 @@ La prueba `performance/cancel.js` envia varias cancelaciones simultaneas sobre
 una orden pagada. Solo una debe devolver inventario; las demas deben esperar el
 bloqueo de la orden y recibir un rechazo controlado cuando ya esta cerrada.
 
+La prueba `performance/image_pipeline.py` procesa 100 cargas con 8 workers.
+Exige nombres UUID sin rutas del cliente, ausencia de colisiones, decodificacion
+completa y eliminacion de metadatos o contenido anexado antes de almacenar.
+
 Las sesiones y los productos se generan en una base dedicada cuyo nombre debe
 incluir `performance`. La utilidad se niega a operar sin
 `CHECKOUT_LOAD_TEST_ENABLED=true`, y el workflow elimina el archivo de sesiones
@@ -104,6 +108,8 @@ La prueba falla cuando:
 - una orden aceptada omite el descuento o un rechazo consume inventario.
 - una cancelacion restaura inventario mas de una vez;
 - se duplican movimientos o transiciones de cancelacion.
+- dos imagenes reciben el mismo nombre o escapan de la ruta de productos;
+- una imagen conserva metadatos, datos anexados o no puede decodificarse.
 
 Los resultados y el consumo puntual del contenedor se guardan como artefactos
 de GitHub Actions durante 30 dias.
@@ -156,5 +162,5 @@ permanezca sobre 70 %, memoria supere 80 %, existan reinicios por OOM o la base
 de datos agote conexiones. Primero se identifica el cuello de botella; aumentar
 workers sin memoria o conexiones suficientes puede empeorar la estabilidad.
 
-Antes del lanzamiento tambien hacen falta escenarios de carga de imagenes y
-recuperacion tras saturacion.
+Antes del lanzamiento tambien hace falta probar recuperacion tras saturacion
+del proceso web, almacenamiento y base de datos.

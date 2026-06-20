@@ -168,6 +168,41 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_image_pipeline_without_sanitization_is_rejected(self):
+        pipeline_text = (
+            PROJECT_ROOT / "performance" / "image_pipeline.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = pipeline_text.replace(
+            "sanitize_product_image",
+            "unsafe_image_passthrough",
+        )
+
+        findings = capacity.validate_image_pipeline(invalid_text)
+
+        self.assertIn(
+            "performance/image_pipeline.py no contiene "
+            "sanitize_product_image",
+            findings,
+        )
+
+    def test_media_proxy_without_corp_is_rejected(self):
+        nginx_text = (
+            PROJECT_ROOT / "docker" / "nginx.conf"
+        ).read_text(encoding="utf-8")
+        invalid_text = nginx_text.replace(
+            "add_header Cross-Origin-Resource-Policy same-origin always;\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_media_proxy(invalid_text)
+
+        self.assertIn(
+            "docker/nginx.conf no contiene "
+            "add_header Cross-Origin-Resource-Policy same-origin always;",
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

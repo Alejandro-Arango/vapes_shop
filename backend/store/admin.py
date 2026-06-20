@@ -7,6 +7,7 @@ Dependencias: Django admin y modelos principales de store
 import csv
 import json
 
+from django import forms
 from django.contrib import admin
 from django.db import transaction
 from django.http import HttpResponse
@@ -28,12 +29,32 @@ from .models import (
     OrderStatusHistory,
     ShippingAddress,
     StockMovement,
+    sanitize_product_image,
 )
 from .order_notifications import notify_order_status_changed
 from .order_status import record_order_status
 
 
 register_business_dashboard(admin.site)
+
+
+class ProductAdminForm(forms.ModelForm):
+    """
+    Nombre: ProductAdminForm
+    Descripcion: Normaliza imagenes nuevas antes de guardarlas en media.
+    """
+
+    class Meta:
+        model = Product
+        fields = "__all__"
+
+    def clean_image(self):
+        image = self.cleaned_data.get("image")
+
+        if not image or "image" not in self.changed_data:
+            return image
+
+        return sanitize_product_image(image)
 
 
 def format_admin_bool(value):
@@ -501,6 +522,8 @@ class ProductAdmin(admin.ModelAdmin):
     ordering = (
         "-created_at",
     )
+
+    form = ProductAdminForm
 
     actions = (
         "activate_products",

@@ -252,6 +252,40 @@ def validate_cancel_fixture(fixture_text):
     ]
 
 
+def validate_image_pipeline(pipeline_text):
+    required_fragments = (
+        "IMAGE_PIPELINE_TEST_ENABLED",
+        "ThreadPoolExecutor",
+        "sanitize_product_image",
+        "product_image_upload_to",
+        "Se detectaron colisiones de nombres.",
+        "La normalizacion conservo datos no seguros.",
+        "image.format != \"PNG\"",
+    )
+
+    return [
+        f"performance/image_pipeline.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in pipeline_text
+    ]
+
+
+def validate_media_proxy(nginx_text):
+    required_fragments = (
+        "location /media/",
+        "add_header X-Content-Type-Options nosniff always;",
+        "add_header Cross-Origin-Resource-Policy same-origin always;",
+        "add_header Content-Security-Policy "
+        "\"default-src 'none'; sandbox\" always;",
+    )
+
+    return [
+        f"docker/nginx.conf no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in nginx_text
+    ]
+
+
 def validate_workflow(workflow_text):
     findings = []
 
@@ -276,6 +310,10 @@ def validate_workflow(workflow_text):
         "cancel_fixture.py",
         "run /scripts/cancel.js",
         "cancel-invariants.json",
+        "Probar canal concurrente de imagenes",
+        "/performance/image_pipeline.py",
+        "IMAGE_PIPELINE_TEST_ENABLED=true",
+        "image-pipeline.json",
         "rm -f performance-runtime/checkout-fixture.json",
         "rm -f performance-runtime/coupon-fixture.json",
         "rm -f performance-runtime/cancel-fixture.json",
@@ -309,6 +347,10 @@ def find_capacity_findings(project_root):
         "cancel_fixture": (
             project_root / "performance" / "cancel_fixture.py"
         ),
+        "image_pipeline": (
+            project_root / "performance" / "image_pipeline.py"
+        ),
+        "nginx": project_root / "docker" / "nginx.conf",
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
     }
     missing_paths = [
@@ -367,6 +409,16 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_cancel_fixture(
             paths["cancel_fixture"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_image_pipeline(
+            paths["image_pipeline"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_media_proxy(
+            paths["nginx"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

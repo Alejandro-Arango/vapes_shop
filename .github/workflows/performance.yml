@@ -54,6 +54,34 @@ jobs:
       - name: Construir imagen
         run: docker build --tag vapes-shop:performance .
 
+      - name: Probar canal concurrente de imagenes
+        run: |
+          mkdir -p performance-results
+          chmod 0777 performance-results
+
+          docker run --rm \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=128m \
+            --memory 256m \
+            --cpus 1.0 \
+            --pids-limit 128 \
+            --volume "$PWD/performance:/performance:ro" \
+            --volume "$PWD/performance-results:/results" \
+            --env DJANGO_DEBUG=True \
+            --env DJANGO_SECRET_KEY=image-pipeline-only-secret \
+            --env DJANGO_ALLOWED_HOSTS=localhost \
+            --env DJANGO_DB_ENGINE=sqlite \
+            --env DJANGO_DB_NAME=/tmp/image-pipeline.sqlite3 \
+            --env DJANGO_CACHE_BACKEND=locmem \
+            --env DJANGO_PROJECT_ROOT=/app/backend \
+            --env IMAGE_PIPELINE_TEST_ENABLED=true \
+            --entrypoint python \
+            vapes-shop:performance \
+            /performance/image_pipeline.py \
+            --workers 8 \
+            --uploads 100 \
+            --output /results/image-pipeline.json
+
       - name: Preparar aplicacion efimera
         env:
           DJANGO_SECRET_KEY: "performance-only-secret-with-more-than-fifty-characters-1234567890"

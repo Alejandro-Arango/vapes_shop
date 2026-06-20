@@ -4,19 +4,25 @@ Descripcion: Define los modelos principales de la aplicacion store para clientes
 Dependencias: Django settings y Django models
 """
 
+from io import BytesIO
+from pathlib import Path
+from uuid import uuid4
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.core.validators import FileExtensionValidator
 from django.db import models, transaction
 from django.db.models.functions import Cast
 from django.utils import timezone
 from django.utils.text import slugify
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 
 PRODUCT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
 PRODUCT_IMAGE_MAX_DIMENSION = 5000
+PRODUCT_IMAGE_MAX_PIXELS = 20_000_000
 PRODUCT_IMAGE_ALLOWED_EXTENSIONS = ("jpg", "jpeg", "png", "webp", "avif")
 PRODUCT_IMAGE_FORMAT_BY_EXTENSION = {
     "jpg": "JPEG",
@@ -27,6 +33,75 @@ PRODUCT_IMAGE_FORMAT_BY_EXTENSION = {
 }
 
 
+def get_product_image_extension(filename):
+    """
+    Nombre: get_product_image_extension
+    Descripcion: Obtiene una extension permitida sin conservar rutas del cliente.
+    """
+    return Path(str(filename or "")).suffix.lower().lstrip(".")
+
+
+def product_image_upload_to(instance, filename):
+    """
+    Nombre: product_image_upload_to
+    Descripcion: Genera una ruta no predecible y libre de colisiones para cada imagen.
+    """
+    extension = get_product_image_extension(filename)
+
+    if extension not in PRODUCT_IMAGE_ALLOWED_EXTENSIONS:
+        extension = "bin"
+
+    return f"store/img/products/{uuid4().hex}.{extension}"
+
+
+def inspect_product_image(image_file):
+    """
+    Nombre: inspect_product_image
+    Descripcion: Decodifica completamente una imagen y retorna sus metadatos seguros.
+    """
+    initial_position = image_file.tell()
+
+    try:
+        image_file.seek(0)
+
+        with Image.open(image_file) as image:
+            image_format = image.format
+            width, height = image.size
+            frame_count = getattr(image, "n_frames", 1)
+
+            if width * height > PRODUCT_IMAGE_MAX_PIXELS:
+                raise ValidationError(
+                    f"La imagen no puede superar {PRODUCT_IMAGE_MAX_PIXELS} pixeles."
+                )
+
+            if frame_count != 1:
+                raise ValidationError("Las imagenes animadas no estan permitidas.")
+
+            image.verify()
+
+        image_file.seek(0)
+
+        with Image.open(image_file) as decoded_image:
+            decoded_image.load()
+    except ValidationError:
+        raise
+    except (
+        Image.DecompressionBombError,
+        UnidentifiedImageError,
+        OSError,
+        ValueError,
+    ) as exc:
+        raise ValidationError("El archivo no contiene una imagen valida.") from exc
+    finally:
+        image_file.seek(initial_position)
+
+    return {
+        "format": image_format,
+        "height": height,
+        "width": width,
+    }
+
+
 def validate_product_image(image_file):
     """
     Nombre: validate_product_image
@@ -35,29 +110,58 @@ def validate_product_image(image_file):
     if image_file.size > PRODUCT_IMAGE_MAX_BYTES:
         raise ValidationError("La imagen no puede superar 5 MB.")
 
-    initial_position = image_file.tell()
-
-    try:
-        image_file.seek(0)
-        image = Image.open(image_file)
-        image_format = image.format
-        width, height = image.size
-        image.verify()
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
-        raise ValidationError("El archivo no contiene una imagen valida.") from exc
-    finally:
-        image_file.seek(initial_position)
-
-    extension = str(image_file.name or "").rsplit(".", 1)[-1].lower()
+    metadata = inspect_product_image(image_file)
+    extension = get_product_image_extension(image_file.name)
     expected_format = PRODUCT_IMAGE_FORMAT_BY_EXTENSION.get(extension)
 
-    if not expected_format or image_format != expected_format:
+    if not expected_format or metadata["format"] != expected_format:
         raise ValidationError("El formato real de la imagen no esta permitido.")
 
-    if width > PRODUCT_IMAGE_MAX_DIMENSION or height > PRODUCT_IMAGE_MAX_DIMENSION:
+    if (
+        metadata["width"] > PRODUCT_IMAGE_MAX_DIMENSION
+        or metadata["height"] > PRODUCT_IMAGE_MAX_DIMENSION
+    ):
         raise ValidationError(
             f"La imagen no puede superar {PRODUCT_IMAGE_MAX_DIMENSION}px por lado."
         )
+
+
+def sanitize_product_image(image_file):
+    """
+    Nombre: sanitize_product_image
+    Descripcion: Reescribe una imagen valida para retirar metadatos y datos anexados.
+    """
+    validate_product_image(image_file)
+    extension = get_product_image_extension(image_file.name)
+    image_format = PRODUCT_IMAGE_FORMAT_BY_EXTENSION[extension]
+    initial_position = image_file.tell()
+    output = BytesIO()
+
+    try:
+        image_file.seek(0)
+
+        with Image.open(image_file) as image:
+            sanitized_image = ImageOps.exif_transpose(image)
+            sanitized_image.load()
+
+            if image_format == "JPEG" and sanitized_image.mode not in ("L", "RGB"):
+                sanitized_image = sanitized_image.convert("RGB")
+
+            sanitized_image.save(output, format=image_format)
+
+            if output.tell() > PRODUCT_IMAGE_MAX_BYTES:
+                raise ValidationError(
+                    "La imagen normalizada supera el limite permitido."
+                )
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise ValidationError("No fue posible normalizar la imagen.") from exc
+    finally:
+        image_file.seek(initial_position)
+
+    return ContentFile(
+        output.getvalue(),
+        name=Path(str(image_file.name)).name,
+    )
 
 
 class Customer(models.Model):
@@ -246,7 +350,7 @@ class Product(models.Model):
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     image = models.ImageField(
-        upload_to="store/img/products/",
+        upload_to=product_image_upload_to,
         blank=True,
         null=True,
         validators=[

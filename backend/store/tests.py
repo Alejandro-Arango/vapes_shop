@@ -7,6 +7,7 @@ Dependencias: Django test, Django auth, Django urls, Django REST Framework y mod
 import json
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from io import BytesIO, StringIO
 from decimal import Decimal
@@ -38,6 +39,7 @@ from django_otp.plugins.otp_static.models import StaticDevice
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from PIL import Image as PillowImage
+from PIL import PngImagePlugin
 
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -62,6 +64,7 @@ from .admin import (
     EventLogAdmin,
     OrderAdmin,
     OrderStatusHistoryAdmin,
+    ProductAdminForm,
     ProductAdmin,
     ShippingAddressAdmin,
     build_csv_response,
@@ -88,8 +91,11 @@ from .models import (
     Product,
     ProductReview,
     PRODUCT_IMAGE_MAX_BYTES,
+    PRODUCT_IMAGE_MAX_PIXELS,
     ShippingAddress,
     StockMovement,
+    product_image_upload_to,
+    sanitize_product_image,
     validate_product_image,
 )
 from .throttles import (
@@ -481,6 +487,121 @@ class StoreApiTests(APITestCase):
 
         with self.assertRaises(ValidationError):
             excessive_dimensions_product.full_clean()
+
+    def test_product_image_rejects_excessive_pixels_and_animation(self):
+        excessive_pixels = BytesIO()
+        PillowImage.new("1", (5000, 5000), color=1).save(
+            excessive_pixels,
+            format="PNG",
+        )
+        excessive_pixels_upload = SimpleUploadedFile(
+            "demasiados-pixeles.png",
+            excessive_pixels.getvalue(),
+            content_type="image/png",
+        )
+
+        with self.assertRaises(ValidationError):
+            validate_product_image(excessive_pixels_upload)
+
+        self.assertLess(PRODUCT_IMAGE_MAX_PIXELS, 5000 * 5000)
+
+        first_frame = PillowImage.new("RGBA", (10, 10), color="white")
+        second_frame = PillowImage.new("RGBA", (10, 10), color="black")
+        animated_image = BytesIO()
+        first_frame.save(
+            animated_image,
+            format="PNG",
+            save_all=True,
+            append_images=[second_frame],
+            duration=100,
+            loop=0,
+        )
+        animated_upload = SimpleUploadedFile(
+            "animada.png",
+            animated_image.getvalue(),
+            content_type="image/png",
+        )
+
+        with self.assertRaises(ValidationError):
+            validate_product_image(animated_upload)
+
+    def test_product_image_sanitization_removes_metadata_and_trailing_data(self):
+        metadata = PngImagePlugin.PngInfo()
+        metadata.add_text("Comment", "dato-privado-de-prueba")
+        image_buffer = BytesIO()
+        PillowImage.new("RGB", (10, 10), color="white").save(
+            image_buffer,
+            format="PNG",
+            pnginfo=metadata,
+        )
+        unsafe_marker = b"<script>marcador-anexado</script>"
+        upload = SimpleUploadedFile(
+            "../producto.png",
+            image_buffer.getvalue() + unsafe_marker,
+            content_type="image/png",
+        )
+
+        sanitized = sanitize_product_image(upload)
+        sanitized_content = sanitized.read()
+
+        self.assertNotIn(b"dato-privado-de-prueba", sanitized_content)
+        self.assertNotIn(unsafe_marker, sanitized_content)
+        self.assertEqual(sanitized.name, "producto.png")
+
+        with PillowImage.open(BytesIO(sanitized_content)) as image:
+            self.assertEqual(image.format, "PNG")
+            self.assertEqual(image.size, (10, 10))
+
+    def test_product_image_paths_are_unique_and_ignore_client_directories(self):
+        def generate_path(_):
+            return product_image_upload_to(None, "../../producto.png")
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            paths = list(executor.map(generate_path, range(200)))
+
+        self.assertEqual(len(paths), len(set(paths)))
+        self.assertTrue(
+            all(
+                path.startswith("store/img/products/")
+                and path.endswith(".png")
+                and ".." not in path
+                for path in paths
+            )
+        )
+
+    def test_product_admin_uses_sanitizing_form(self):
+        self.assertIs(ProductAdmin.form, ProductAdminForm)
+
+        metadata = PngImagePlugin.PngInfo()
+        metadata.add_text("Comment", "dato-admin")
+        image_buffer = BytesIO()
+        PillowImage.new("RGB", (10, 10), color="white").save(
+            image_buffer,
+            format="PNG",
+            pnginfo=metadata,
+        )
+        form = ProductAdminForm(
+            data={
+                "name": "Producto desde admin",
+                "description": "Imagen normalizada por formulario.",
+                "price": "10.00",
+                "stock": "1",
+                "is_active": "on",
+            },
+            files={
+                "image": SimpleUploadedFile(
+                    "producto.png",
+                    image_buffer.getvalue() + b"contenido-anexado-admin",
+                    content_type="image/png",
+                ),
+            },
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+
+        normalized_content = form.cleaned_data["image"].read()
+        self.assertNotIn(b"dato-admin", normalized_content)
+        self.assertNotIn(b"contenido-anexado-admin", normalized_content)
 
     def test_order_item_constraints_reject_invalid_quantity_and_price(self):
         user = self.create_user()
