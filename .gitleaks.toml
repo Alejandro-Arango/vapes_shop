@@ -1,0 +1,13 @@
+title = "Vape Shop Gitleaks"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Contraseñas ficticias usadas por la suite Django"
+paths = [
+  '''^backend/store/tests\.py$''',
+]

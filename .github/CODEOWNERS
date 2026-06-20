@@ -1,0 +1,12 @@
+* @Alejandro-Arango
+
+/.github/ @Alejandro-Arango
+/SECURITY.md @Alejandro-Arango
+/compose*.yaml @Alejandro-Arango
+/compose*.env.example @Alejandro-Arango
+/Dockerfile @Alejandro-Arango
+/docker/ @Alejandro-Arango
+/scripts/deploy_production.py @Alejandro-Arango
+/scripts/monitor_production.py @Alejandro-Arango
+/backend/mi_tienda/settings.py @Alejandro-Arango
+/backend/store/management/commands/production_check.py @Alejandro-Arango

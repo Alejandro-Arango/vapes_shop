@@ -872,6 +872,30 @@ Un hallazgo solo puede ignorarse con un identificador concreto, una
 justificacion documentada, alcance revisado y fecha de expiracion. No se deben
 desactivar globalmente las auditorias para desbloquear una release.
 
+### Gobierno de seguridad y secretos
+
+El repositorio incluye:
+
+- `SECURITY.md` para divulgacion privada y responsable;
+- `CODEOWNERS` para cambios sensibles;
+- plantilla de pull request con riesgo, rollback y controles de seguridad;
+- deteccion semanal y por commit con Gitleaks;
+- verificacion local de archivos `.env`, claves privadas y tokens conocidos;
+- inventario y procedimiento de rotacion en
+  [docs/SECRETS_MANAGEMENT.md](docs/SECRETS_MANAGEMENT.md).
+
+Validacion local:
+
+```powershell
+python .\scripts\check_secret_files.py
+python -m unittest discover -s scripts\tests -v
+```
+
+Al publicar la rama principal deben activarse en GitHub la proteccion de rama,
+revision de `CODEOWNERS`, private vulnerability reporting, secret scanning y
+push protection. Un secreto detectado debe revocarse antes de intentar limpiar
+el historial.
+
 ### Backups y recuperacion
 
 Los respaldos se guardan por defecto en `.\backups`, fuera de los volumenes

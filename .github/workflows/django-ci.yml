@@ -45,6 +45,10 @@ jobs:
       - name: Verificar dependencias instaladas
         run: python -m pip check
 
+      - name: Verificar higiene de secretos
+        working-directory: ${{ github.workspace }}
+        run: python scripts/check_secret_files.py
+
       - name: Probar monitor operativo
         working-directory: ${{ github.workspace }}
         run: python -m unittest discover -s scripts/tests -v
