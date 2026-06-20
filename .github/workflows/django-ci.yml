@@ -50,6 +50,7 @@ jobs:
         run: |
           python scripts/check_secret_files.py
           python scripts/check_zap_rules.py
+          python scripts/check_capacity_config.py
 
       - name: Probar monitor operativo
         working-directory: ${{ github.workspace }}

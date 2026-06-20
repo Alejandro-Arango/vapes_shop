@@ -57,6 +57,9 @@ services:
   db:
     image: mysql:8.4.10
     restart: unless-stopped
+    mem_limit: ${DB_MEMORY_LIMIT:-768m}
+    cpus: ${DB_CPU_LIMIT:-1.00}
+    pids_limit: 256
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:?Define MYSQL_DATABASE in compose.env}
       MYSQL_USER: ${MYSQL_USER:?Define MYSQL_USER in compose.env}
@@ -85,6 +88,9 @@ services:
       context: .
     image: vapes-shop-web:local
     command: ["/app/docker/release.sh"]
+    mem_limit: ${MIGRATE_MEMORY_LIMIT:-512m}
+    cpus: ${MIGRATE_CPU_LIMIT:-0.50}
+    pids_limit: 128
     environment: *app-environment
     depends_on:
       db:
@@ -99,6 +105,8 @@ services:
   web:
     image: vapes-shop-web:local
     restart: unless-stopped
+    mem_limit: ${WEB_MEMORY_LIMIT:-512m}
+    cpus: ${WEB_CPU_LIMIT:-1.00}
     environment: *app-environment
     depends_on:
       db:
@@ -121,6 +129,8 @@ services:
   proxy:
     image: nginx:1.30.3-alpine
     restart: unless-stopped
+    mem_limit: ${PROXY_MEMORY_LIMIT:-128m}
+    cpus: ${PROXY_CPU_LIMIT:-0.25}
     user: "101:101"
     entrypoint:
       - nginx
@@ -164,6 +174,9 @@ services:
       dockerfile: docker/backup.Dockerfile
     image: vapes-shop-backup:local
     command: ["/usr/local/bin/backup.sh"]
+    mem_limit: ${BACKUP_MEMORY_LIMIT:-512m}
+    cpus: ${BACKUP_CPU_LIMIT:-0.50}
+    pids_limit: 128
     environment: *backup-environment
     depends_on:
       db:
@@ -188,6 +201,9 @@ services:
       dockerfile: docker/backup.Dockerfile
     image: vapes-shop-backup:local
     command: ["/usr/local/bin/restore.sh"]
+    mem_limit: ${RESTORE_MEMORY_LIMIT:-512m}
+    cpus: ${RESTORE_CPU_LIMIT:-0.50}
+    pids_limit: 128
     environment:
       <<: *backup-environment
       RESTORE_BACKUP_ID: ${RESTORE_BACKUP_ID:-}

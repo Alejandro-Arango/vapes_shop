@@ -1,0 +1,169 @@
+name: Rendimiento y capacidad
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 6"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Perfil de carga
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - baseline
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  catalog:
+    name: Probar catalogo publico
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Seleccionar perfil
+        env:
+          PROFILE_INPUT: ${{ inputs.profile }}
+        run: |
+          case "$GITHUB_EVENT_NAME" in
+            schedule)
+              profile="baseline"
+              ;;
+            workflow_dispatch)
+              profile="${PROFILE_INPUT:-smoke}"
+              ;;
+            *)
+              profile="smoke"
+              ;;
+          esac
+
+          echo "LOAD_PROFILE=$profile" >> "$GITHUB_ENV"
+
+      - name: Construir imagen
+        run: docker build --tag vapes-shop:performance .
+
+      - name: Preparar aplicacion efimera
+        env:
+          DJANGO_SECRET_KEY: "performance-only-secret-with-more-than-fifty-characters-1234567890"
+        run: |
+          docker volume create vapes-shop-performance-data
+          docker run --rm \
+            --user 0:0 \
+            --volume vapes-shop-performance-data:/data \
+            --entrypoint sh \
+            vapes-shop:performance \
+            -c "chown 10001:10001 /data"
+
+          common_args=(
+            --volume vapes-shop-performance-data:/data
+            --env DJANGO_DEBUG=False
+            --env DJANGO_SECRET_KEY
+            --env DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+            --env DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:8000
+            --env DJANGO_ADMIN_URL_PATH=panel-performance/
+            --env DJANGO_DB_ENGINE=sqlite
+            --env DJANGO_DB_NAME=/data/performance.sqlite3
+            --env DJANGO_CACHE_BACKEND=locmem
+            --env DJANGO_SESSION_COOKIE_SECURE=False
+            --env DJANGO_CSRF_COOKIE_SECURE=False
+            --env DJANGO_SECURE_SSL_REDIRECT=False
+            --env DJANGO_SECURE_HSTS_SECONDS=0
+            --env DJANGO_LOG_FORMAT=json
+          )
+
+          docker run --rm \
+            "${common_args[@]}" \
+            --entrypoint python \
+            vapes-shop:performance \
+            manage.py migrate --noinput
+
+          docker run --rm \
+            "${common_args[@]}" \
+            --entrypoint python \
+            vapes-shop:performance \
+            manage.py shell -c \
+            "from decimal import Decimal; from store.models import Category, Product; category,_=Category.objects.get_or_create(name='Carga'); Product.objects.bulk_create([Product(name=f'Producto carga {i:03d}', category=category, description='Catalogo efimero para capacidad', price=Decimal('20.00') + i, stock=20) for i in range(1, 121)])"
+
+          container_id="$(
+            docker run --detach \
+              --name vapes-shop-performance \
+              --publish 8000:8000 \
+              --memory 512m \
+              --cpus 1.0 \
+              --pids-limit 256 \
+              "${common_args[@]}" \
+              vapes-shop:performance
+          )"
+
+          echo "PERFORMANCE_CONTAINER_ID=$container_id" >> "$GITHUB_ENV"
+
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8000/api/health/; then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          docker logs "$container_id"
+          exit 1
+
+      - name: Ejecutar k6
+        run: |
+          mkdir -p performance-results
+          chmod 0777 performance-results
+
+          docker run --rm \
+            --network host \
+            --volume "$PWD/performance:/scripts:ro" \
+            --volume "$PWD/performance-results:/results" \
+            --workdir /results \
+            --env BASE_URL=http://127.0.0.1:8000 \
+            --env LOAD_PROFILE \
+            grafana/k6:2.0.0@sha256:a33a0cfdc4d2483d6b7a3a22e726a499ff2831a671a49239104cd34a9937523c \
+            run /scripts/catalog.js
+
+      - name: Conservar metricas y logs
+        if: always()
+        run: |
+          mkdir -p performance-results
+
+          if [[ -n "${PERFORMANCE_CONTAINER_ID:-}" ]]; then
+            docker stats \
+              --no-stream \
+              --format '{{json .}}' \
+              "$PERFORMANCE_CONTAINER_ID" \
+              > performance-results/container-stats.jsonl || true
+            docker logs "$PERFORMANCE_CONTAINER_ID" \
+              > performance-results/application.log 2>&1 || true
+          fi
+
+      - name: Limpiar recursos
+        if: always()
+        run: |
+          if [[ -n "${PERFORMANCE_CONTAINER_ID:-}" ]]; then
+            docker rm --force "$PERFORMANCE_CONTAINER_ID" || true
+          fi
+
+          docker volume rm vapes-shop-performance-data || true
+
+      - name: Subir resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-${{ env.LOAD_PROFILE }}
+          path: performance-results/
+          if-no-files-found: warn
+          retention-days: 30

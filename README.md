@@ -669,6 +669,8 @@ El repositorio incluye una base reproducible que no depende de un proveedor:
 - Readiness de base de datos y cache en `/healthz`.
 - Logs JSON correlacionados mediante `X-Request-ID`.
 - Sistema de archivos de la aplicacion en modo solo lectura.
+- Limites configurables de CPU, memoria y procesos por servicio.
+- Pruebas de carga de catalogo con umbrales bloqueantes.
 - Validacion automatica de Docker, Compose y recuperacion en GitHub Actions.
 
 Docker debe instalarse antes de ejecutar esta infraestructura localmente.
@@ -717,6 +719,22 @@ docker compose --env-file compose.env down
 
 Los volumenes `mysql_data` y `media_data` conservan base de datos e imagenes.
 No uses `down --volumes` salvo que quieras eliminarlos deliberadamente.
+
+### Capacidad y pruebas de carga
+
+Compose incluye una linea base de recursos para un host de al menos 2 vCPU y
+4 GB de RAM. El workflow `Rendimiento y capacidad` ejecuta un perfil `smoke`
+en cada cambio y un perfil `baseline` semanal o manual. Ambos prueban pagina
+principal, categorias, catalogo paginado y endpoints operativos.
+
+Validacion estatica local:
+
+```powershell
+python .\scripts\check_capacity_config.py
+```
+
+Los limites, umbrales, ejecucion local de k6 y criterios de ajuste estan en
+[docs/CAPACITY_PLANNING.md](docs/CAPACITY_PLANNING.md).
 
 ### Observabilidad
 
