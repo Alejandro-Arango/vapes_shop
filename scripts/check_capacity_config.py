@@ -175,6 +175,46 @@ def validate_checkout_fixture(fixture_text):
     ]
 
 
+def validate_coupon_script(coupon_text):
+    required_fragments = (
+        "executor: 'per-vu-iterations'",
+        "http.expectedStatuses(200, 400)",
+        "coupon_successes",
+        "coupon_rejections",
+        "coupon_replays",
+        "coupon_unexpected",
+        "body.coupon_code === fixture.coupon_code",
+        "body.coupon_invalid === true",
+        "/api/orders/checkout/",
+        "coupon-summary.json",
+    )
+
+    return [
+        f"performance/coupon.js no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in coupon_text
+    ]
+
+
+def validate_coupon_fixture(fixture_text):
+    required_fragments = (
+        "CHECKOUT_LOAD_TEST_ENABLED",
+        "performance",
+        "session[\"coupon_code\"]",
+        "max_uses=max_uses",
+        "coupon_usage_matches_limit",
+        "order_count_matches_coupon_limit",
+        "remaining_stock_matches_rejections",
+        "total_discount_matches_limit",
+    )
+
+    return [
+        f"performance/coupon_fixture.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in fixture_text
+    ]
+
+
 def validate_workflow(workflow_text):
     findings = []
 
@@ -193,7 +233,11 @@ def validate_workflow(workflow_text):
         "checkout_fixture.py",
         "verify",
         "checkout-invariants.json",
+        "coupon_fixture.py",
+        "run /scripts/coupon.js",
+        "coupon-invariants.json",
         "rm -f performance-runtime/checkout-fixture.json",
+        "rm -f performance-runtime/coupon-fixture.json",
     )
 
     for fragment in required_fragments:
@@ -215,6 +259,10 @@ def find_capacity_findings(project_root):
         "checkout": project_root / "performance" / "checkout.js",
         "checkout_fixture": (
             project_root / "performance" / "checkout_fixture.py"
+        ),
+        "coupon": project_root / "performance" / "coupon.js",
+        "coupon_fixture": (
+            project_root / "performance" / "coupon_fixture.py"
         ),
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
     }
@@ -254,6 +302,16 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_checkout_fixture(
             paths["checkout_fixture"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_coupon_script(
+            paths["coupon"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_coupon_fixture(
+            paths["coupon_fixture"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

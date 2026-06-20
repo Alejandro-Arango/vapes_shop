@@ -98,6 +98,41 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_coupon_without_limit_rejection_is_rejected(self):
+        coupon_text = (
+            PROJECT_ROOT / "performance" / "coupon.js"
+        ).read_text(encoding="utf-8")
+        invalid_text = coupon_text.replace(
+            "body.coupon_invalid === true",
+            "body.coupon_invalid === false",
+            1,
+        )
+
+        findings = capacity.validate_coupon_script(invalid_text)
+
+        self.assertIn(
+            "performance/coupon.js no contiene "
+            "body.coupon_invalid === true",
+            findings,
+        )
+
+    def test_coupon_fixture_without_usage_invariant_is_rejected(self):
+        fixture_text = (
+            PROJECT_ROOT / "performance" / "coupon_fixture.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = fixture_text.replace(
+            "coupon_usage_matches_limit",
+            "coupon_usage_not_checked",
+        )
+
+        findings = capacity.validate_coupon_fixture(invalid_text)
+
+        self.assertIn(
+            "performance/coupon_fixture.py no contiene "
+            "coupon_usage_matches_limit",
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

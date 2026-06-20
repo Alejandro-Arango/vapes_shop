@@ -40,7 +40,7 @@ from django_otp.plugins.otp_totp.models import TOTPDevice
 from PIL import Image as PillowImage
 
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 from mi_tienda.settings import (
     CROSS_ORIGIN_OPENER_POLICY_CHOICES,
@@ -3519,6 +3519,71 @@ class StoreApiTests(APITestCase):
                 metadata__coupon_code="AGOTADO",
             ).exists()
         )
+
+    def test_checkout_enforces_coupon_limit_between_customers(self):
+        first_user = self.create_user()
+        second_user = User.objects.create_user(
+            username="cliente-dos",
+            email="cliente-dos@example.com",
+            password="ClaveSegura123",
+        )
+        discount = DiscountCode.objects.create(
+            code="UNUSO",
+            discount_type="fixed",
+            value=Decimal("5.00"),
+            max_uses=1,
+        )
+        payload = {
+            "shippingName": "Cliente Prueba",
+            "shippingPhone": "3001234567",
+            "shippingAddress": "Calle 1",
+            "shippingCity": "Medellin",
+            "shippingNotes": "",
+            "ageConfirmed": True,
+        }
+
+        self.client.login(
+            username=first_user.username,
+            password="ClaveSegura123",
+        )
+        first_session = self.client.session
+        first_session["cart"] = {str(self.product.id): 1}
+        first_session["coupon_code"] = discount.code
+        first_session.save()
+
+        second_client = APIClient()
+        second_client.login(
+            username=second_user.username,
+            password="ClaveSegura123",
+        )
+        second_session = second_client.session
+        second_session["cart"] = {str(self.product.id): 1}
+        second_session["coupon_code"] = discount.code
+        second_session.save()
+
+        first_response = self.client.post(
+            reverse("checkout"),
+            payload,
+            format="json",
+        )
+        second_response = second_client.post(
+            reverse("checkout"),
+            payload,
+            format="json",
+        )
+
+        discount.refresh_from_db()
+        self.product.refresh_from_db()
+
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            second_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertTrue(second_response.data["coupon_invalid"])
+        self.assertEqual(discount.used_count, 1)
+        self.assertEqual(Order.objects.count(), 1)
+        self.assertEqual(self.product.stock, 4)
 
     def test_checkout_links_existing_customer_by_email(self):
         user = self.create_user()

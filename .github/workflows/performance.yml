@@ -237,14 +237,20 @@ jobs:
           if [[ "$profile" == "baseline" ]]; then
             buyers=20
             stock=10
+            coupon_buyers=20
+            coupon_max_uses=10
           else
             buyers=4
             stock=2
+            coupon_buyers=4
+            coupon_max_uses=2
           fi
 
           echo "LOAD_PROFILE=$profile" >> "$GITHUB_ENV"
           echo "CHECKOUT_BUYERS=$buyers" >> "$GITHUB_ENV"
           echo "CHECKOUT_STOCK=$stock" >> "$GITHUB_ENV"
+          echo "COUPON_BUYERS=$coupon_buyers" >> "$GITHUB_ENV"
+          echo "COUPON_MAX_USES=$coupon_max_uses" >> "$GITHUB_ENV"
 
       - name: Construir imagen
         run: docker build --tag vapes-shop:checkout-performance .
@@ -392,6 +398,91 @@ jobs:
             --fixture /runtime/checkout-fixture.json \
             --output /results/checkout-invariants.json
 
+      - name: Preparar limite concurrente de cupon
+        run: |
+          env_args=(
+            --env DJANGO_SECRET_KEY
+            --env DJANGO_DEBUG
+            --env DJANGO_ALLOWED_HOSTS
+            --env DJANGO_CSRF_TRUSTED_ORIGINS
+            --env DJANGO_ADMIN_URL_PATH
+            --env DJANGO_DB_ENGINE
+            --env DJANGO_DB_NAME
+            --env DJANGO_DB_USER
+            --env DJANGO_DB_PASSWORD
+            --env DJANGO_DB_HOST
+            --env DJANGO_DB_PORT
+            --env DJANGO_CACHE_BACKEND
+            --env DJANGO_CACHE_TABLE
+            --env CHECKOUT_LOAD_TEST_ENABLED
+            --env DJANGO_PROJECT_ROOT
+          )
+
+          docker run --rm \
+            --network host \
+            "${env_args[@]}" \
+            --volume "$PWD/performance:/performance:ro" \
+            --volume "$PWD/performance-runtime:/runtime" \
+            --entrypoint python \
+            vapes-shop:checkout-performance \
+            /performance/coupon_fixture.py \
+            prepare \
+            --buyers "$COUPON_BUYERS" \
+            --max-uses "$COUPON_MAX_USES" \
+            --output /runtime/coupon-fixture.json
+
+      - name: Ejecutar limite concurrente de cupon
+        run: |
+          docker run --rm \
+            --network host \
+            --volume "$PWD/performance:/scripts:ro" \
+            --volume "$PWD/performance-runtime:/runtime:ro" \
+            --volume "$PWD/performance-results:/results" \
+            --workdir /results \
+            --env BASE_URL=http://127.0.0.1:8000 \
+            --env COUPON_FIXTURE_PATH=/runtime/coupon-fixture.json \
+            grafana/k6:2.0.0@sha256:a33a0cfdc4d2483d6b7a3a22e726a499ff2831a671a49239104cd34a9937523c \
+            run /scripts/coupon.js
+
+      - name: Verificar limite de cupon en MySQL
+        if: ${{ always() && !cancelled() && env.CHECKOUT_CONTAINER_ID != '' }}
+        run: |
+          env_args=(
+            --env DJANGO_SECRET_KEY
+            --env DJANGO_DEBUG
+            --env DJANGO_ALLOWED_HOSTS
+            --env DJANGO_CSRF_TRUSTED_ORIGINS
+            --env DJANGO_ADMIN_URL_PATH
+            --env DJANGO_DB_ENGINE
+            --env DJANGO_DB_NAME
+            --env DJANGO_DB_USER
+            --env DJANGO_DB_PASSWORD
+            --env DJANGO_DB_HOST
+            --env DJANGO_DB_PORT
+            --env DJANGO_CACHE_BACKEND
+            --env DJANGO_CACHE_TABLE
+            --env CHECKOUT_LOAD_TEST_ENABLED
+            --env DJANGO_PROJECT_ROOT
+          )
+
+          if [[ ! -f performance-runtime/coupon-fixture.json ]]; then
+            echo "No existe el fixture de cupon; se omite la verificacion."
+            exit 0
+          fi
+
+          docker run --rm \
+            --network host \
+            "${env_args[@]}" \
+            --volume "$PWD/performance:/performance:ro" \
+            --volume "$PWD/performance-runtime:/runtime:ro" \
+            --volume "$PWD/performance-results:/results" \
+            --entrypoint python \
+            vapes-shop:checkout-performance \
+            /performance/coupon_fixture.py \
+            verify \
+            --fixture /runtime/coupon-fixture.json \
+            --output /results/coupon-invariants.json
+
       - name: Conservar metricas y logs
         if: always()
         run: |
@@ -411,6 +502,7 @@ jobs:
         if: always()
         run: |
           rm -f performance-runtime/checkout-fixture.json
+          rm -f performance-runtime/coupon-fixture.json
 
           if [[ -n "${CHECKOUT_CONTAINER_ID:-}" ]]; then
             docker rm --force "$CHECKOUT_CONTAINER_ID" || true

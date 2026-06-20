@@ -21,6 +21,11 @@ La prueba `performance/checkout.js` cubre escritura autenticada sobre MySQL:
 - reintento con la misma clave de idempotencia;
 - consistencia entre ordenes, items, historial y movimientos de inventario.
 
+La prueba `performance/coupon.js` enfrenta sesiones con productos distintos
+contra un mismo cupon limitado. Al no compartir inventario, la serializacion
+depende del bloqueo del cupon y permite detectar usos por encima de
+`max_uses`.
+
 Las sesiones y los productos se generan en una base dedicada cuyo nombre debe
 incluir `performance`. La utilidad se niega a operar sin
 `CHECKOUT_LOAD_TEST_ENABLED=true`, y el workflow elimina el archivo de sesiones
@@ -71,6 +76,11 @@ iteracion con una sesion distinta. Debe haber exactamente tantas compras
 exitosas como unidades iniciales, y el resto debe recibir un rechazo `400`
 controlado.
 
+El escenario de cupon usa las mismas cantidades: 4 compradores y 2 usos en
+`smoke`, 20 compradores y 10 usos en `baseline`. Cada comprador recibe un
+producto diferente con stock propio; exactamente `max_uses` ordenes deben
+obtener el descuento.
+
 La prueba falla cuando:
 
 - al menos 1 % de las solicitudes HTTP falla;
@@ -82,6 +92,8 @@ La prueba falla cuando:
 - un rechazo devuelve un estado inesperado, como `403`, `429` o `5xx`;
 - un reintento idempotente crea otra orden o devuelve una orden diferente;
 - MySQL no termina con stock cero y registros contables consistentes.
+- el contador del cupon supera `max_uses` o no coincide con las ordenes;
+- una orden aceptada omite el descuento o un rechazo consume inventario.
 
 Los resultados y el consumo puntual del contenedor se guardan como artefactos
 de GitHub Actions durante 30 dias.
@@ -135,5 +147,4 @@ de datos agote conexiones. Primero se identifica el cuello de botella; aumentar
 workers sin memoria o conexiones suficientes puede empeorar la estabilidad.
 
 Antes del lanzamiento tambien hacen falta escenarios de cancelacion de
-pedidos, cupones concurrentes, carga de imagenes y recuperacion tras
-saturacion.
+pedidos, carga de imagenes y recuperacion tras saturacion.
