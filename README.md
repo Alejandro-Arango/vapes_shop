@@ -738,6 +738,9 @@ El mismo workflow aplica presion controlada, comprueba recuperacion estable de
 readiness y fuerza una caida para validar el reinicio automatico del contenedor.
 El workflow principal tambien detiene MySQL, exige que liveness siga disponible,
 comprueba readiness `503` y verifica la reconexion sin reiniciar el proceso web.
+Tambien retira temporalmente la escritura del volumen de archivos multimedia:
+las imagenes existentes deben seguir disponibles y la escritura debe recuperarse
+sin reiniciar Gunicorn.
 
 Validacion estatica local:
 

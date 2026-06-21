@@ -46,6 +46,12 @@ ejecucion. Durante la falla exige liveness `200`, readiness `503` con
 nuevo, readiness debe recuperar tres respuestas saludables consecutivas en un
 maximo de 90 segundos.
 
+El job `Probar interrupcion de escritura multimedia` conserva un archivo
+persistente, retira permisos de escritura del volumen `media_data` y exige que
+Nginx siga sirviendo el archivo existente. La sonda de Django debe detectar el
+rechazo de escritura. Tras restaurar permisos, debe poder escribir y borrar una
+sonda nueva sin reiniciar el proceso web.
+
 Las sesiones y los productos se generan en una base dedicada cuyo nombre debe
 incluir `performance`. La utilidad se niega a operar sin
 `CHECKOUT_LOAD_TEST_ENABLED=true`, y el workflow elimina el archivo de sesiones
@@ -127,6 +133,8 @@ La prueba falla cuando:
 - el contenedor no incrementa su contador de reinicios tras una caida.
 - una caida de MySQL elimina liveness o no degrada readiness de forma explicita;
 - Django necesita reiniciarse o no reconecta dentro del presupuesto de 90 segundos.
+- una falla de escritura altera o vuelve inaccesibles los archivos existentes;
+- el volumen no recupera escritura sin reiniciar el proceso web.
 
 Los resultados y el consumo puntual del contenedor se guardan como artefactos
 de GitHub Actions durante 30 dias.
@@ -180,4 +188,4 @@ de datos agote conexiones. Primero se identifica el cuello de botella; aumentar
 workers sin memoria o conexiones suficientes puede empeorar la estabilidad.
 
 Antes del lanzamiento hace falta repetir estas pruebas sobre staging, una base
-de datos administrada y agregar fallas controladas de almacenamiento.
+de datos administrada y el almacenamiento definitivo del proveedor.

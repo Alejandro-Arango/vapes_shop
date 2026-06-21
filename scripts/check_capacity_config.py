@@ -336,6 +336,23 @@ def validate_dependency_outage_verifier(verifier_text):
     ]
 
 
+def validate_media_storage_verifier(verifier_text):
+    required_fragments = (
+        "MEDIA_STORAGE_TEST_ENABLED",
+        "default_storage",
+        "operational/.write-probe-",
+        "unavailable_as_expected",
+        "El archivo persistente no conserva su contenido.",
+        "storage.delete(saved_name)",
+    )
+
+    return [
+        f"scripts/verify_media_storage.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in verifier_text
+    ]
+
+
 def validate_resilience_config(
     start_text,
     nginx_text,
@@ -382,6 +399,27 @@ def validate_resilience_config(
             findings.append(f"docker/nginx.conf no contiene {fragment}")
 
     return findings
+
+
+def validate_media_outage_config(workflow_text):
+    required_fragments = (
+        "name: Probar interrupcion de escritura multimedia",
+        "vapes-shop-media-outage:/app/backend/media",
+        "vapes-shop-media-outage:/srv/media:ro",
+        "verify_media_storage.py",
+        "--expect unavailable",
+        "chmod 0555 /media /media/operational",
+        "chmod 0755 /media /media/operational",
+        "/media/operational/persistent.txt",
+        "media-recovery.json",
+        'test "$restart_after" -eq "$MEDIA_WEB_RESTART_BEFORE"',
+    )
+
+    return [
+        f"django-ci.yml no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in workflow_text
+    ]
 
 
 def validate_database_outage_config(
@@ -499,6 +537,9 @@ def find_capacity_findings(project_root):
         "dependency_outage_verifier": (
             project_root / "scripts" / "verify_dependency_outage.py"
         ),
+        "media_storage_verifier": (
+            project_root / "scripts" / "verify_media_storage.py"
+        ),
         "start": project_root / "docker" / "start.sh",
         "nginx": project_root / "docker" / "nginx.conf",
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
@@ -590,6 +631,11 @@ def find_capacity_findings(project_root):
         )
     )
     findings.extend(
+        validate_media_storage_verifier(
+            paths["media_storage_verifier"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
         validate_resilience_config(
             paths["start"].read_text(encoding="utf-8"),
             paths["nginx"].read_text(encoding="utf-8"),
@@ -604,6 +650,11 @@ def find_capacity_findings(project_root):
             paths["local_env"].read_text(encoding="utf-8"),
             paths["production_env"].read_text(encoding="utf-8"),
             paths["django_workflow"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_media_outage_config(
+            paths["django_workflow"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

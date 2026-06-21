@@ -356,6 +356,66 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_media_storage_verifier_without_cleanup_is_rejected(self):
+        verifier_text = (
+            PROJECT_ROOT / "scripts" / "verify_media_storage.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = verifier_text.replace(
+            "storage.delete(saved_name)",
+            "pass",
+            1,
+        )
+
+        findings = capacity.validate_media_storage_verifier(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/verify_media_storage.py no contiene "
+                "storage.delete(saved_name)"
+            ),
+            findings,
+        )
+
+    def test_media_outage_workflow_without_read_only_failure_is_rejected(self):
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = workflow_text.replace(
+            "chmod 0555 /media /media/operational",
+            "chmod 0755 /media /media/operational",
+            1,
+        )
+
+        findings = capacity.validate_media_outage_config(invalid_text)
+
+        self.assertIn(
+            (
+                "django-ci.yml no contiene "
+                "chmod 0555 /media /media/operational"
+            ),
+            findings,
+        )
+
+    def test_media_outage_workflow_without_restart_guard_is_rejected(self):
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = workflow_text.replace(
+            'test "$restart_after" -eq "$MEDIA_WEB_RESTART_BEFORE"',
+            "true",
+            1,
+        )
+
+        findings = capacity.validate_media_outage_config(invalid_text)
+
+        self.assertIn(
+            (
+                "django-ci.yml no contiene "
+                'test "$restart_after" -eq "$MEDIA_WEB_RESTART_BEFORE"'
+            ),
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
