@@ -187,6 +187,19 @@ def is_cache_available():
         return False
 
 
+def is_database_available():
+    """
+    Nombre: is_database_available
+    Descripcion: Ejecuta una consulta minima para detectar conexiones persistentes rotas.
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            return cursor.fetchone() == (1,)
+    except DatabaseError:
+        return False
+
+
 @require_GET
 def liveness_check(request):
     """
@@ -203,9 +216,7 @@ def health_check(request):
     Nombre: health_check
     Descripcion: Verifica readiness de base de datos y cache.
     """
-    try:
-        connection.ensure_connection()
-    except DatabaseError:
+    if not is_database_available():
         return Response(
             {
                 "status": "error",

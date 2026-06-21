@@ -270,6 +270,92 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_dependency_outage_verifier_without_database_state_is_rejected(self):
+        verifier_text = (
+            PROJECT_ROOT / "scripts" / "verify_dependency_outage.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = verifier_text.replace(
+            'database": "unavailable"',
+            'database": "unknown"',
+        )
+
+        findings = capacity.validate_dependency_outage_verifier(
+            invalid_text
+        )
+
+        self.assertIn(
+            (
+                "scripts/verify_dependency_outage.py no contiene "
+                'database": "unavailable"'
+            ),
+            findings,
+        )
+
+    def test_database_outage_config_without_connect_timeout_is_rejected(self):
+        compose_text = (
+            PROJECT_ROOT / "compose.yaml"
+        ).read_text(encoding="utf-8")
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        invalid_compose = compose_text.replace(
+            "  DJANGO_DB_CONNECT_TIMEOUT: ${DJANGO_DB_CONNECT_TIMEOUT:-10}\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_database_outage_config(
+            invalid_compose,
+            local_env_text,
+            production_env_text,
+            workflow_text,
+        )
+
+        self.assertIn(
+            "compose.yaml no permite configurar DJANGO_DB_CONNECT_TIMEOUT",
+            findings,
+        )
+
+    def test_database_outage_workflow_without_restart_guard_is_rejected(self):
+        compose_text = (
+            PROJECT_ROOT / "compose.yaml"
+        ).read_text(encoding="utf-8")
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        invalid_workflow = workflow_text.replace(
+            'test "$restart_after" -eq "$DATABASE_WEB_RESTART_BEFORE"',
+            "true",
+            1,
+        )
+
+        findings = capacity.validate_database_outage_config(
+            compose_text,
+            local_env_text,
+            production_env_text,
+            invalid_workflow,
+        )
+
+        self.assertIn(
+            (
+                "django-ci.yml no contiene "
+                'test "$restart_after" -eq "$DATABASE_WEB_RESTART_BEFORE"'
+            ),
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

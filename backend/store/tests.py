@@ -24,7 +24,12 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.contrib.auth.models import Group, User
 from django.contrib.auth.tokens import default_token_generator
-from django.db import IntegrityError, OperationalError, transaction
+from django.db import (
+    DatabaseError,
+    IntegrityError,
+    OperationalError,
+    transaction,
+)
 from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -237,14 +242,27 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.headers["Expires"], "0")
 
     def test_liveness_check_does_not_query_dependencies(self):
-        with patch("store.views_api.connection.ensure_connection") as ensure_connection:
+        with patch("store.views_api.connection.cursor") as database_cursor:
             with patch("store.views_api.cache.set") as cache_set:
                 response = self.client.get(reverse("liveness_check"))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json(), {"status": "ok"})
-        ensure_connection.assert_not_called()
+        database_cursor.assert_not_called()
         cache_set.assert_not_called()
+
+    def test_health_check_reports_unavailable_database(self):
+        with self.assertLogs("django.request", level="ERROR"):
+            with patch(
+                "store.views_api.connection.cursor",
+                side_effect=DatabaseError,
+            ):
+                response = self.client.get(reverse("health_check"))
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data["status"], "error")
+        self.assertEqual(response.data["database"], "unavailable")
+        self.assertEqual(response.data["cache"], "not_checked")
 
     def test_request_id_is_generated_and_returned(self):
         response = self.client.get(reverse("home"))

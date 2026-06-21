@@ -193,6 +193,145 @@ jobs:
 
           exit 1
 
+  database_outage:
+    name: Probar interrupcion temporal de MySQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+
+    env:
+      DJANGO_SECRET_KEY: "ci-database-outage-secret-with-more-than-fifty-characters-1234567890"
+      MYSQL_DATABASE: "vapes_shop_outage"
+      MYSQL_USER: "vapes_user"
+      MYSQL_PASSWORD: "ci-outage-user-password"
+      MYSQL_ROOT_PASSWORD: "ci-outage-root-password"
+      DJANGO_DB_CONN_MAX_AGE: "60"
+      DJANGO_DB_CONNECT_TIMEOUT: "3"
+      BACKUP_PATH: "./backups-outage-ci"
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Construir imagen de aplicacion
+        run: |
+          docker compose --env-file compose.env.example build migrate
+
+      - name: Iniciar stack con MySQL
+        run: |
+          mkdir -p resilience-results
+
+          docker compose --env-file compose.env.example up \
+            --detach \
+            --wait \
+            --wait-timeout 120 \
+            db
+
+          docker compose --env-file compose.env.example up \
+            --detach \
+            migrate
+          docker compose --env-file compose.env.example wait migrate
+
+          docker compose --env-file compose.env.example up \
+            --detach \
+            --wait \
+            --wait-timeout 120 \
+            web \
+            proxy
+
+          python scripts/verify_recovery.py \
+            --url http://127.0.0.1:8080/healthz \
+            --budget 30 \
+            --interval 1 \
+            --timeout 5 \
+            --consecutive 3 \
+            --allow-http \
+            --output resilience-results/database-initial-readiness.json
+
+          web_id="$(
+            docker compose --env-file compose.env.example ps --quiet web
+          )"
+          restart_before="$(
+            docker inspect --format '{{.RestartCount}}' "$web_id"
+          )"
+
+          echo "DATABASE_WEB_ID=$web_id" >> "$GITHUB_ENV"
+          echo "DATABASE_WEB_RESTART_BEFORE=$restart_before" >> "$GITHUB_ENV"
+
+      - name: Interrumpir MySQL y verificar degradacion
+        run: |
+          docker compose --env-file compose.env.example stop \
+            --timeout 1 \
+            db
+
+          python scripts/verify_dependency_outage.py \
+            --liveness-url http://127.0.0.1:8080/livez \
+            --readiness-url http://127.0.0.1:8080/healthz \
+            --budget 20 \
+            --interval 1 \
+            --timeout 5 \
+            --consecutive 2 \
+            --allow-http \
+            --output resilience-results/database-outage.json
+
+      - name: Reiniciar MySQL y verificar recuperacion
+        run: |
+          docker compose --env-file compose.env.example start db
+
+          python scripts/verify_recovery.py \
+            --url http://127.0.0.1:8080/healthz \
+            --budget 90 \
+            --interval 2 \
+            --timeout 5 \
+            --consecutive 3 \
+            --allow-http \
+            --output resilience-results/database-recovery.json
+
+          restart_after="$(
+            docker inspect \
+              --format '{{.RestartCount}}' \
+              "$DATABASE_WEB_ID"
+          )"
+
+          test "$restart_after" -eq "$DATABASE_WEB_RESTART_BEFORE"
+
+          python -c \
+            "import json; from pathlib import Path; Path('resilience-results/database-web-restarts.json').write_text(json.dumps({'restart_before': int('$DATABASE_WEB_RESTART_BEFORE'), 'restart_after': int('$restart_after')}, indent=2) + '\n', encoding='utf-8')"
+
+      - name: Conservar logs de interrupcion
+        if: always()
+        run: |
+          mkdir -p resilience-results
+          docker compose --env-file compose.env.example logs --no-color \
+            > resilience-results/database-outage-compose.log 2>&1 || true
+
+          if [[ -n "${DATABASE_WEB_ID:-}" ]]; then
+            docker stats \
+              --no-stream \
+              --format '{{json .}}' \
+              "$DATABASE_WEB_ID" \
+              > resilience-results/database-outage-web-stats.jsonl || true
+          fi
+
+      - name: Limpiar stack de interrupcion
+        if: always()
+        run: |
+          docker compose --env-file compose.env.example down \
+            --volumes \
+            --remove-orphans
+          rm -rf backups-outage-ci
+
+      - name: Subir evidencia de interrupcion
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-outage
+          path: resilience-results/
+          if-no-files-found: warn
+          retention-days: 30
+
   recovery:
     name: Probar respaldo y restauracion
     runs-on: ubuntu-latest

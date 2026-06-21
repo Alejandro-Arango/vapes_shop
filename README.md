@@ -736,6 +736,8 @@ con restauracion unica de inventario. Tambien valida normalizacion y escritura
 concurrente de imagenes sin conservar nombres ni metadatos del cliente.
 El mismo workflow aplica presion controlada, comprueba recuperacion estable de
 readiness y fuerza una caida para validar el reinicio automatico del contenedor.
+El workflow principal tambien detiene MySQL, exige que liveness siga disponible,
+comprueba readiness `503` y verifica la reconexion sin reiniciar el proceso web.
 
 Validacion estatica local:
 

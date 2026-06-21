@@ -40,6 +40,12 @@ trafico servido y verifica readiness estable despues de la presion. Luego mata
 el contenedor web y exige que `restart: always` lo recupere en menos de 30
 segundos.
 
+El job `Probar interrupcion temporal de MySQL` detiene la base durante la
+ejecucion. Durante la falla exige liveness `200`, readiness `503` con
+`database=unavailable` y que el proceso web no se reinicie. Al iniciar MySQL de
+nuevo, readiness debe recuperar tres respuestas saludables consecutivas en un
+maximo de 90 segundos.
+
 Las sesiones y los productos se generan en una base dedicada cuyo nombre debe
 incluir `performance`. La utilidad se niega a operar sin
 `CHECKOUT_LOAD_TEST_ENABLED=true`, y el workflow elimina el archivo de sesiones
@@ -119,6 +125,8 @@ La prueba falla cuando:
 - la saturacion no produce descarga controlada o solo produce errores;
 - readiness no recupera tres respuestas consecutivas dentro del presupuesto;
 - el contenedor no incrementa su contador de reinicios tras una caida.
+- una caida de MySQL elimina liveness o no degrada readiness de forma explicita;
+- Django necesita reiniciarse o no reconecta dentro del presupuesto de 90 segundos.
 
 Los resultados y el consumo puntual del contenedor se guardan como artefactos
 de GitHub Actions durante 30 dias.
@@ -171,5 +179,5 @@ permanezca sobre 70 %, memoria supere 80 %, existan reinicios por OOM o la base
 de datos agote conexiones. Primero se identifica el cuello de botella; aumentar
 workers sin memoria o conexiones suficientes puede empeorar la estabilidad.
 
-Antes del lanzamiento hace falta repetir estas pruebas sobre staging y agregar
-fallas controladas de almacenamiento y base de datos administrada.
+Antes del lanzamiento hace falta repetir estas pruebas sobre staging, una base
+de datos administrada y agregar fallas controladas de almacenamiento.

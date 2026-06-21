@@ -319,6 +319,23 @@ def validate_recovery_verifier(verifier_text):
     ]
 
 
+def validate_dependency_outage_verifier(verifier_text):
+    required_fragments = (
+        "check_liveness",
+        "check_database_outage",
+        "database\": \"unavailable\"",
+        "cache\": \"not_checked\"",
+        "status\": \"degraded_as_expected\"",
+        "consecutive_successes",
+    )
+
+    return [
+        f"scripts/verify_dependency_outage.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in verifier_text
+    ]
+
+
 def validate_resilience_config(
     start_text,
     nginx_text,
@@ -363,6 +380,46 @@ def validate_resilience_config(
     for fragment in nginx_fragments:
         if fragment not in nginx_text:
             findings.append(f"docker/nginx.conf no contiene {fragment}")
+
+    return findings
+
+
+def validate_database_outage_config(
+    compose_text,
+    local_env_text,
+    production_env_text,
+    workflow_text,
+):
+    findings = []
+    database_keys = (
+        "DJANGO_DB_CONN_MAX_AGE",
+        "DJANGO_DB_CONNECT_TIMEOUT",
+    )
+
+    for key in database_keys:
+        if f"${{{key}:-" not in compose_text:
+            findings.append(f"compose.yaml no permite configurar {key}")
+
+        if key not in parse_env_keys(local_env_text):
+            findings.append(f"compose.env.example no define {key}")
+
+        if key not in parse_env_keys(production_env_text):
+            findings.append(f"compose.production.env.example no define {key}")
+
+    workflow_fragments = (
+        "name: Probar interrupcion temporal de MySQL",
+        "verify_dependency_outage.py",
+        "database-outage.json",
+        "docker compose --env-file compose.env.example stop",
+        "docker compose --env-file compose.env.example start db",
+        "database-recovery.json",
+        'test "$restart_after" -eq "$DATABASE_WEB_RESTART_BEFORE"',
+        "database-outage-compose.log",
+    )
+
+    for fragment in workflow_fragments:
+        if fragment not in workflow_text:
+            findings.append(f"django-ci.yml no contiene {fragment}")
 
     return findings
 
@@ -439,9 +496,15 @@ def find_capacity_findings(project_root):
         ),
         "recovery": project_root / "performance" / "recovery.js",
         "recovery_verifier": project_root / "scripts" / "verify_recovery.py",
+        "dependency_outage_verifier": (
+            project_root / "scripts" / "verify_dependency_outage.py"
+        ),
         "start": project_root / "docker" / "start.sh",
         "nginx": project_root / "docker" / "nginx.conf",
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
+        "django_workflow": (
+            project_root / ".github" / "workflows" / "django-ci.yml"
+        ),
     }
     missing_paths = [
         str(path.relative_to(project_root))
@@ -522,12 +585,25 @@ def find_capacity_findings(project_root):
         )
     )
     findings.extend(
+        validate_dependency_outage_verifier(
+            paths["dependency_outage_verifier"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
         validate_resilience_config(
             paths["start"].read_text(encoding="utf-8"),
             paths["nginx"].read_text(encoding="utf-8"),
             paths["compose"].read_text(encoding="utf-8"),
             paths["local_env"].read_text(encoding="utf-8"),
             paths["production_env"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_database_outage_config(
+            paths["compose"].read_text(encoding="utf-8"),
+            paths["local_env"].read_text(encoding="utf-8"),
+            paths["production_env"].read_text(encoding="utf-8"),
+            paths["django_workflow"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(
