@@ -577,6 +577,124 @@ def validate_external_backup_config(
     return findings
 
 
+def validate_backup_operations(script_text):
+    required_fragments = (
+        "BackupOperationsController",
+        "self.state_directory.with_name",
+        "backup-monitor",
+        "external-backup",
+        "verify-latest",
+        "BACKUP_REQUIRE_EXTERNAL",
+        "RPO incumplido",
+        "RTO incumplido",
+        "rpo_actual_hours",
+        "rto_actual_seconds",
+        "alert_failure",
+        "os.replace(temporary_path, output_path)",
+    )
+
+    return [
+        f"scripts/backup_operations.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in script_text
+    ]
+
+
+def validate_backup_schedule(
+    local_env_text,
+    production_env_text,
+    django_workflow_text,
+    backup_service_text,
+    backup_timer_text,
+    drill_service_text,
+    drill_timer_text,
+    schedule_env_text,
+):
+    findings = []
+    schedule_keys = (
+        "BACKUP_REQUIRE_EXTERNAL",
+        "BACKUP_RPO_HOURS",
+        "BACKUP_RTO_SECONDS",
+        "BACKUP_OPERATION_TIMEOUT",
+        "BACKUP_ALERT_TIMEOUT",
+    )
+    required_fragments = (
+        (
+            backup_service_text,
+            "backup_operations.py cycle",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "StateDirectory=vapes-shop",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "EnvironmentFile=-/etc/vapes-shop/backup-operations.env",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_timer_text,
+            "OnCalendar=*-*-* 02:15:00 America/Bogota",
+            "vapes-shop-backup.timer",
+        ),
+        (
+            backup_timer_text,
+            "Persistent=true",
+            "vapes-shop-backup.timer",
+        ),
+        (
+            drill_service_text,
+            "backup_operations.py drill",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_timer_text,
+            "OnCalendar=Sun *-*-* 04:00:00 America/Bogota",
+            "vapes-shop-recovery-drill.timer",
+        ),
+        (
+            drill_timer_text,
+            "Persistent=true",
+            "vapes-shop-recovery-drill.timer",
+        ),
+        (
+            django_workflow_text,
+            "systemd-analyze verify",
+            "django-ci.yml",
+        ),
+        (
+            django_workflow_text,
+            "rpo-rto-drill.json",
+            "django-ci.yml",
+        ),
+    )
+
+    for text, fragment, label in required_fragments:
+        if fragment not in text:
+            findings.append(f"{label} no contiene {fragment}")
+
+    for key in schedule_keys:
+        if key not in parse_env_keys(local_env_text):
+            findings.append(f"compose.env.example no define {key}")
+
+        if key not in parse_env_keys(production_env_text):
+            findings.append(f"compose.production.env.example no define {key}")
+
+        if key not in parse_env_keys(schedule_env_text):
+            findings.append(
+                f"backup-operations.env.example no define {key}"
+            )
+
+    if "BACKUP_REQUIRE_EXTERNAL=true" not in production_env_text:
+        findings.append(
+            "compose.production.env.example no exige backup externo"
+        )
+
+    return findings
+
+
 def validate_resilience_config(
     start_text,
     nginx_text,
@@ -766,6 +884,9 @@ def find_capacity_findings(project_root):
         ),
         "backup_monitor": project_root / "scripts" / "monitor_backups.py",
         "external_backup": project_root / "scripts" / "external_backup.py",
+        "backup_operations": (
+            project_root / "scripts" / "backup_operations.py"
+        ),
         "backup_dockerfile": project_root / "docker" / "backup.Dockerfile",
         "start": project_root / "docker" / "start.sh",
         "nginx": project_root / "docker" / "nginx.conf",
@@ -775,6 +896,30 @@ def find_capacity_findings(project_root):
         ),
         "production_compose": project_root / "compose.production.yaml",
         "deploy": project_root / "scripts" / "deploy_production.py",
+        "backup_service": (
+            project_root / "ops" / "systemd" / "vapes-shop-backup.service"
+        ),
+        "backup_timer": (
+            project_root / "ops" / "systemd" / "vapes-shop-backup.timer"
+        ),
+        "drill_service": (
+            project_root
+            / "ops"
+            / "systemd"
+            / "vapes-shop-recovery-drill.service"
+        ),
+        "drill_timer": (
+            project_root
+            / "ops"
+            / "systemd"
+            / "vapes-shop-recovery-drill.timer"
+        ),
+        "schedule_env": (
+            project_root
+            / "ops"
+            / "systemd"
+            / "backup-operations.env.example"
+        ),
     }
     missing_paths = [
         str(path.relative_to(project_root))
@@ -893,6 +1038,23 @@ def find_capacity_findings(project_root):
             paths["production_env"].read_text(encoding="utf-8"),
             paths["django_workflow"].read_text(encoding="utf-8"),
             paths["deploy"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_backup_operations(
+            paths["backup_operations"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_backup_schedule(
+            paths["local_env"].read_text(encoding="utf-8"),
+            paths["production_env"].read_text(encoding="utf-8"),
+            paths["django_workflow"].read_text(encoding="utf-8"),
+            paths["backup_service"].read_text(encoding="utf-8"),
+            paths["backup_timer"].read_text(encoding="utf-8"),
+            paths["drill_service"].read_text(encoding="utf-8"),
+            paths["drill_timer"].read_text(encoding="utf-8"),
+            paths["schedule_env"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

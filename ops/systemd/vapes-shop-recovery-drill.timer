@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule Vape Shop weekly recovery drills
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00 America/Bogota
+RandomizedDelaySec=30m
+Persistent=true
+AccuracySec=1m
+Unit=vapes-shop-recovery-drill.service
+
+[Install]
+WantedBy=timers.target

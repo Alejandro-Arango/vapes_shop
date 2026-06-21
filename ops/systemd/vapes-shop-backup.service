@@ -1,0 +1,28 @@
+[Unit]
+Description=Vape Shop daily validated backup cycle
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/srv/vapes-shop/compose.production.env
+ConditionPathExists=/srv/vapes-shop/.deploy/current.json
+
+[Service]
+Type=oneshot
+User=vapes-shop
+Group=vapes-shop
+SupplementaryGroups=docker
+WorkingDirectory=/srv/vapes-shop
+Environment=BACKUP_REQUIRE_EXTERNAL=true
+Environment=BACKUP_RPO_HOURS=26
+Environment=BACKUP_RTO_SECONDS=900
+Environment=BACKUP_OPERATION_TIMEOUT=7200
+EnvironmentFile=-/etc/vapes-shop/backup-operations.env
+StateDirectory=vapes-shop
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=2h30m
+ExecStart=/usr/bin/python3 /srv/vapes-shop/scripts/backup_operations.py cycle --project-root /srv/vapes-shop --env-file /srv/vapes-shop/compose.production.env --state-dir /srv/vapes-shop/.deploy --output /var/lib/vapes-shop/backup-cycle.json

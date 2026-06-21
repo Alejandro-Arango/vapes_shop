@@ -56,6 +56,15 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: python -m unittest discover -s scripts/tests -v
 
+      - name: Validar programacion systemd
+        working-directory: ${{ github.workspace }}
+        run: |
+          systemd-analyze verify \
+            ops/systemd/vapes-shop-backup.service \
+            ops/systemd/vapes-shop-backup.timer \
+            ops/systemd/vapes-shop-recovery-drill.service \
+            ops/systemd/vapes-shop-recovery-drill.timer
+
       - name: Revisar configuracion Django
         run: python manage.py check
 
@@ -637,10 +646,64 @@ jobs:
             exit 1
           fi
 
+          rto_started_at="$(date +%s)"
+
           docker compose --env-file compose.env.example run --rm \
             external-backup \
             verify-latest \
             > resilience-results/external-restore-verification.json
+
+          rto_actual_seconds="$(( $(date +%s) - rto_started_at ))"
+
+          python - "$rto_actual_seconds" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          rpo_objective_hours = 26
+          rto_objective_seconds = 900
+          rto_actual_seconds = int(sys.argv[1])
+          local_report = json.loads(
+              Path("resilience-results/backup-health.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          external_report = json.loads(
+              Path(
+                  "resilience-results/external-restore-verification.json"
+              ).read_text(encoding="utf-8")
+          )
+          rpo_actual_hours = float(local_report["age_hours"])
+
+          if external_report["status"] != "verified":
+              raise SystemExit("La restauracion externa no fue verificada.")
+
+          if external_report["backup_id"] != local_report["backup_id"]:
+              raise SystemExit(
+                  "El snapshot externo no coincide con el backup local."
+              )
+
+          if rpo_actual_hours > rpo_objective_hours:
+              raise SystemExit("El simulacro incumplio el RPO.")
+
+          if rto_actual_seconds > rto_objective_seconds:
+              raise SystemExit("El simulacro incumplio el RTO.")
+
+          report = {
+              "event": "recovery_drill",
+              "status": "ok",
+              "backup_id": local_report["backup_id"],
+              "snapshot_id": external_report["snapshot_id"],
+              "rpo_objective_hours": rpo_objective_hours,
+              "rpo_actual_hours": rpo_actual_hours,
+              "rto_objective_seconds": rto_objective_seconds,
+              "rto_actual_seconds": rto_actual_seconds,
+          }
+          Path("resilience-results/rpo-rto-drill.json").write_text(
+              json.dumps(report, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
 
       - name: Alterar datos despues del respaldo
         run: |

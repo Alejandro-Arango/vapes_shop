@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule Vape Shop daily validated backups
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 America/Bogota
+RandomizedDelaySec=15m
+Persistent=true
+AccuracySec=1m
+Unit=vapes-shop-backup.service
+
+[Install]
+WantedBy=timers.target

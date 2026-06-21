@@ -675,6 +675,11 @@ EXTERNAL_BACKUP_LOCAL_PATH
 EXTERNAL_BACKUP_REPOSITORY_FILE
 EXTERNAL_BACKUP_PASSWORD_FILE
 EXTERNAL_BACKUP_ENV_FILE
+BACKUP_REQUIRE_EXTERNAL
+BACKUP_RPO_HOURS
+BACKUP_RTO_SECONDS
+BACKUP_OPERATION_TIMEOUT
+BACKUP_ALERT_TIMEOUT
 ```
 
 ## Infraestructura con contenedores
@@ -1054,6 +1059,22 @@ La clave Restic debe guardarse en un gestor de secretos separado del
 repositorio externo. Perder esa clave hace irrecuperables las copias. El
 destino debe tener versionado o proteccion contra borrado y credenciales con
 permisos limitados al prefijo de backups.
+
+### Programacion y simulacros RPO/RTO
+
+`scripts/backup_operations.py` automatiza el ciclo completo y comparte el lock
+de despliegue para impedir que un backup coincida con migraciones o rollbacks.
+La politica inicial exige RPO de 26 horas y RTO de datos de 900 segundos.
+
+Las unidades en `ops/systemd/` programan:
+
+- backup diario a las 02:15 en `America/Bogota`;
+- simulacro de restauracion cada domingo a las 04:00;
+- ejecucion pendiente al volver a encender el host;
+- reportes atomicos en `/var/lib/vapes-shop/`.
+
+Instalacion, comandos de verificacion y alcance exacto de los objetivos:
+[docs/BACKUP_OPERATIONS.md](docs/BACKUP_OPERATIONS.md).
 
 El respaldo puede ejecutarse con la tienda activa porque MySQL usa una
 transaccion consistente. Si necesitas consistencia estricta entre una fila y

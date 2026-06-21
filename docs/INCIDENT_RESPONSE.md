@@ -70,6 +70,17 @@ proveedor de hosting.
 - Si el ultimo snapshot no restaura, preservar evidencia y probar una copia
   anterior antes de modificar la retencion.
 
+### Se incumple RPO o RTO
+
+- Conservar `/var/lib/vapes-shop/backup-cycle.json` y
+  `/var/lib/vapes-shop/recovery-drill.json`.
+- Revisar el journal de las unidades de backup y simulacro.
+- Un RPO vencido requiere crear y verificar una copia nueva antes de desplegar.
+- Un RTO excedido requiere identificar si el cuello esta en red, proveedor,
+  `restic check`, descarga, disco local o validacion de archivos.
+- No ampliar el objetivo para ocultar el incidente; cualquier cambio de RPO o
+  RTO requiere una decision documentada.
+
 ### Checkout falla
 
 - No recrear pedidos manualmente hasta revisar la clave de idempotencia.
