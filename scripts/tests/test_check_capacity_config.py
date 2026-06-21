@@ -416,6 +416,103 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_backup_monitor_without_checksum_verification_is_rejected(self):
+        monitor_text = (
+            PROJECT_ROOT / "scripts" / "monitor_backups.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = monitor_text.replace(
+            "sha256_file",
+            "checksum_not_verified",
+        )
+
+        findings = capacity.validate_backup_monitor(invalid_text)
+
+        self.assertIn(
+            "scripts/monitor_backups.py no contiene sha256_file",
+            findings,
+        )
+
+    def test_backup_monitor_config_without_read_only_mount_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8"
+        )
+        production_compose_text = (
+            PROJECT_ROOT / "compose.production.yaml"
+        ).read_text(encoding="utf-8")
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        deploy_text = (
+            PROJECT_ROOT / "scripts" / "deploy_production.py"
+        ).read_text(encoding="utf-8")
+        invalid_compose = compose_text.replace(
+            "${BACKUP_PATH:-./backups}:/backups:ro",
+            "${BACKUP_PATH:-./backups}:/backups",
+            1,
+        )
+
+        findings = capacity.validate_backup_monitor_config(
+            invalid_compose,
+            production_compose_text,
+            local_env_text,
+            production_env_text,
+            workflow_text,
+            deploy_text,
+        )
+
+        self.assertIn(
+            (
+                "compose.yaml no contiene "
+                "${BACKUP_PATH:-./backups}:/backups:ro"
+            ),
+            findings,
+        )
+
+    def test_backup_monitor_config_without_age_threshold_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8"
+        )
+        production_compose_text = (
+            PROJECT_ROOT / "compose.production.yaml"
+        ).read_text(encoding="utf-8")
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        deploy_text = (
+            PROJECT_ROOT / "scripts" / "deploy_production.py"
+        ).read_text(encoding="utf-8")
+        invalid_env = local_env_text.replace(
+            "BACKUP_MAX_AGE_HOURS=26\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_backup_monitor_config(
+            compose_text,
+            production_compose_text,
+            invalid_env,
+            production_env_text,
+            workflow_text,
+            deploy_text,
+        )
+
+        self.assertIn(
+            "compose.env.example no define BACKUP_MAX_AGE_HOURS",
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

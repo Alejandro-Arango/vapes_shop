@@ -583,7 +583,17 @@ jobs:
             -c "printf original > /source/media/recovery-probe.txt"
 
       - name: Crear respaldo verificable
-        run: docker compose --env-file compose.env.example run --rm backup
+        run: |
+          mkdir -p resilience-results
+          docker compose --env-file compose.env.example run --rm backup
+
+          python scripts/monitor_backups.py \
+            --root backups-ci \
+            --max-age-hours 1 \
+            --min-free-bytes 1 \
+            --min-free-percent 0 \
+            --min-free-copies 0 \
+            --output resilience-results/backup-health.json
 
       - name: Alterar datos despues del respaldo
         run: |
@@ -640,3 +650,12 @@ jobs:
         run: |
           docker compose --env-file compose.env.example down --volumes --remove-orphans
           rm -rf backups-ci
+
+      - name: Subir evidencia de respaldo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-recovery
+          path: resilience-results/backup-health.json
+          if-no-files-found: warn
+          retention-days: 30

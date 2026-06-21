@@ -656,6 +656,13 @@ GUNICORN_GRACEFUL_TIMEOUT
 GUNICORN_KEEP_ALIVE
 GUNICORN_MAX_REQUESTS
 GUNICORN_MAX_REQUESTS_JITTER
+BACKUP_MAX_AGE_HOURS
+BACKUP_FUTURE_TOLERANCE_MINUTES
+BACKUP_MIN_DATABASE_BYTES
+BACKUP_MIN_MEDIA_BYTES
+BACKUP_MIN_FREE_BYTES
+BACKUP_MIN_FREE_PERCENT
+BACKUP_MIN_FREE_COPIES
 ```
 
 ## Infraestructura con contenedores
@@ -668,7 +675,7 @@ El repositorio incluye una base reproducible que no depende de un proveedor:
 - Nginx como proxy y servidor de archivos media.
 - Migraciones, tabla de cache y roles ejecutados en una tarea de release.
 - Volumen persistente separado para imagenes subidas.
-- Backups versionados de MySQL y media con checksums.
+- Backups versionados de MySQL y media con checksums y monitor de antiguedad.
 - Restauracion protegida por confirmacion exacta y respaldo de seguridad previo.
 - Liveness independiente para Django y Nginx.
 - Readiness de base de datos y cache en `/healthz`.
@@ -842,7 +849,7 @@ El proceso:
 
 1. valida Compose y descarga las imagenes;
 2. ejecuta `check --deploy` y `production_check` dentro de la imagen;
-3. inicia MySQL y crea un backup;
+3. inicia MySQL, crea un backup y valida integridad, antiguedad y espacio;
 4. ejecuta migraciones;
 5. actualiza `web` y `proxy`;
 6. verifica `/healthz`;
@@ -970,11 +977,25 @@ Para crear un respaldo:
 
 ```powershell
 docker compose --env-file compose.env run --rm backup
+docker compose --env-file compose.env run --rm backup-monitor
 Get-Content .\backups\latest.txt
 ```
 
 `BACKUP_RETENTION_DAYS` controla la retencion local. Su valor predeterminado
 es `14`; usa `0` para no eliminar respaldos automaticamente.
+
+`backup-monitor` valida el ultimo respaldo sin modificarlo: comprueba
+`latest.txt`, metadatos, checksums, lectura completa de los archivos
+comprimidos, rutas seguras dentro de media, antiguedad y espacio libre. Por
+defecto exige un respaldo menor a 26 horas, al menos 1 GiB y 10 % libre, y
+capacidad equivalente a dos copias recientes. Los umbrales se configuran con
+las variables `BACKUP_*` del archivo de entorno.
+
+Debe ejecutarse despues de cada respaldo y periodicamente desde el programador
+del servidor. Su codigo de salida es distinto de cero si el respaldo no es
+recuperable o el disco esta cerca del limite. Puede enviar la alerta al mismo
+webhook operativo mediante `MONITOR_WEBHOOK_URL` y `MONITOR_WEBHOOK_TOKEN`.
+Esta comprobacion es local al servidor y no requiere dominio.
 
 El respaldo puede ejecutarse con la tienda activa porque MySQL usa una
 transaccion consistente. Si necesitas consistencia estricta entre una fila y
@@ -1005,8 +1026,9 @@ volumen, pero no frente a la perdida completa del servidor. En produccion,
 `BACKUP_PATH` debe apuntar a un disco independiente y los respaldos deben
 copiarse cifrados a almacenamiento externo con acceso restringido.
 
-El job `Probar respaldo y restauracion` del CI crea datos, genera un respaldo,
-altera la base y media, restaura y comprueba que ambos vuelven al valor original.
+El job `Probar respaldo y restauracion` del CI crea datos, genera y valida un
+respaldo, altera la base y media, restaura y comprueba que ambos vuelven al
+valor original.
 
 Este Compose usa HTTP para desarrollo de infraestructura. En produccion se
 debe terminar TLS en el proxy o balanceador y activar cookies seguras, HSTS,

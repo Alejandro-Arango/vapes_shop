@@ -48,6 +48,16 @@ proveedor de hosting.
 - Buscar el `request_id` de la alerta en logs de `proxy` y `web`.
 - Confirmar espacio en disco, memoria, conexiones y estado de MySQL.
 
+### El monitor de backups falla
+
+- Detener despliegues y restauraciones hasta conocer la causa.
+- Ejecutar `docker compose --env-file compose.env run --rm backup-monitor`.
+- Si falla el checksum o un archivo comprimido, conservar el respaldo como
+  evidencia y seleccionar una copia anterior verificada.
+- Si falla por antiguedad, revisar el programador y crear un respaldo nuevo.
+- Si falla por espacio, no borrar la ultima copia saludable; ampliar o liberar
+  almacenamiento siguiendo la retencion documentada.
+
 ### Checkout falla
 
 - No recrear pedidos manualmente hasta revisar la clave de idempotencia.

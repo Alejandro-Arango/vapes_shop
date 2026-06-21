@@ -184,6 +184,7 @@ class DeploymentController:
             "migrate",
             "web",
             "backup",
+            "backup-monitor",
             "restore",
         )
 
@@ -205,6 +206,13 @@ class DeploymentController:
             "--rm",
             "--no-deps",
             "backup",
+        )
+        self.run_compose(
+            state,
+            "run",
+            "--rm",
+            "--no-deps",
+            "backup-monitor",
         )
 
     def validate_application(self, state):

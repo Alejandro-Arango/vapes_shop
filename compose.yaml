@@ -58,6 +58,18 @@ x-backup-environment: &backup-environment
   MEDIA_GID: "10001"
   BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
 
+x-backup-monitor-environment: &backup-monitor-environment
+  BACKUP_ROOT: /backups
+  BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS:-26}
+  BACKUP_FUTURE_TOLERANCE_MINUTES: ${BACKUP_FUTURE_TOLERANCE_MINUTES:-5}
+  BACKUP_MIN_DATABASE_BYTES: ${BACKUP_MIN_DATABASE_BYTES:-128}
+  BACKUP_MIN_MEDIA_BYTES: ${BACKUP_MIN_MEDIA_BYTES:-32}
+  BACKUP_MIN_FREE_BYTES: ${BACKUP_MIN_FREE_BYTES:-1073741824}
+  BACKUP_MIN_FREE_PERCENT: ${BACKUP_MIN_FREE_PERCENT:-10}
+  BACKUP_MIN_FREE_COPIES: ${BACKUP_MIN_FREE_COPIES:-2}
+  MONITOR_WEBHOOK_URL: ${MONITOR_WEBHOOK_URL:-}
+  MONITOR_WEBHOOK_TOKEN: ${MONITOR_WEBHOOK_TOKEN:-}
+
 services:
   db:
     image: mysql:8.4.10
@@ -189,6 +201,34 @@ services:
     volumes:
       - media_data:/source/media:ro
       - ${BACKUP_PATH:-./backups}:/backups
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+
+  backup-monitor:
+    profiles:
+      - ops
+    build:
+      context: .
+    image: vapes-shop-web:local
+    command:
+      - python
+      - /monitor/monitor_backups.py
+      - --root
+      - /backups
+    user: "0:0"
+    mem_limit: ${BACKUP_MONITOR_MEMORY_LIMIT:-256m}
+    cpus: ${BACKUP_MONITOR_CPU_LIMIT:-0.25}
+    pids_limit: 64
+    environment: *backup-monitor-environment
+    volumes:
+      - ${BACKUP_PATH:-./backups}:/backups:ro
+      - ./scripts/monitor_backups.py:/monitor/monitor_backups.py:ro
     read_only: true
     tmpfs:
       - /tmp

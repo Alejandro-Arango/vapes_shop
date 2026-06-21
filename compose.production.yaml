@@ -34,5 +34,8 @@ services:
   backup:
     image: ${BACKUP_IMAGE:?Define BACKUP_IMAGE con una referencia por digest}
 
+  backup-monitor:
+    image: ${APP_IMAGE:?Define APP_IMAGE con una referencia por digest}
+
   restore:
     image: ${BACKUP_IMAGE:?Define BACKUP_IMAGE con una referencia por digest}

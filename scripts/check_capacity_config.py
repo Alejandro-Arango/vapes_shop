@@ -15,6 +15,11 @@ RESOURCE_POLICY = {
     "web": ("WEB_MEMORY_LIMIT", "WEB_CPU_LIMIT", "pids_limit"),
     "proxy": ("PROXY_MEMORY_LIMIT", "PROXY_CPU_LIMIT", "pids_limit"),
     "backup": ("BACKUP_MEMORY_LIMIT", "BACKUP_CPU_LIMIT", "pids_limit"),
+    "backup-monitor": (
+        "BACKUP_MONITOR_MEMORY_LIMIT",
+        "BACKUP_MONITOR_CPU_LIMIT",
+        "pids_limit",
+    ),
     "restore": ("RESTORE_MEMORY_LIMIT", "RESTORE_CPU_LIMIT", "pids_limit"),
 }
 ENV_RESOURCE_KEYS = tuple(
@@ -353,6 +358,77 @@ def validate_media_storage_verifier(verifier_text):
     ]
 
 
+def validate_backup_monitor(monitor_text):
+    required_fragments = (
+        "BACKUP_ID_PATTERN",
+        "manifest.sha256",
+        "sha256_file",
+        "validate_database_archive",
+        "validate_media_archive",
+        "BACKUP_MAX_AGE_HOURS",
+        "BACKUP_MIN_FREE_BYTES",
+        "BACKUP_MIN_FREE_PERCENT",
+        "BACKUP_MIN_FREE_COPIES",
+        "status\": \"critical\"",
+    )
+
+    return [
+        f"scripts/monitor_backups.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in monitor_text
+    ]
+
+
+def validate_backup_monitor_config(
+    compose_text,
+    production_compose_text,
+    local_env_text,
+    production_env_text,
+    django_workflow_text,
+    deploy_text,
+):
+    findings = []
+    monitor_keys = (
+        "BACKUP_MAX_AGE_HOURS",
+        "BACKUP_FUTURE_TOLERANCE_MINUTES",
+        "BACKUP_MIN_DATABASE_BYTES",
+        "BACKUP_MIN_MEDIA_BYTES",
+        "BACKUP_MIN_FREE_BYTES",
+        "BACKUP_MIN_FREE_PERCENT",
+        "BACKUP_MIN_FREE_COPIES",
+    )
+    required_fragments = (
+        (compose_text, "backup-monitor:", "compose.yaml"),
+        (compose_text, "/monitor/monitor_backups.py", "compose.yaml"),
+        (
+            compose_text,
+            "./scripts/monitor_backups.py:/monitor/monitor_backups.py:ro",
+            "compose.yaml",
+        ),
+        (compose_text, "${BACKUP_PATH:-./backups}:/backups:ro", "compose.yaml"),
+        (production_compose_text, "backup-monitor:", "compose.production.yaml"),
+        (django_workflow_text, "python scripts/monitor_backups.py", "django-ci.yml"),
+        (django_workflow_text, "backup-health.json", "django-ci.yml"),
+        (deploy_text, '"backup-monitor"', "deploy_production.py"),
+    )
+
+    for text, fragment, label in required_fragments:
+        if fragment not in text:
+            findings.append(f"{label} no contiene {fragment}")
+
+    for key in monitor_keys:
+        if key not in compose_text:
+            findings.append(f"compose.yaml no propaga {key}")
+
+        if key not in parse_env_keys(local_env_text):
+            findings.append(f"compose.env.example no define {key}")
+
+        if key not in parse_env_keys(production_env_text):
+            findings.append(f"compose.production.env.example no define {key}")
+
+    return findings
+
+
 def validate_resilience_config(
     start_text,
     nginx_text,
@@ -540,12 +616,15 @@ def find_capacity_findings(project_root):
         "media_storage_verifier": (
             project_root / "scripts" / "verify_media_storage.py"
         ),
+        "backup_monitor": project_root / "scripts" / "monitor_backups.py",
         "start": project_root / "docker" / "start.sh",
         "nginx": project_root / "docker" / "nginx.conf",
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
         "django_workflow": (
             project_root / ".github" / "workflows" / "django-ci.yml"
         ),
+        "production_compose": project_root / "compose.production.yaml",
+        "deploy": project_root / "scripts" / "deploy_production.py",
     }
     missing_paths = [
         str(path.relative_to(project_root))
@@ -633,6 +712,21 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_media_storage_verifier(
             paths["media_storage_verifier"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_backup_monitor(
+            paths["backup_monitor"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_backup_monitor_config(
+            paths["compose"].read_text(encoding="utf-8"),
+            paths["production_compose"].read_text(encoding="utf-8"),
+            paths["local_env"].read_text(encoding="utf-8"),
+            paths["production_env"].read_text(encoding="utf-8"),
+            paths["django_workflow"].read_text(encoding="utf-8"),
+            paths["deploy"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(
