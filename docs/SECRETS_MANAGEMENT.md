@@ -16,6 +16,7 @@ de respaldo sin cifrar ni documentación compartida.
 | `MONITOR_WEBHOOK_TOKEN` | GitHub Actions secret | Solo endpoint de alertas | Cada 180 dias |
 | TOTP y codigos de recuperacion | Gestor de contrasenas fuera del servidor | Una identidad administrativa | Al perder control o cambiar administrador |
 | Clave de cifrado de backups externos | Gestor KMS/proveedor | Solo cifrar/descifrar backups | Segun politica del proveedor |
+| Credenciales del backend Restic | Archivo protegido del host | Solo escribir y leer el prefijo de backups | Cada 90 dias |
 
 `GITHUB_TOKEN` es efimero y lo entrega GitHub Actions. No debe copiarse a
 variables permanentes.
@@ -42,8 +43,9 @@ Ejemplo para generar una clave Django:
 2. Actualizar el almacén autorizado.
 3. Reiniciar o desplegar los servicios consumidores.
 4. Verificar `/healthz`, correo, backups y monitoreo.
-5. Revocar el valor anterior.
-6. Registrar fecha, responsable y resultado.
+5. Ejecutar `external-backup verify-latest` despues de rotar credenciales.
+6. Revocar el valor anterior.
+7. Registrar fecha, responsable y resultado.
 
 Cambiar `DJANGO_SECRET_KEY` invalida firmas y enlaces temporales, incluidos
 tokens de restablecimiento de contraseña. Planifica una ventana y comunica el

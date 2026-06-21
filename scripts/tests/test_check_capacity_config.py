@@ -454,7 +454,6 @@ class CapacityConfigTests(unittest.TestCase):
         invalid_compose = compose_text.replace(
             "${BACKUP_PATH:-./backups}:/backups:ro",
             "${BACKUP_PATH:-./backups}:/backups",
-            1,
         )
 
         findings = capacity.validate_backup_monitor_config(
@@ -510,6 +509,114 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn(
             "compose.env.example no define BACKUP_MAX_AGE_HOURS",
+            findings,
+        )
+
+    def test_external_backup_without_restore_comparison_is_rejected(self):
+        script_text = (
+            PROJECT_ROOT / "scripts" / "external_backup.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = script_text.replace(
+            "compare_files",
+            "restore_not_compared",
+        )
+
+        findings = capacity.validate_external_backup_script(invalid_text)
+
+        self.assertIn(
+            "scripts/external_backup.py no contiene compare_files",
+            findings,
+        )
+
+    def test_external_backup_config_without_pinned_checksum_is_rejected(self):
+        backup_dockerfile_text = (
+            PROJECT_ROOT / "docker" / "backup.Dockerfile"
+        ).read_text(encoding="utf-8")
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8"
+        )
+        production_compose_text = (
+            PROJECT_ROOT / "compose.production.yaml"
+        ).read_text(encoding="utf-8")
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        deploy_text = (
+            PROJECT_ROOT / "scripts" / "deploy_production.py"
+        ).read_text(encoding="utf-8")
+        invalid_dockerfile = backup_dockerfile_text.replace(
+            "sha256sum --check --strict",
+            "true",
+            1,
+        )
+
+        findings = capacity.validate_external_backup_config(
+            invalid_dockerfile,
+            compose_text,
+            production_compose_text,
+            local_env_text,
+            production_env_text,
+            workflow_text,
+            deploy_text,
+        )
+
+        self.assertIn(
+            (
+                "docker/backup.Dockerfile no contiene "
+                "sha256sum --check --strict"
+            ),
+            findings,
+        )
+
+    def test_external_backup_config_without_restore_ci_is_rejected(self):
+        backup_dockerfile_text = (
+            PROJECT_ROOT / "docker" / "backup.Dockerfile"
+        ).read_text(encoding="utf-8")
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8"
+        )
+        production_compose_text = (
+            PROJECT_ROOT / "compose.production.yaml"
+        ).read_text(encoding="utf-8")
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        deploy_text = (
+            PROJECT_ROOT / "scripts" / "deploy_production.py"
+        ).read_text(encoding="utf-8")
+        invalid_workflow = workflow_text.replace(
+            "external-restore-verification.json",
+            "external-copy-only.json",
+            1,
+        )
+
+        findings = capacity.validate_external_backup_config(
+            backup_dockerfile_text,
+            compose_text,
+            production_compose_text,
+            local_env_text,
+            production_env_text,
+            invalid_workflow,
+            deploy_text,
+        )
+
+        self.assertIn(
+            (
+                "django-ci.yml no contiene "
+                "external-restore-verification.json"
+            ),
             findings,
         )
 

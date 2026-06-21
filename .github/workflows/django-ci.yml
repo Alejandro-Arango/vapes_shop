@@ -548,6 +548,13 @@ jobs:
       MYSQL_ROOT_PASSWORD: "ci-recovery-root-password"
       BACKUP_PATH: "./backups-ci"
       BACKUP_RETENTION_DAYS: "14"
+      EXTERNAL_BACKUP_ENABLED: "true"
+      EXTERNAL_BACKUP_HOST: "vapes-shop-ci"
+      EXTERNAL_BACKUP_CHECK_SUBSET: "100%"
+      EXTERNAL_BACKUP_LOCAL_PATH: "./external-backups-ci"
+      EXTERNAL_BACKUP_REPOSITORY_FILE: "./performance-runtime/restic-repository.txt"
+      EXTERNAL_BACKUP_PASSWORD_FILE: "./performance-runtime/restic-password.txt"
+      EXTERNAL_BACKUP_ENV_FILE: "./performance-runtime/restic-backend.env"
 
     steps:
       - name: Descargar codigo
@@ -555,6 +562,28 @@ jobs:
 
       - name: Construir imagen operativa
         run: docker compose --env-file compose.env.example build backup
+
+      - name: Preparar repositorio cifrado externo
+        run: |
+          mkdir -p \
+            external-backups-ci \
+            performance-runtime \
+            resilience-results
+          printf '%s\n' \
+            "/external-repository" \
+            > performance-runtime/restic-repository.txt
+          printf '%s\n' \
+            "ci-restic-password-with-more-than-thirty-characters" \
+            > performance-runtime/restic-password.txt
+          chmod 0600 \
+            performance-runtime/restic-repository.txt \
+            performance-runtime/restic-password.txt
+
+          docker compose --env-file compose.env.example run --rm \
+            external-backup \
+            init \
+            --confirm INIT-EXTERNAL-BACKUP \
+            > resilience-results/external-backup-init.json
 
       - name: Iniciar MySQL
         run: |
@@ -594,6 +623,24 @@ jobs:
             --min-free-percent 0 \
             --min-free-copies 0 \
             --output resilience-results/backup-health.json
+
+          docker compose --env-file compose.env.example run --rm \
+            external-backup \
+            backup \
+            > resilience-results/external-backup.json
+
+          if grep --recursive --binary-files=text --quiet \
+            --extended-regexp \
+            "recovery_probe|persistent-media" \
+            external-backups-ci; then
+            echo "El repositorio Restic contiene datos de prueba en texto plano." >&2
+            exit 1
+          fi
+
+          docker compose --env-file compose.env.example run --rm \
+            external-backup \
+            verify-latest \
+            > resilience-results/external-restore-verification.json
 
       - name: Alterar datos despues del respaldo
         run: |
@@ -649,13 +696,16 @@ jobs:
         if: always()
         run: |
           docker compose --env-file compose.env.example down --volumes --remove-orphans
-          rm -rf backups-ci
+          rm -rf \
+            backups-ci \
+            external-backups-ci \
+            performance-runtime
 
       - name: Subir evidencia de respaldo
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backup-recovery
-          path: resilience-results/backup-health.json
+          path: resilience-results/
           if-no-files-found: warn
           retention-days: 30

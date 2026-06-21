@@ -70,6 +70,21 @@ x-backup-monitor-environment: &backup-monitor-environment
   MONITOR_WEBHOOK_URL: ${MONITOR_WEBHOOK_URL:-}
   MONITOR_WEBHOOK_TOKEN: ${MONITOR_WEBHOOK_TOKEN:-}
 
+x-external-backup-environment: &external-backup-environment
+  <<: *backup-monitor-environment
+  EXTERNAL_BACKUP_ENABLED: ${EXTERNAL_BACKUP_ENABLED:-false}
+  EXTERNAL_BACKUP_HOST: ${EXTERNAL_BACKUP_HOST:-vapes-shop}
+  EXTERNAL_BACKUP_CHECK_SUBSET: ${EXTERNAL_BACKUP_CHECK_SUBSET:-5%}
+  EXTERNAL_BACKUP_KEEP_DAILY: ${EXTERNAL_BACKUP_KEEP_DAILY:-14}
+  EXTERNAL_BACKUP_KEEP_WEEKLY: ${EXTERNAL_BACKUP_KEEP_WEEKLY:-8}
+  EXTERNAL_BACKUP_KEEP_MONTHLY: ${EXTERNAL_BACKUP_KEEP_MONTHLY:-12}
+  EXTERNAL_BACKUP_MIN_PASSWORD_LENGTH: ${EXTERNAL_BACKUP_MIN_PASSWORD_LENGTH:-20}
+  EXTERNAL_BACKUP_COMMAND_TIMEOUT: ${EXTERNAL_BACKUP_COMMAND_TIMEOUT:-3600}
+  EXTERNAL_BACKUP_RESTORE_ROOT: /restore-check
+  RESTIC_REPOSITORY_FILE: /run/secrets/restic_repository
+  RESTIC_PASSWORD_FILE: /run/secrets/restic_password
+  RESTIC_CACHE_DIR: /tmp/restic-cache
+
 services:
   db:
     image: mysql:8.4.10
@@ -238,6 +253,41 @@ services:
       - ALL
     logging: *default-logging
 
+  external-backup:
+    profiles:
+      - ops
+    build:
+      context: .
+      dockerfile: docker/backup.Dockerfile
+    image: vapes-shop-backup:local
+    entrypoint:
+      - python3
+      - /usr/local/lib/vapes-shop/external_backup.py
+    command:
+      - backup
+    user: "0:0"
+    mem_limit: ${EXTERNAL_BACKUP_MEMORY_LIMIT:-512m}
+    cpus: ${EXTERNAL_BACKUP_CPU_LIMIT:-0.50}
+    pids_limit: 128
+    environment: *external-backup-environment
+    env_file:
+      - path: ${EXTERNAL_BACKUP_ENV_FILE:-./secrets/restic-backend.env}
+        required: false
+    volumes:
+      - ${BACKUP_PATH:-./backups}:/backups:ro
+      - ${EXTERNAL_BACKUP_LOCAL_PATH:-./external-backups}:/external-repository
+      - ${EXTERNAL_BACKUP_REPOSITORY_FILE:-./secrets/restic-repository.txt}:/run/secrets/restic_repository:ro
+      - ${EXTERNAL_BACKUP_PASSWORD_FILE:-./secrets/restic-password.txt}:/run/secrets/restic_password:ro
+      - external_restore_check:/restore-check
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+
   restore:
     profiles:
       - ops
@@ -274,5 +324,6 @@ services:
     logging: *default-logging
 
 volumes:
+  external_restore_check:
   mysql_data:
   media_data:

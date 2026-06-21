@@ -58,6 +58,18 @@ proveedor de hosting.
 - Si falla por espacio, no borrar la ultima copia saludable; ampliar o liberar
   almacenamiento siguiendo la retencion documentada.
 
+### La copia externa falla
+
+- Conservar el backup local validado y detener migraciones destructivas.
+- Ejecutar `external-backup verify-latest` para separar un fallo de escritura
+  de un fallo de lectura o restauracion.
+- Revisar expiracion de credenciales, conectividad, cuota y bloqueo del
+  proveedor sin copiar claves a logs.
+- No inicializar de nuevo sobre una ruta existente: puede indicar repositorio
+  incorrecto, clave equivocada o una incidencia del proveedor.
+- Si el ultimo snapshot no restaura, preservar evidencia y probar una copia
+  anterior antes de modificar la retencion.
+
 ### Checkout falla
 
 - No recrear pedidos manualmente hasta revisar la clave de idempotencia.

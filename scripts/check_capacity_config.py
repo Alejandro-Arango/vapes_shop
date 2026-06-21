@@ -20,6 +20,11 @@ RESOURCE_POLICY = {
         "BACKUP_MONITOR_CPU_LIMIT",
         "pids_limit",
     ),
+    "external-backup": (
+        "EXTERNAL_BACKUP_MEMORY_LIMIT",
+        "EXTERNAL_BACKUP_CPU_LIMIT",
+        "pids_limit",
+    ),
     "restore": ("RESTORE_MEMORY_LIMIT", "RESTORE_CPU_LIMIT", "pids_limit"),
 }
 ENV_RESOURCE_KEYS = tuple(
@@ -429,6 +434,149 @@ def validate_backup_monitor_config(
     return findings
 
 
+def validate_external_backup_script(script_text):
+    required_fragments = (
+        "INIT-EXTERNAL-BACKUP",
+        "RESTIC_REPOSITORY_FILE",
+        "RESTIC_PASSWORD_FILE",
+        "EXTERNAL_BACKUP_MIN_PASSWORD_LENGTH",
+        "restic",
+        "backup",
+        "check",
+        "restore",
+        "forget",
+        "compare_files",
+        "verify_backup",
+        "stored_and_restored",
+    )
+
+    return [
+        f"scripts/external_backup.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in script_text
+    ]
+
+
+def validate_external_backup_config(
+    backup_dockerfile_text,
+    compose_text,
+    production_compose_text,
+    local_env_text,
+    production_env_text,
+    django_workflow_text,
+    deploy_text,
+):
+    findings = []
+    external_keys = (
+        "EXTERNAL_BACKUP_ENABLED",
+        "EXTERNAL_BACKUP_HOST",
+        "EXTERNAL_BACKUP_CHECK_SUBSET",
+        "EXTERNAL_BACKUP_KEEP_DAILY",
+        "EXTERNAL_BACKUP_KEEP_WEEKLY",
+        "EXTERNAL_BACKUP_KEEP_MONTHLY",
+        "EXTERNAL_BACKUP_MIN_PASSWORD_LENGTH",
+        "EXTERNAL_BACKUP_COMMAND_TIMEOUT",
+        "EXTERNAL_BACKUP_LOCAL_PATH",
+        "EXTERNAL_BACKUP_REPOSITORY_FILE",
+        "EXTERNAL_BACKUP_PASSWORD_FILE",
+        "EXTERNAL_BACKUP_ENV_FILE",
+    )
+    required_fragments = (
+        (
+            backup_dockerfile_text,
+            "ARG RESTIC_VERSION=0.19.0",
+            "docker/backup.Dockerfile",
+        ),
+        (
+            backup_dockerfile_text,
+            "13176fe6d89d4357947a2cd107218ab2873a5f9d8e1ac2d4cd1c8e07e6839c21",
+            "docker/backup.Dockerfile",
+        ),
+        (
+            backup_dockerfile_text,
+            "e522ce6bf748d753fee8093e8ec59359972cf5b6bc65fc7c7cf38ae952351d91",
+            "docker/backup.Dockerfile",
+        ),
+        (
+            backup_dockerfile_text,
+            "sha256sum --check --strict",
+            "docker/backup.Dockerfile",
+        ),
+        (
+            backup_dockerfile_text,
+            "scripts/monitor_backups.py scripts/external_backup.py",
+            "docker/backup.Dockerfile",
+        ),
+        (compose_text, "external-backup:", "compose.yaml"),
+        (
+            compose_text,
+            "${BACKUP_PATH:-./backups}:/backups:ro",
+            "compose.yaml",
+        ),
+        (
+            compose_text,
+            "/run/secrets/restic_repository:ro",
+            "compose.yaml",
+        ),
+        (
+            compose_text,
+            "/run/secrets/restic_password:ro",
+            "compose.yaml",
+        ),
+        (
+            compose_text,
+            "external_restore_check:/restore-check",
+            "compose.yaml",
+        ),
+        (
+            production_compose_text,
+            "external-backup:",
+            "compose.production.yaml",
+        ),
+        (
+            django_workflow_text,
+            "--confirm INIT-EXTERNAL-BACKUP",
+            "django-ci.yml",
+        ),
+        (
+            django_workflow_text,
+            "external-restore-verification.json",
+            "django-ci.yml",
+        ),
+        (
+            django_workflow_text,
+            "repositorio Restic contiene datos de prueba en texto plano",
+            "django-ci.yml",
+        ),
+        (
+            deploy_text,
+            '"external-backup"',
+            "deploy_production.py",
+        ),
+    )
+
+    for text, fragment, label in required_fragments:
+        if fragment not in text:
+            findings.append(f"{label} no contiene {fragment}")
+
+    for key in external_keys:
+        if key not in compose_text:
+            findings.append(f"compose.yaml no propaga {key}")
+
+        if key not in parse_env_keys(local_env_text):
+            findings.append(f"compose.env.example no define {key}")
+
+        if key not in parse_env_keys(production_env_text):
+            findings.append(f"compose.production.env.example no define {key}")
+
+    if "EXTERNAL_BACKUP_ENABLED=true" not in production_env_text:
+        findings.append(
+            "compose.production.env.example no activa el backup externo"
+        )
+
+    return findings
+
+
 def validate_resilience_config(
     start_text,
     nginx_text,
@@ -617,6 +765,8 @@ def find_capacity_findings(project_root):
             project_root / "scripts" / "verify_media_storage.py"
         ),
         "backup_monitor": project_root / "scripts" / "monitor_backups.py",
+        "external_backup": project_root / "scripts" / "external_backup.py",
+        "backup_dockerfile": project_root / "docker" / "backup.Dockerfile",
         "start": project_root / "docker" / "start.sh",
         "nginx": project_root / "docker" / "nginx.conf",
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
@@ -721,6 +871,22 @@ def find_capacity_findings(project_root):
     )
     findings.extend(
         validate_backup_monitor_config(
+            paths["compose"].read_text(encoding="utf-8"),
+            paths["production_compose"].read_text(encoding="utf-8"),
+            paths["local_env"].read_text(encoding="utf-8"),
+            paths["production_env"].read_text(encoding="utf-8"),
+            paths["django_workflow"].read_text(encoding="utf-8"),
+            paths["deploy"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_external_backup_script(
+            paths["external_backup"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_external_backup_config(
+            paths["backup_dockerfile"].read_text(encoding="utf-8"),
             paths["compose"].read_text(encoding="utf-8"),
             paths["production_compose"].read_text(encoding="utf-8"),
             paths["local_env"].read_text(encoding="utf-8"),

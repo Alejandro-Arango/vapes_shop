@@ -663,6 +663,18 @@ BACKUP_MIN_MEDIA_BYTES
 BACKUP_MIN_FREE_BYTES
 BACKUP_MIN_FREE_PERCENT
 BACKUP_MIN_FREE_COPIES
+EXTERNAL_BACKUP_ENABLED
+EXTERNAL_BACKUP_HOST
+EXTERNAL_BACKUP_CHECK_SUBSET
+EXTERNAL_BACKUP_KEEP_DAILY
+EXTERNAL_BACKUP_KEEP_WEEKLY
+EXTERNAL_BACKUP_KEEP_MONTHLY
+EXTERNAL_BACKUP_MIN_PASSWORD_LENGTH
+EXTERNAL_BACKUP_COMMAND_TIMEOUT
+EXTERNAL_BACKUP_LOCAL_PATH
+EXTERNAL_BACKUP_REPOSITORY_FILE
+EXTERNAL_BACKUP_PASSWORD_FILE
+EXTERNAL_BACKUP_ENV_FILE
 ```
 
 ## Infraestructura con contenedores
@@ -676,6 +688,7 @@ El repositorio incluye una base reproducible que no depende de un proveedor:
 - Migraciones, tabla de cache y roles ejecutados en una tarea de release.
 - Volumen persistente separado para imagenes subidas.
 - Backups versionados de MySQL y media con checksums y monitor de antiguedad.
+- Copias externas cifradas con Restic y restauracion temporal verificada.
 - Restauracion protegida por confirmacion exacta y respaldo de seguridad previo.
 - Liveness independiente para Django y Nginx.
 - Readiness de base de datos y cache en `/healthz`.
@@ -849,7 +862,7 @@ El proceso:
 
 1. valida Compose y descarga las imagenes;
 2. ejecuta `check --deploy` y `production_check` dentro de la imagen;
-3. inicia MySQL, crea un backup y valida integridad, antiguedad y espacio;
+3. inicia MySQL y valida el backup local y su copia externa cifrada;
 4. ejecuta migraciones;
 5. actualiza `web` y `proxy`;
 6. verifica `/healthz`;
@@ -997,6 +1010,51 @@ recuperable o el disco esta cerca del limite. Puede enviar la alerta al mismo
 webhook operativo mediante `MONITOR_WEBHOOK_URL` y `MONITOR_WEBHOOK_TOKEN`.
 Esta comprobacion es local al servidor y no requiere dominio.
 
+### Copia externa cifrada
+
+La imagen operativa incluye Restic `0.19.0`, descargado durante la construccion
+y validado con los checksums oficiales para `amd64` y `arm64`. El repositorio
+externo queda cifrado antes de abandonar el servidor y puede ubicarse en un
+disco separado, S3 compatible, REST u otro backend soportado por Restic.
+
+Los secretos se entregan como archivos fuera de Git:
+
+- `EXTERNAL_BACKUP_REPOSITORY_FILE`: archivo con la URL o ruta del repositorio.
+- `EXTERNAL_BACKUP_PASSWORD_FILE`: clave larga y exclusiva del repositorio.
+- `EXTERNAL_BACKUP_ENV_FILE`: credenciales opcionales del backend, por ejemplo
+  `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY`.
+
+Para una prueba local, crea `secrets/restic-repository.txt` con
+`/external-repository`, crea una clave aleatoria de al menos 20 caracteres en
+`secrets/restic-password.txt` y activa `EXTERNAL_BACKUP_ENABLED=true`.
+Los directorios `secrets/` y `external-backups/` estan ignorados por Git.
+
+La inicializacion es una operacion explicita:
+
+```powershell
+docker compose --env-file compose.env run --rm external-backup `
+  init --confirm INIT-EXTERNAL-BACKUP
+```
+
+Despues de cada backup local:
+
+```powershell
+docker compose --env-file compose.env run --rm backup-monitor
+docker compose --env-file compose.env run --rm external-backup backup
+docker compose --env-file compose.env run --rm external-backup verify-latest
+```
+
+`backup` ejecuta `restic check`, restaura el snapshot nuevo en un volumen
+temporal, compara todos los archivos con la copia local y vuelve a validar los
+checksums y archivos comprimidos. Solo despues aplica la retencion diaria,
+semanal y mensual. `verify-latest` repite la restauracion sin necesitar crear
+otra copia.
+
+La clave Restic debe guardarse en un gestor de secretos separado del
+repositorio externo. Perder esa clave hace irrecuperables las copias. El
+destino debe tener versionado o proteccion contra borrado y credenciales con
+permisos limitados al prefijo de backups.
+
 El respaldo puede ejecutarse con la tienda activa porque MySQL usa una
 transaccion consistente. Si necesitas consistencia estricta entre una fila y
 su archivo media, detén temporalmente `web` mientras se genera el respaldo.
@@ -1027,8 +1085,8 @@ volumen, pero no frente a la perdida completa del servidor. En produccion,
 copiarse cifrados a almacenamiento externo con acceso restringido.
 
 El job `Probar respaldo y restauracion` del CI crea datos, genera y valida un
-respaldo, altera la base y media, restaura y comprueba que ambos vuelven al
-valor original.
+respaldo, lo copia a un repositorio Restic cifrado, restaura el snapshot
+externo, altera la base y media y comprueba la restauracion local.
 
 Este Compose usa HTTP para desarrollo de infraestructura. En produccion se
 debe terminar TLS en el proxy o balanceador y activar cookies seguras, HSTS,

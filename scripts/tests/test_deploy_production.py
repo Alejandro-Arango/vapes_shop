@@ -103,6 +103,12 @@ class DeploymentControllerTests(unittest.TestCase):
                 for cmd in commands
             )
         )
+        self.assertTrue(
+            any(
+                " run --rm --no-deps external-backup backup" in cmd
+                for cmd in commands
+            )
+        )
         self.assertTrue(any(" check --deploy" in cmd for cmd in commands))
         self.assertTrue(any(" production_check" in cmd for cmd in commands))
         self.assertTrue(
@@ -127,6 +133,11 @@ class DeploymentControllerTests(unittest.TestCase):
             for index, command in enumerate(commands)
             if " run --rm --no-deps backup-monitor" in command
         )
+        external_backup_index = next(
+            index
+            for index, command in enumerate(commands)
+            if " run --rm --no-deps external-backup backup" in command
+        )
         migration_index = next(
             index
             for index, command in enumerate(commands)
@@ -134,7 +145,8 @@ class DeploymentControllerTests(unittest.TestCase):
         )
         self.assertLess(production_check_index, backup_index)
         self.assertLess(backup_index, backup_monitor_index)
-        self.assertLess(backup_monitor_index, migration_index)
+        self.assertLess(backup_monitor_index, external_backup_index)
+        self.assertLess(external_backup_index, migration_index)
 
     def test_validation_failure_stops_before_database_and_backup(self):
         def fail_validation(call):
@@ -225,6 +237,33 @@ class DeploymentControllerTests(unittest.TestCase):
         self.assertTrue(
             any(
                 " run --rm --no-deps backup" in command
+                for command in commands
+            )
+        )
+        self.assertFalse(
+            any(
+                command.endswith(" run --rm --no-deps migrate")
+                for command in commands
+            )
+        )
+
+    def test_external_backup_failure_stops_before_migration(self):
+        def fail_external_backup(call):
+            return (
+                " run --rm --no-deps external-backup backup"
+                in " ".join(call["command"])
+            )
+
+        runner = FakeRunner(fail_predicate=fail_external_backup)
+        controller = self.build_controller(runner)
+
+        with self.assertRaises(deploy.DeploymentError):
+            controller.deploy(APP_V2, BACKUP_V2)
+
+        commands = [" ".join(call["command"]) for call in runner.calls]
+        self.assertTrue(
+            any(
+                " run --rm --no-deps backup-monitor" in command
                 for command in commands
             )
         )

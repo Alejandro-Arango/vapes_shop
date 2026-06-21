@@ -42,6 +42,8 @@ backups/
 .deploy.lock/
 performance-results/
 performance-runtime/
+external-backups/
+secrets/
 
 
 # =============================================================================
