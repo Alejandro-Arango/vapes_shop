@@ -139,6 +139,36 @@ class HostReadinessTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "critical")
 
+    def test_dirty_source_checkout_is_critical(self):
+        runner = FakeRunner(
+            {
+                (
+                    "git",
+                    "-C",
+                    "/srv/vapes-shop",
+                    "status",
+                    "--porcelain=v1",
+                    "--untracked-files=no",
+                ): (True, " M compose.yaml"),
+            }
+        )
+
+        result = readiness.command_check(
+            runner,
+            "source_clean",
+            [
+                "git",
+                "-C",
+                "/srv/vapes-shop",
+                "status",
+                "--porcelain=v1",
+                "--untracked-files=no",
+            ],
+            lambda value: not value,
+        )
+
+        self.assertEqual(result["status"], "critical")
+
     def test_report_is_written_atomically(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             output_path = Path(temporary_directory) / "report.json"

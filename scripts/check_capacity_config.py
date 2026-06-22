@@ -619,6 +619,13 @@ def validate_disaster_recovery(
         '"volume",',
         "label=com.docker.compose.project=vapes-shop",
         'environment["COMPOSE_PROJECT_NAME"] = "vapes-shop"',
+        "verify_source_checkout",
+        "--is-inside-work-tree",
+        "rev-parse",
+        "--porcelain=v1",
+        "--untracked-files=no",
+        "no coincide con source_commit",
+        "contiene cambios rastreados",
         "external-recovery",
         "RECOVER-LATEST-EXTERNAL-BACKUP",
         '"RESTORE_CREATE_SAFETY_BACKUP": "false"',
@@ -751,6 +758,8 @@ def validate_release_manifest(
     docs_fragments = (
         "scripts/fetch_release_manifest.py",
         "--release-manifest",
+        "git -C /srv/vapes-shop checkout",
+        "HEAD` coincide con `source_commit",
     )
     bootstrap_fragments = (
         "GH_VERSION",
@@ -955,6 +964,9 @@ def validate_host_provisioning(
         "vapes-shop-recovery-drill.timer",
         "os.replace(temporary_path, output_path)",
         "output_path.is_symlink()",
+        '"source_checkout"',
+        '"source_clean"',
+        '"--untracked-files=no"',
     )
 
     for fragment in bootstrap_fragments:

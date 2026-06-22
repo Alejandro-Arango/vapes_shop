@@ -23,10 +23,14 @@ class FakeRunner:
         self,
         existing_services="",
         existing_volumes="",
+        checkout_commit="a" * 40,
+        tracked_changes="",
         catalog=None,
     ):
         self.existing_services = existing_services
         self.existing_volumes = existing_volumes
+        self.checkout_commit = checkout_commit
+        self.tracked_changes = tracked_changes
         self.catalog = (
             {"results": [{"id": 1}], "pagination": {}}
             if catalog is None
@@ -44,6 +48,12 @@ class FakeRunner:
         )
         joined = " ".join(command)
 
+        if " rev-parse --is-inside-work-tree" in joined:
+            return "true\n"
+        if " rev-parse HEAD" in joined:
+            return f"{self.checkout_commit}\n"
+        if " status --porcelain=v1 --untracked-files=no" in joined:
+            return self.tracked_changes
         if " ps --all --services" in joined:
             return self.existing_services
         if "docker volume ls --quiet --filter" in joined:
@@ -116,6 +126,7 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertEqual(report["catalog_probe_products"], 1)
         self.assertEqual(report["release_tag"], "v1.2.3")
         self.assertEqual(report["source_commit"], "a" * 40)
+        self.assertTrue(report["source_checkout_verified"])
         state = json.loads(
             (self.state_directory / "current.json").read_text(
                 encoding="utf-8"
@@ -184,6 +195,46 @@ class ProductionRecoveryTests(unittest.TestCase):
             )
 
         self.assertEqual(runner.calls, [])
+
+    def test_manifest_commit_must_match_local_checkout(self):
+        runner = FakeRunner(checkout_commit="b" * 40)
+
+        with self.assertRaisesRegex(
+            recovery.ProductionRecoveryError,
+            "no coincide con source_commit",
+        ):
+            self.controller(runner).recover(
+                APP_IMAGE,
+                BACKUP_IMAGE,
+                rto_seconds=1800,
+                release_tag="v1.2.3",
+                source_commit="a" * 40,
+            )
+
+        commands = [
+            " ".join(call["command"])
+            for call in runner.calls
+        ]
+        self.assertFalse(any("docker compose" in item for item in commands))
+
+    def test_tracked_changes_block_manifest_recovery(self):
+        runner = FakeRunner(tracked_changes=" M compose.yaml\n")
+
+        with self.assertRaisesRegex(
+            recovery.ProductionRecoveryError,
+            "cambios rastreados",
+        ):
+            self.controller(runner).recover(
+                APP_IMAGE,
+                BACKUP_IMAGE,
+                rto_seconds=1800,
+                release_tag="v1.2.3",
+                source_commit="a" * 40,
+            )
+
+        self.assertFalse(
+            self.state_directory.with_name(".deploy.lock").exists()
+        )
 
     def test_existing_containers_block_recovery_and_release_lock(self):
         runner = FakeRunner(existing_services="db\n")

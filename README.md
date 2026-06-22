@@ -1111,6 +1111,8 @@ release, exige confirmacion literal, ausencia de estado previo y un directorio
 local de backups vacio.
 `scripts/fetch_release_manifest.py` descarga los assets desde GitHub y elimina
 la copia local si falla la atestacion, el checksum o la identidad de release.
+Antes de tocar Docker, la recuperacion exige que `HEAD` coincida con el commit
+del manifiesto y que el checkout no tenga cambios rastreados.
 Restaura MySQL y media, aplica migraciones, inicia Django/Nginx y valida tanto
 `/healthz` como el catalogo.
 

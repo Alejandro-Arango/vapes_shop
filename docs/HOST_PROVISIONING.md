@@ -61,12 +61,12 @@ se detiene para exigir una migracion explicita antes de instalar Docker CE.
 
 ## Transferencia y secretos
 
-Copia el repositorio sin incluir `.git`, entornos virtuales, archivos `.env`,
-backups ni secretos. Despues:
+Copia un checkout limpio del repositorio, incluido `.git`, pero sin entornos
+virtuales, archivos `.env`, backups ni secretos. `.git` permite demostrar que
+los scripts y archivos Compose coinciden con el commit atestiguado:
 
 ```bash
 sudo rsync -a \
-  --exclude '.git/' \
   --exclude 'backend/.venv/' \
   --exclude 'compose.production.env' \
   --exclude '.deploy/' \
@@ -78,6 +78,16 @@ sudo chown -R vapes-shop:vapes-shop /srv/vapes-shop
 sudo chmod 0750 /srv/vapes-shop
 sudo chmod 0700 /srv/vapes-shop/secrets
 ```
+
+La URL del remoto no debe contener credenciales:
+
+```bash
+sudo -u vapes-shop git -C /srv/vapes-shop remote -v
+sudo -u vapes-shop git -C /srv/vapes-shop status --short
+```
+
+Antes de una recuperacion integral se debe hacer checkout separado del tag
+aprobado y dejar el árbol sin cambios rastreados.
 
 Crea `/srv/vapes-shop/compose.production.env` a partir del ejemplo, reemplaza
 todos los valores y aplica:

@@ -25,6 +25,7 @@ actividades cuando exista proveedor y dominio.
 
 - host limpio preparado con `docs/HOST_PROVISIONING.md`;
 - repositorio en `/srv/vapes-shop`;
+- checkout Git limpio del tag que se va a recuperar;
 - `compose.production.env` con modo `0600`;
 - credenciales Restic y secretos recuperados desde un gestor independiente;
 - el mismo `EXTERNAL_BACKUP_HOST` usado para crear los snapshots;
@@ -64,7 +65,22 @@ verificacion falla.
 Para un repositorio privado, entrega `GH_TOKEN` temporalmente con permiso
 minimo de lectura de contenidos. No guardes ese token en el servidor.
 
-3. Ejecutar como el usuario de servicio:
+3. Alinear el checkout con la release:
+
+```bash
+sudo -u vapes-shop git -C /srv/vapes-shop fetch \
+  --depth 1 origin tag v1.2.3
+sudo -u vapes-shop git -C /srv/vapes-shop checkout \
+  --detach FETCH_HEAD
+sudo -u vapes-shop git -C /srv/vapes-shop status \
+  --short --untracked-files=no
+```
+
+La recuperacion vuelve a comprobar que `HEAD` coincide con `source_commit` del
+manifiesto y que no existen modificaciones rastreadas. Los secretos, backups y
+assets ignorados no bloquean la comprobacion.
+
+4. Ejecutar como el usuario de servicio:
 
 ```bash
 sudo -u vapes-shop python3 scripts/recover_production.py \
@@ -82,7 +98,7 @@ El archivo de reporte y `.deploy/current.json` se escriben atomicamente con
 modo `0600`. Si la recuperacion funciona pero supera el objetivo, el servicio
 queda iniciado y el comando termina con error para registrar el incumplimiento.
 
-4. Revisar:
+5. Revisar:
 
 ```bash
 sudo cat /var/lib/vapes-shop/disaster-recovery.json
@@ -96,7 +112,7 @@ curl --fail --header 'Host: DOMINIO_REAL' \
   http://127.0.0.1:8080/healthz
 ```
 
-5. Habilitar los timers y ejecutar la auditoria productiva:
+6. Habilitar los timers y ejecutar la auditoria productiva:
 
 ```bash
 sudo systemctl enable --now \
@@ -113,6 +129,7 @@ Solo despues deben actualizarse el balanceador, DNS o reglas publicas.
 - No vaciar un `BACKUP_PATH` existente para forzar este flujo.
 - No usar etiquetas mutables como `latest`.
 - No confiar en el manifiesto antes de verificar atestacion y checksum.
+- No ejecutar desde una rama, commit distinto o checkout modificado.
 - No desactivar el backup externo obligatorio.
 - Conservar el reporte, logs de Compose y tiempos del incidente.
 

@@ -355,6 +355,35 @@ def audit_host(
                     lambda value: value == "enabled",
                 )
             )
+        checks.extend(
+            (
+                command_check(
+                    runner,
+                    "source_checkout",
+                    [
+                        "git",
+                        "-C",
+                        str(app_root),
+                        "rev-parse",
+                        "--is-inside-work-tree",
+                    ],
+                    lambda value: value == "true",
+                ),
+                command_check(
+                    runner,
+                    "source_clean",
+                    [
+                        "git",
+                        "-C",
+                        str(app_root),
+                        "status",
+                        "--porcelain=v1",
+                        "--untracked-files=no",
+                    ],
+                    lambda value: not value,
+                ),
+            )
+        )
 
     findings.extend(
         f"{check['name']}: {check['detail']}"

@@ -296,6 +296,64 @@ class ProductionRecoveryController:
                 "La recuperacion exige que no existan volumenes previos."
             )
 
+    def verify_source_checkout(self, state, source_commit):
+        if not source_commit:
+            return False
+
+        common = [
+            "git",
+            "-C",
+            str(self.project_root),
+        ]
+        inside_work_tree = self.runner.run(
+            [
+                *common,
+                "rev-parse",
+                "--is-inside-work-tree",
+            ],
+            self.environment(state),
+            self.command_timeout,
+        ).strip()
+
+        if inside_work_tree != "true":
+            raise ProductionRecoveryError(
+                "PROJECT_ROOT no es un checkout Git valido."
+            )
+
+        checkout_commit = self.runner.run(
+            [
+                *common,
+                "rev-parse",
+                "HEAD",
+            ],
+            self.environment(state),
+            self.command_timeout,
+        ).strip().lower()
+
+        if checkout_commit != source_commit.lower():
+            raise ProductionRecoveryError(
+                "El checkout local no coincide con source_commit "
+                "del manifiesto."
+            )
+
+        tracked_changes = self.runner.run(
+            [
+                *common,
+                "status",
+                "--porcelain=v1",
+                "--untracked-files=no",
+            ],
+            self.environment(state),
+            self.command_timeout,
+        ).strip()
+
+        if tracked_changes:
+            raise ProductionRecoveryError(
+                "El checkout local contiene cambios rastreados."
+            )
+
+        return True
+
     def prepare(self, state):
         self.run_compose(state, "config", "--quiet")
         self.run_compose(
@@ -475,6 +533,10 @@ class ProductionRecoveryController:
         started_at = self.monotonic()
 
         try:
+            source_verified = self.verify_source_checkout(
+                state,
+                source_commit,
+            )
             self.assert_clean_runtime(state)
             self.prepare(state)
             self.validate_application(state)
@@ -515,6 +577,7 @@ class ProductionRecoveryController:
                 "rto_objective_seconds": rto_seconds,
                 "rto_actual_seconds": round(elapsed, 3),
                 "catalog_probe_products": recovered_products,
+                "source_checkout_verified": source_verified,
                 **state,
             }
 
