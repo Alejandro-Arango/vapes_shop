@@ -659,6 +659,28 @@ jobs:
             verify-latest \
             > resilience-results/external-restore-verification.json
 
+          mkdir -p recovered-backups-ci
+          BACKUP_PATH="./recovered-backups-ci" \
+          docker compose --env-file compose.env.example run --rm \
+            external-recovery \
+            recover-latest \
+            --confirm RECOVER-LATEST-EXTERNAL-BACKUP \
+            > resilience-results/external-recovery-materialized.json
+
+          recovered_backup_id="$(cat recovered-backups-ci/latest.txt)"
+          local_backup_id="$(cat backups-ci/latest.txt)"
+          test "$recovered_backup_id" = "$local_backup_id"
+
+          for recovered_file in \
+            database.sql.gz \
+            media.tar.gz \
+            metadata.txt \
+            manifest.sha256; do
+            cmp \
+              "backups-ci/$local_backup_id/$recovered_file" \
+              "recovered-backups-ci/$recovered_backup_id/$recovered_file"
+          done
+
           rto_actual_seconds="$(( $(date +%s) - rto_started_at ))"
 
           python - "$rto_actual_seconds" <<'PY'
@@ -767,6 +789,7 @@ jobs:
           docker compose --env-file compose.env.example down --volumes --remove-orphans
           rm -rf \
             backups-ci \
+            recovered-backups-ci \
             external-backups-ci \
             performance-runtime
 

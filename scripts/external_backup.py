@@ -29,6 +29,7 @@ from monitor_backups import (
 
 DEFAULT_TAG = "vapes-shop"
 INIT_CONFIRMATION = "INIT-EXTERNAL-BACKUP"
+RECOVERY_CONFIRMATION = "RECOVER-LATEST-EXTERNAL-BACKUP"
 CHECK_SUBSET_PATTERN = re.compile(r"^(100%|[1-9][0-9]?%|[1-9][0-9]*/[1-9][0-9]*)$")
 
 
@@ -256,6 +257,75 @@ def compare_files(source, restored):
             )
 
 
+def inspect_restored_root(
+    restored_root,
+    expected_backup_id="",
+    source_backup_directory=None,
+):
+    restored_root = Path(restored_root)
+    restored_latest = restored_root / "latest.txt"
+
+    if restored_latest.is_symlink() or not restored_latest.is_file():
+        raise ExternalBackupError(
+            "La restauracion externa no contiene latest.txt."
+        )
+
+    restored_backup_id = restored_latest.read_text(
+        encoding="ascii"
+    ).strip()
+
+    if not BACKUP_ID_PATTERN.fullmatch(restored_backup_id):
+        raise ExternalBackupError(
+            "La restauracion externa contiene un backup_id invalido."
+        )
+
+    if expected_backup_id and restored_backup_id != expected_backup_id:
+        raise ExternalBackupError(
+            "La restauracion externa no corresponde al backup esperado."
+        )
+
+    restored_backup_directory = restored_root / restored_backup_id
+
+    if (
+        restored_backup_directory.is_symlink()
+        or not restored_backup_directory.is_dir()
+    ):
+        raise ExternalBackupError(
+            "La restauracion externa no contiene el backup esperado."
+        )
+
+    if source_backup_directory is not None:
+        compare_files(
+            Path(source_backup_directory),
+            restored_backup_directory,
+        )
+
+    verification = verify_backup(
+        backup_root=restored_root,
+        max_age_hours=float(
+            os.environ.get("BACKUP_MAX_AGE_HOURS", "26")
+        ),
+        future_tolerance_minutes=int(
+            os.environ.get("BACKUP_FUTURE_TOLERANCE_MINUTES", "5")
+        ),
+        min_database_bytes=int(
+            os.environ.get("BACKUP_MIN_DATABASE_BYTES", "128")
+        ),
+        min_media_bytes=int(
+            os.environ.get("BACKUP_MIN_MEDIA_BYTES", "32")
+        ),
+        min_free_bytes=0,
+        min_free_percent=0,
+        min_free_copies=0,
+    )
+    return {
+        "backup_id": restored_backup_id,
+        "backup_directory": restored_backup_directory,
+        "restored_backup_bytes": verification["backup_bytes"],
+        "restored_media_members": verification["media_members"],
+    }
+
+
 def verify_restored_snapshot(
     runner,
     snapshot_id,
@@ -263,10 +333,16 @@ def verify_restored_snapshot(
     expected_backup_id="",
     source_backup_directory=None,
 ):
-    restore_parent = Path(restore_parent).resolve()
+    restore_parent = Path(
+        os.path.abspath(os.fspath(restore_parent))
+    )
+    if restore_parent.is_symlink() or restore_parent.parent.is_symlink():
+        raise ExternalBackupError(
+            "EXTERNAL_BACKUP_RESTORE_ROOT no puede ser un enlace simbolico."
+        )
     restore_parent.mkdir(parents=True, exist_ok=True)
 
-    if restore_parent.is_symlink() or not restore_parent.is_dir():
+    if not restore_parent.is_dir():
         raise ExternalBackupError(
             "EXTERNAL_BACKUP_RESTORE_ROOT debe ser un directorio regular."
         )
@@ -285,62 +361,17 @@ def verify_restored_snapshot(
             ]
         )
         restored_root = Path(temporary_directory)
-        restored_latest = restored_root / "latest.txt"
-
-        if restored_latest.is_symlink() or not restored_latest.is_file():
-            raise ExternalBackupError(
-                "La restauracion externa no contiene latest.txt."
-            )
-
-        restored_backup_id = restored_latest.read_text(
-            encoding="ascii"
-        ).strip()
-
-        if expected_backup_id and restored_backup_id != expected_backup_id:
-            raise ExternalBackupError(
-                "La restauracion externa no corresponde al backup esperado."
-            )
-
-        restored_backup_directory = restored_root / restored_backup_id
-
-        if (
-            restored_backup_directory.is_symlink()
-            or not restored_backup_directory.is_dir()
-        ):
-            raise ExternalBackupError(
-                "La restauracion externa no contiene el backup esperado."
-            )
-
-        if source_backup_directory is not None:
-            compare_files(
-                Path(source_backup_directory),
-                restored_backup_directory,
-            )
-
-        verification = verify_backup(
-            backup_root=restored_root,
-            max_age_hours=float(
-                os.environ.get("BACKUP_MAX_AGE_HOURS", "26")
-            ),
-            future_tolerance_minutes=int(
-                os.environ.get("BACKUP_FUTURE_TOLERANCE_MINUTES", "5")
-            ),
-            min_database_bytes=int(
-                os.environ.get("BACKUP_MIN_DATABASE_BYTES", "128")
-            ),
-            min_media_bytes=int(
-                os.environ.get("BACKUP_MIN_MEDIA_BYTES", "32")
-            ),
-            min_free_bytes=0,
-            min_free_percent=0,
-            min_free_copies=0,
+        inspection = inspect_restored_root(
+            restored_root,
+            expected_backup_id=expected_backup_id,
+            source_backup_directory=source_backup_directory,
         )
 
     return {
         "snapshot_id": snapshot_id,
-        "backup_id": restored_backup_id,
-        "restored_backup_bytes": verification["backup_bytes"],
-        "restored_media_members": verification["media_members"],
+        "backup_id": inspection["backup_id"],
+        "restored_backup_bytes": inspection["restored_backup_bytes"],
+        "restored_media_members": inspection["restored_media_members"],
     }
 
 
@@ -506,6 +537,107 @@ def verify_latest_external_backup(runner):
     }
 
 
+def recover_latest_external_backup(runner, confirmation):
+    if confirmation != RECOVERY_CONFIRMATION:
+        raise ExternalBackupError(
+            f"Confirma con --confirm {RECOVERY_CONFIRMATION}."
+        )
+
+    backup_root = Path(
+        os.path.abspath(os.environ.get("BACKUP_ROOT", "/backups"))
+    )
+
+    if backup_root.is_symlink() or backup_root.parent.is_symlink():
+        raise ExternalBackupError(
+            "BACKUP_ROOT no puede ser un enlace simbolico."
+        )
+
+    backup_root.mkdir(parents=True, exist_ok=True)
+
+    if not backup_root.is_dir():
+        raise ExternalBackupError(
+            "BACKUP_ROOT debe ser un directorio regular."
+        )
+
+    if any(backup_root.iterdir()):
+        raise ExternalBackupError(
+            "BACKUP_ROOT debe estar vacio para una recuperacion externa."
+        )
+
+    host = os.environ.get(
+        "EXTERNAL_BACKUP_HOST",
+        "vapes-shop",
+    ).strip()
+
+    if not host or len(host) > 128:
+        raise ExternalBackupError("EXTERNAL_BACKUP_HOST es invalido.")
+
+    snapshots = runner.run(
+        [
+            "restic",
+            "snapshots",
+            "--host",
+            host,
+            "--tag",
+            DEFAULT_TAG,
+            "--latest",
+            "1",
+            "--json",
+        ]
+    )
+    snapshot_id = parse_latest_snapshot(snapshots)
+    check_subset = check_repository(runner)
+
+    with tempfile.TemporaryDirectory(
+        prefix=".external-recovery-",
+        dir=backup_root,
+    ) as temporary_directory:
+        runner.run(
+            [
+                "restic",
+                "restore",
+                snapshot_id,
+                "--target",
+                temporary_directory,
+            ]
+        )
+        restored_root = Path(temporary_directory)
+        inspection = inspect_restored_root(restored_root)
+        backup_id = inspection["backup_id"]
+        restored_backup_directory = inspection["backup_directory"]
+        destination = backup_root / backup_id
+        latest_path = backup_root / "latest.txt"
+        temporary_latest = backup_root / ".latest-recovery.tmp"
+
+        if destination.exists() or destination.is_symlink():
+            raise ExternalBackupError(
+                "El backup recuperado ya existe en BACKUP_ROOT."
+            )
+
+        temporary_latest.write_text(
+            f"{backup_id}\n",
+            encoding="ascii",
+        )
+        os.chmod(temporary_latest, 0o600)
+        os.replace(restored_backup_directory, destination)
+
+        try:
+            os.replace(temporary_latest, latest_path)
+        except OSError:
+            os.replace(destination, restored_backup_directory)
+            raise
+
+    return {
+        "event": "external_backup",
+        "status": "recovered",
+        "snapshot_id": snapshot_id,
+        "backup_id": backup_id,
+        "check_subset": check_subset,
+        "restored_backup_bytes": inspection["restored_backup_bytes"],
+        "restored_media_members": inspection["restored_media_members"],
+    }
+
+
 def write_report(path, report):
     if not path:
         return
@@ -524,7 +656,7 @@ def build_parser():
     )
     parser.add_argument(
         "action",
-        choices=("init", "backup", "verify-latest"),
+        choices=("init", "backup", "verify-latest", "recover-latest"),
     )
     parser.add_argument("--confirm", default="")
     parser.add_argument("--output", default="")
@@ -560,6 +692,11 @@ def main():
                 )
             elif arguments.action == "backup":
                 report = create_external_backup(runner)
+            elif arguments.action == "recover-latest":
+                report = recover_latest_external_backup(
+                    runner,
+                    arguments.confirm,
+                )
             else:
                 report = verify_latest_external_backup(runner)
 

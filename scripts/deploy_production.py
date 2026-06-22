@@ -19,6 +19,10 @@ DIGEST_IMAGE_PATTERN = re.compile(
     r"[a-z0-9][a-z0-9._/-]*(?::[a-zA-Z0-9._-]+)?"
     r"@sha256:[0-9a-f]{64}$"
 )
+HEALTH_HOST_PATTERN = re.compile(
+    r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*"
+    r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+)
 
 
 class DeploymentError(RuntimeError):
@@ -40,6 +44,49 @@ def validate_image_reference(value, label):
         )
 
     return value
+
+
+def load_health_host(env_file):
+    try:
+        lines = Path(env_file).read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise DeploymentError(
+            f"No fue posible leer el entorno productivo: "
+            f"{exc.__class__.__name__}."
+        ) from exc
+
+    allowed_hosts = ""
+
+    for raw_line in lines:
+        line = raw_line.strip()
+
+        if (
+            not line
+            or line.startswith("#")
+            or "=" not in line
+        ):
+            continue
+
+        key, value = line.split("=", 1)
+
+        if key == "DJANGO_ALLOWED_HOSTS":
+            allowed_hosts = value.strip().strip('"').strip("'")
+            break
+
+    for candidate in allowed_hosts.split(","):
+        host = candidate.strip().lower()
+
+        if (
+            host
+            and host != "*"
+            and not host.startswith(".")
+            and HEALTH_HOST_PATTERN.fullmatch(host)
+        ):
+            return host
+
+    raise DeploymentError(
+        "DJANGO_ALLOWED_HOSTS no contiene un host concreto para health checks."
+    )
 
 
 class CommandRunner:
@@ -249,6 +296,7 @@ class DeploymentController:
         )
 
     def start_application(self, state):
+        health_host = load_health_host(self.env_file)
         self.run_compose(
             state,
             "up",
@@ -271,6 +319,10 @@ class DeploymentController:
             "wget",
             "--quiet",
             "--spider",
+            "--header",
+            f"Host: {health_host}",
+            "--header",
+            "X-Forwarded-Proto: https",
             "http://127.0.0.1:8080/healthz",
         )
 

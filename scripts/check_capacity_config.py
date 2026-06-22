@@ -437,6 +437,7 @@ def validate_backup_monitor_config(
 def validate_external_backup_script(script_text):
     required_fragments = (
         "INIT-EXTERNAL-BACKUP",
+        "RECOVER-LATEST-EXTERNAL-BACKUP",
         "RESTIC_REPOSITORY_FILE",
         "RESTIC_PASSWORD_FILE",
         "EXTERNAL_BACKUP_MIN_PASSWORD_LENGTH",
@@ -448,6 +449,9 @@ def validate_external_backup_script(script_text):
         "compare_files",
         "verify_backup",
         "stored_and_restored",
+        "recover_latest_external_backup",
+        "BACKUP_ROOT debe estar vacio",
+        '"status": "recovered"',
     )
 
     return [
@@ -528,9 +532,15 @@ def validate_external_backup_config(
             "external_restore_check:/restore-check",
             "compose.yaml",
         ),
+        (compose_text, "external-recovery:", "compose.yaml"),
         (
             production_compose_text,
             "external-backup:",
+            "compose.production.yaml",
+        ),
+        (
+            production_compose_text,
+            "external-recovery:",
             "compose.production.yaml",
         ),
         (
@@ -541,6 +551,11 @@ def validate_external_backup_config(
         (
             django_workflow_text,
             "external-restore-verification.json",
+            "django-ci.yml",
+        ),
+        (
+            django_workflow_text,
+            "external-recovery-materialized.json",
             "django-ci.yml",
         ),
         (
@@ -573,6 +588,104 @@ def validate_external_backup_config(
         findings.append(
             "compose.production.env.example no activa el backup externo"
         )
+
+    return findings
+
+
+def validate_disaster_recovery(
+    recovery_text,
+    external_backup_text,
+    deploy_text,
+    compose_text,
+    production_compose_text,
+    local_env_text,
+    production_env_text,
+    django_workflow_text,
+    disaster_docs_text,
+):
+    findings = []
+    recovery_fragments = (
+        "ProductionRecoveryController",
+        "RECOVER-PRODUCTION-FROM-EXTERNAL-BACKUP",
+        "self.state_directory.with_name",
+        "Ya existe estado productivo",
+        '"ps",',
+        '"--all",',
+        '"volume",',
+        "label=com.docker.compose.project=vapes-shop",
+        'environment["COMPOSE_PROJECT_NAME"] = "vapes-shop"',
+        "external-recovery",
+        "RECOVER-LATEST-EXTERNAL-BACKUP",
+        '"RESTORE_CREATE_SAFETY_BACKUP": "false"',
+        "manage.py\", \"check\", \"--deploy",
+        "manage.py\", \"production_check",
+        "/healthz",
+        "/api/products/",
+        "RTO integral incumplido",
+        "os.chmod(temporary_path, 0o600)",
+        "alert_failure",
+    )
+
+    for fragment in recovery_fragments:
+        if fragment not in recovery_text:
+            findings.append(
+                f"recover_production.py no contiene {fragment}"
+            )
+
+    for fragment in (
+        "recover_latest_external_backup",
+        "BACKUP_ROOT debe estar vacio",
+        "os.replace(restored_backup_directory, destination)",
+    ):
+        if fragment not in external_backup_text:
+            findings.append(
+                f"external_backup.py no contiene {fragment}"
+            )
+
+    for text, fragment, label in (
+        (compose_text, "external-recovery:", "compose.yaml"),
+        (
+            compose_text,
+            "${BACKUP_PATH:-./backups}:/backups",
+            "compose.yaml",
+        ),
+        (
+            production_compose_text,
+            "external-recovery:",
+            "compose.production.yaml",
+        ),
+        (
+            django_workflow_text,
+            "--confirm RECOVER-LATEST-EXTERNAL-BACKUP",
+            "django-ci.yml",
+        ),
+        (
+            django_workflow_text,
+            "external-recovery-materialized.json",
+            "django-ci.yml",
+        ),
+        (
+            deploy_text,
+            "X-Forwarded-Proto: https",
+            "deploy_production.py",
+        ),
+        (
+            disaster_docs_text,
+            "RECOVER-PRODUCTION-FROM-EXTERNAL-BACKUP",
+            "DISASTER_RECOVERY.md",
+        ),
+    ):
+        if fragment not in text:
+            findings.append(f"{label} no contiene {fragment}")
+
+    for label, env_text in (
+        ("compose.env.example", local_env_text),
+        ("compose.production.env.example", production_env_text),
+    ):
+        if "DISASTER_RECOVERY_RTO_SECONDS" not in parse_env_keys(env_text):
+            findings.append(
+                f"{label} no define DISASTER_RECOVERY_RTO_SECONDS"
+            )
 
     return findings
 
@@ -1022,6 +1135,12 @@ def find_capacity_findings(project_root):
         "host_readiness": (
             project_root / "scripts" / "check_host_readiness.py"
         ),
+        "production_recovery": (
+            project_root / "scripts" / "recover_production.py"
+        ),
+        "disaster_docs": (
+            project_root / "docs" / "DISASTER_RECOVERY.md"
+        ),
     }
     missing_paths = [
         str(path.relative_to(project_root))
@@ -1140,6 +1259,19 @@ def find_capacity_findings(project_root):
             paths["production_env"].read_text(encoding="utf-8"),
             paths["django_workflow"].read_text(encoding="utf-8"),
             paths["deploy"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_disaster_recovery(
+            paths["production_recovery"].read_text(encoding="utf-8"),
+            paths["external_backup"].read_text(encoding="utf-8"),
+            paths["deploy"].read_text(encoding="utf-8"),
+            paths["compose"].read_text(encoding="utf-8"),
+            paths["production_compose"].read_text(encoding="utf-8"),
+            paths["local_env"].read_text(encoding="utf-8"),
+            paths["production_env"].read_text(encoding="utf-8"),
+            paths["django_workflow"].read_text(encoding="utf-8"),
+            paths["disaster_docs"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

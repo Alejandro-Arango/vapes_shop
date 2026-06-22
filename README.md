@@ -1101,6 +1101,21 @@ sudo python3 scripts/check_host_readiness.py \
 Procedimiento completo, requisitos y limites:
 [docs/HOST_PROVISIONING.md](docs/HOST_PROVISIONING.md).
 
+### Recuperacion integral ante perdida del host
+
+`scripts/recover_production.py` reconstruye el servicio desde el ultimo
+snapshot externo sobre un host limpio. Exige imagenes por digest, confirmacion
+literal, ausencia de estado previo y un directorio local de backups vacio.
+Restaura MySQL y media, aplica migraciones, inicia Django/Nginx y valida tanto
+`/healthz` como el catalogo.
+
+El objetivo inicial es `DISASTER_RECOVERY_RTO_SECONDS=1800`. El reporte queda
+en JSON y el comando falla si se supera el objetivo aunque el servicio haya
+quedado recuperado.
+
+Procedimiento y limites del RTO:
+[docs/DISASTER_RECOVERY.md](docs/DISASTER_RECOVERY.md).
+
 El respaldo puede ejecutarse con la tienda activa porque MySQL usa una
 transaccion consistente. Si necesitas consistencia estricta entre una fila y
 su archivo media, detén temporalmente `web` mientras se genera el respaldo.

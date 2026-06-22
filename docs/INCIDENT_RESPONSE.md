@@ -81,6 +81,16 @@ proveedor de hosting.
 - No ampliar el objetivo para ocultar el incidente; cualquier cambio de RPO o
   RTO requiere una decision documentada.
 
+### Perdida completa del servidor
+
+- Aislar o apagar el host comprometido si sigue accesible.
+- Aprovisionar un host limpio siguiendo `docs/HOST_PROVISIONING.md`.
+- Recuperar secretos desde su gestor independiente.
+- Usar referencias de imagen por digest de una release aprobada.
+- Ejecutar `scripts/recover_production.py` con la confirmacion literal.
+- Revisar `/var/lib/vapes-shop/disaster-recovery.json` antes de cambiar DNS.
+- El procedimiento completo esta en `docs/DISASTER_RECOVERY.md`.
+
 ### Checkout falla
 
 - No recrear pedidos manualmente hasta revisar la clave de idempotencia.

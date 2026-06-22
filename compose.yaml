@@ -288,6 +288,40 @@ services:
       - ALL
     logging: *default-logging
 
+  external-recovery:
+    profiles:
+      - ops
+    build:
+      context: .
+      dockerfile: docker/backup.Dockerfile
+    image: vapes-shop-backup:local
+    entrypoint:
+      - python3
+      - /usr/local/lib/vapes-shop/external_backup.py
+    command:
+      - recover-latest
+    user: "0:0"
+    mem_limit: ${EXTERNAL_BACKUP_MEMORY_LIMIT:-512m}
+    cpus: ${EXTERNAL_BACKUP_CPU_LIMIT:-0.50}
+    pids_limit: 128
+    environment: *external-backup-environment
+    env_file:
+      - path: ${EXTERNAL_BACKUP_ENV_FILE:-./secrets/restic-backend.env}
+        required: false
+    volumes:
+      - ${BACKUP_PATH:-./backups}:/backups
+      - ${EXTERNAL_BACKUP_LOCAL_PATH:-./external-backups}:/external-repository
+      - ${EXTERNAL_BACKUP_REPOSITORY_FILE:-./secrets/restic-repository.txt}:/run/secrets/restic_repository:ro
+      - ${EXTERNAL_BACKUP_PASSWORD_FILE:-./secrets/restic-password.txt}:/run/secrets/restic_password:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+
   restore:
     profiles:
       - ops

@@ -40,5 +40,8 @@ services:
   external-backup:
     image: ${BACKUP_IMAGE:?Define BACKUP_IMAGE con una referencia por digest}
 
+  external-recovery:
+    image: ${BACKUP_IMAGE:?Define BACKUP_IMAGE con una referencia por digest}
+
   restore:
     image: ${BACKUP_IMAGE:?Define BACKUP_IMAGE con una referencia por digest}

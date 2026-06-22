@@ -619,6 +619,75 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def disaster_recovery_inputs(self):
+        return {
+            "recovery_text": (
+                PROJECT_ROOT / "scripts" / "recover_production.py"
+            ).read_text(encoding="utf-8"),
+            "external_backup_text": (
+                PROJECT_ROOT / "scripts" / "external_backup.py"
+            ).read_text(encoding="utf-8"),
+            "deploy_text": (
+                PROJECT_ROOT / "scripts" / "deploy_production.py"
+            ).read_text(encoding="utf-8"),
+            "compose_text": (
+                PROJECT_ROOT / "compose.yaml"
+            ).read_text(encoding="utf-8"),
+            "production_compose_text": (
+                PROJECT_ROOT / "compose.production.yaml"
+            ).read_text(encoding="utf-8"),
+            "local_env_text": (
+                PROJECT_ROOT / "compose.env.example"
+            ).read_text(encoding="utf-8"),
+            "production_env_text": (
+                PROJECT_ROOT / "compose.production.env.example"
+            ).read_text(encoding="utf-8"),
+            "django_workflow_text": (
+                PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+            ).read_text(encoding="utf-8"),
+            "disaster_docs_text": (
+                PROJECT_ROOT / "docs" / "DISASTER_RECOVERY.md"
+            ).read_text(encoding="utf-8"),
+        }
+
+    def test_disaster_recovery_without_volume_guard_is_rejected(self):
+        inputs = self.disaster_recovery_inputs()
+        inputs["recovery_text"] = inputs["recovery_text"].replace(
+            "label=com.docker.compose.project=vapes-shop",
+            "label=missing",
+            1,
+        )
+
+        findings = capacity.validate_disaster_recovery(**inputs)
+
+        self.assertIn(
+            (
+                "recover_production.py no contiene "
+                "label=com.docker.compose.project=vapes-shop"
+            ),
+            findings,
+        )
+
+    def test_disaster_recovery_without_rto_env_is_rejected(self):
+        inputs = self.disaster_recovery_inputs()
+        inputs["production_env_text"] = inputs[
+            "production_env_text"
+        ].replace(
+            "DISASTER_RECOVERY_RTO_SECONDS=1800\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_disaster_recovery(**inputs)
+
+        self.assertIn(
+            (
+                "compose.production.env.example no define "
+                "DISASTER_RECOVERY_RTO_SECONDS"
+            ),
+            findings,
+        )
+
     def test_backup_operations_without_shared_lock_is_rejected(self):
         script_text = (
             PROJECT_ROOT / "scripts" / "backup_operations.py"

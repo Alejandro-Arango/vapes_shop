@@ -8,6 +8,7 @@
 /docker/ @Alejandro-Arango
 /ops/ @Alejandro-Arango
 /scripts/deploy_production.py @Alejandro-Arango
+/scripts/recover_production.py @Alejandro-Arango
 /scripts/check_host_readiness.py @Alejandro-Arango
 /scripts/monitor_production.py @Alejandro-Arango
 /backend/mi_tienda/settings.py @Alejandro-Arango

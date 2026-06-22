@@ -190,6 +190,85 @@ class ExternalBackupTests(unittest.TestCase):
         actions = [command[1] for command in runner.commands]
         self.assertEqual(actions, ["snapshots", "check", "restore"])
 
+    def test_latest_snapshot_can_be_materialized_on_empty_host(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source_root = workspace / "source"
+            recovered_root = workspace / "recovered"
+            restore_root = workspace / "restore"
+            source_root.mkdir()
+            recovered_root.mkdir()
+            backup_id = self.create_backup(source_root)
+            runner = FakeRunner(source_root)
+
+            with patch.dict(
+                os.environ,
+                self.base_environment(recovered_root, restore_root),
+                clear=False,
+            ):
+                report = external.recover_latest_external_backup(
+                    runner,
+                    external.RECOVERY_CONFIRMATION,
+                )
+
+            self.assertEqual(report["status"], "recovered")
+            self.assertEqual(report["backup_id"], backup_id)
+            self.assertEqual(
+                (recovered_root / "latest.txt")
+                .read_text(encoding="ascii")
+                .strip(),
+                backup_id,
+            )
+            self.assertTrue(
+                (recovered_root / backup_id / "database.sql.gz").is_file()
+            )
+
+        actions = [command[1] for command in runner.commands]
+        self.assertEqual(actions, ["snapshots", "check", "restore"])
+
+    def test_external_recovery_requires_empty_destination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source_root = workspace / "source"
+            recovered_root = workspace / "recovered"
+            restore_root = workspace / "restore"
+            source_root.mkdir()
+            recovered_root.mkdir()
+            self.create_backup(source_root)
+            (recovered_root / "existing.txt").write_text(
+                "do not overwrite\n",
+                encoding="utf-8",
+            )
+            runner = FakeRunner(source_root)
+
+            with patch.dict(
+                os.environ,
+                self.base_environment(recovered_root, restore_root),
+                clear=False,
+            ):
+                with self.assertRaisesRegex(
+                    external.ExternalBackupError,
+                    "debe estar vacio",
+                ):
+                    external.recover_latest_external_backup(
+                        runner,
+                        external.RECOVERY_CONFIRMATION,
+                    )
+
+        self.assertEqual(runner.commands, [])
+
+    def test_external_recovery_requires_exact_confirmation(self):
+        runner = FakeRunner(".")
+
+        with self.assertRaisesRegex(
+            external.ExternalBackupError,
+            external.RECOVERY_CONFIRMATION,
+        ):
+            external.recover_latest_external_backup(
+                runner,
+                "incorrect",
+            )
+
     def test_initialization_requires_exact_confirmation(self):
         runner = FakeRunner(".")
 

@@ -12,7 +12,8 @@ imagenes productivas y el repositorio Restic inicializado.
 
 El RTO medido aqui cubre recuperacion de datos. El RTO completo del servicio
 tambien incluye aprovisionar infraestructura, restaurar MySQL, iniciar la
-aplicacion y validar checkout; debe medirse posteriormente en staging.
+aplicacion y validar el catalogo. El procedimiento automatizado se documenta
+en `docs/DISASTER_RECOVERY.md`.
 
 ## Operaciones
 

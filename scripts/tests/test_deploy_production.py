@@ -48,7 +48,10 @@ class DeploymentControllerTests(unittest.TestCase):
             encoding="utf-8",
         )
         (self.root / "compose.env").write_text(
-            "DJANGO_SECRET_KEY=test\n",
+            (
+                "DJANGO_SECRET_KEY=test\n"
+                "DJANGO_ALLOWED_HOSTS=shop.example\n"
+            ),
             encoding="utf-8",
         )
         self.state_directory = self.root / ".deploy"
@@ -137,6 +140,13 @@ class DeploymentControllerTests(unittest.TestCase):
             )
         )
         self.assertTrue(any(" exec --no-tty proxy wget" in cmd for cmd in commands))
+        health_command = next(
+            command
+            for command in commands
+            if " exec --no-tty proxy wget" in command
+        )
+        self.assertIn("Host: shop.example", health_command)
+        self.assertIn("X-Forwarded-Proto: https", health_command)
         production_check_index = next(
             index
             for index, command in enumerate(commands)
