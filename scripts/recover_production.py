@@ -175,6 +175,33 @@ def validate_recovery_provenance(
     )
 
 
+def build_failure_report(error, source=None):
+    report = {
+        "event": "production_disaster_recovery",
+        "status": "critical",
+        "checked_at": utc_now(),
+        "error": str(error),
+    }
+
+    if not source:
+        return report
+
+    for key in (
+        "source_mode",
+        "app_image",
+        "backup_image",
+        "release_tag",
+        "source_commit",
+        "break_glass_reason",
+    ):
+        value = source.get(key)
+
+        if value:
+            report[key] = value
+
+    return report
+
+
 def load_recovery_source(
     app_image,
     backup_image,
@@ -822,6 +849,7 @@ def build_parser():
 
 def main():
     arguments = build_parser().parse_args()
+    source = None
 
     try:
         if arguments.confirm != RECOVERY_CONFIRMATION:
@@ -872,12 +900,7 @@ def main():
         ValueError,
         subprocess.SubprocessError,
     ) as exc:
-        report = {
-            "event": "production_disaster_recovery",
-            "status": "critical",
-            "checked_at": utc_now(),
-            "error": str(exc),
-        }
+        report = build_failure_report(exc, source)
         exit_code = 1
 
     if exit_code:

@@ -618,6 +618,8 @@ def validate_disaster_recovery(
         '"source_mode": "verified-manifest"',
         '"source_mode": "manual-break-glass"',
         "validate_recovery_provenance",
+        "build_failure_report",
+        "report = build_failure_report(exc, source)",
         "verified-manifest no admite un motivo break-glass",
         "manual-break-glass no admite identidad de manifiesto",
         "MIN_BREAK_GLASS_REASON_LENGTH",
@@ -704,6 +706,11 @@ def validate_disaster_recovery(
         (
             disaster_docs_text,
             "manual-break-glass",
+            "DISASTER_RECOVERY.md",
+        ),
+        (
+            disaster_docs_text,
+            "reportes de error",
             "DISASTER_RECOVERY.md",
         ),
     ):

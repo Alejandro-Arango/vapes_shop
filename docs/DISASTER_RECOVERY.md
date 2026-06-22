@@ -148,6 +148,9 @@ productivo. Debe existir autorizacion humana y seguimiento posterior del
 incidente. No usar esta ruta solo para ahorrar los pasos de verificacion.
 El controlador rechaza combinaciones incoherentes: el modo de manifiesto exige
 tag y commit validos, mientras que break-glass los prohibe y exige el motivo.
+Una vez validada la fuente, los reportes de error también conservan el modo,
+las referencias de imagen y la identidad de release o el motivo break-glass.
+Los fallos anteriores a esa validacion no registran datos no confiables.
 
 ## Fallos
 

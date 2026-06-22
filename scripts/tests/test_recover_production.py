@@ -505,6 +505,59 @@ class ProductionRecoveryTests(unittest.TestCase):
 
                 self.assertEqual(runner.calls, [])
 
+    def test_failure_report_preserves_verified_manifest_provenance(self):
+        source = {
+            "source_mode": "verified-manifest",
+            "app_image": APP_IMAGE,
+            "backup_image": BACKUP_IMAGE,
+            "release_tag": "v1.2.3",
+            "source_commit": "a" * 40,
+            "break_glass_reason": "",
+        }
+
+        report = recovery.build_failure_report(
+            recovery.ProductionRecoveryError("Docker no disponible."),
+            source,
+        )
+
+        self.assertEqual(report["status"], "critical")
+        self.assertEqual(report["source_mode"], "verified-manifest")
+        self.assertEqual(report["app_image"], APP_IMAGE)
+        self.assertEqual(report["backup_image"], BACKUP_IMAGE)
+        self.assertEqual(report["release_tag"], "v1.2.3")
+        self.assertEqual(report["source_commit"], "a" * 40)
+        self.assertNotIn("break_glass_reason", report)
+
+    def test_failure_report_preserves_break_glass_reason(self):
+        source = {
+            "source_mode": "manual-break-glass",
+            "app_image": APP_IMAGE,
+            "backup_image": BACKUP_IMAGE,
+            "release_tag": "",
+            "source_commit": "",
+            "break_glass_reason": BREAK_GLASS_REASON,
+        }
+
+        report = recovery.build_failure_report(
+            recovery.ProductionRecoveryError("Restic no disponible."),
+            source,
+        )
+
+        self.assertEqual(report["source_mode"], "manual-break-glass")
+        self.assertEqual(report["break_glass_reason"], BREAK_GLASS_REASON)
+        self.assertNotIn("release_tag", report)
+        self.assertNotIn("source_commit", report)
+
+    def test_failure_before_source_validation_has_no_provenance(self):
+        report = recovery.build_failure_report(
+            recovery.ProductionRecoveryError("Confirmacion invalida."),
+        )
+
+        self.assertEqual(report["status"], "critical")
+        self.assertNotIn("source_mode", report)
+        self.assertNotIn("app_image", report)
+        self.assertNotIn("break_glass_reason", report)
+
     def test_manual_images_require_a_bounded_single_line_reason(self):
         for reason in ("corto", "motivo valido\nsegunda linea", "x" * 201):
             with self.subTest(reason=reason):
