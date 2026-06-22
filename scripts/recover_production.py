@@ -345,6 +345,9 @@ class ProductionRecoveryController:
         self.recovery_journal_path = (
             self.state_directory / "recovery-in-progress.json"
         )
+        self.last_recovery_report_path = (
+            self.state_directory / "last-recovery-report.json"
+        )
         self.lock_directory = self.state_directory.with_name(
             f"{self.state_directory.name}.lock"
         )
@@ -421,6 +424,26 @@ class ProductionRecoveryController:
             self.recovery_journal_path.unlink()
         except FileNotFoundError:
             pass
+
+    def write_recovery_audit(self, report):
+        self.state_directory.mkdir(parents=True, exist_ok=True)
+        temporary_path = self.last_recovery_report_path.with_suffix(".tmp")
+
+        if (
+            self.last_recovery_report_path.is_symlink()
+            or temporary_path.is_symlink()
+        ):
+            raise ProductionRecoveryError(
+                "El reporte local de recuperacion no admite "
+                "enlaces simbolicos."
+            )
+
+        temporary_path.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.chmod(temporary_path, 0o600)
+        os.replace(temporary_path, self.last_recovery_report_path)
 
     def compose_command(self, *arguments):
         return [
@@ -752,6 +775,8 @@ class ProductionRecoveryController:
         if provenance["source_commit"]:
             journal["source_commit"] = provenance["source_commit"]
 
+        audit_persisted = False
+
         try:
             self.write_recovery_journal(journal, phase)
             source_verified = self.verify_source_checkout(
@@ -854,15 +879,35 @@ class ProductionRecoveryController:
                     f"{elapsed:.3f} s > {rto_seconds:.3f} s."
                 )
 
+            self.write_recovery_audit(report)
+            audit_persisted = True
             return report
         except Exception as exc:
             try:
                 exc.recovery_phase = phase
             except (AttributeError, TypeError):
                 pass
+
+            failure_source = {
+                **state,
+                **provenance,
+            }
+            failure_report = build_failure_report(
+                exc,
+                failure_source,
+                recovery_attempt_id,
+            )
+            self.write_recovery_audit(failure_report)
+            audit_persisted = True
+
+            try:
+                exc.recovery_report = failure_report
+            except (AttributeError, TypeError):
+                pass
             raise
         finally:
-            self.remove_recovery_journal()
+            if audit_persisted:
+                self.remove_recovery_journal()
             self.release_lock()
 
 
@@ -1028,7 +1073,10 @@ def main():
         ValueError,
         subprocess.SubprocessError,
     ) as exc:
-        report = build_failure_report(exc, source, attempt_id)
+        report = getattr(exc, "recovery_report", None)
+
+        if report is None:
+            report = build_failure_report(exc, source, attempt_id)
         exit_code = 1
 
     if exit_code:

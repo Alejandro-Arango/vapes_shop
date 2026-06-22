@@ -93,6 +93,7 @@ proveedor de hosting.
 - Usar `recovery_attempt_id` para correlacionar alerta, reporte y estado.
 - Si existe `recovery-in-progress.json`, preservar la ultima fase antes de
   retirar el bloqueo o reintentar.
+- Comparar `last-recovery-report.json` con el reporte externo y la alerta.
 - Revisar `/var/lib/vapes-shop/disaster-recovery.json` antes de cambiar DNS.
 - El procedimiento completo esta en `docs/DISASTER_RECOVERY.md`.
 

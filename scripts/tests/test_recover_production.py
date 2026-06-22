@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "recover_production.py"
@@ -120,6 +121,7 @@ class ProductionRecoveryTests(unittest.TestCase):
     def manual_recover(self, controller, *args, **kwargs):
         kwargs.setdefault("source_mode", "manual-break-glass")
         kwargs.setdefault("break_glass_reason", BREAK_GLASS_REASON)
+        kwargs.setdefault("attempt_id", RECOVERY_ATTEMPT_ID)
         return controller.recover(*args, **kwargs)
 
     def test_recovery_restores_data_starts_service_and_writes_state(self):
@@ -176,6 +178,12 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertFalse(
             (self.state_directory / "recovery-in-progress.json").exists()
         )
+        local_report = json.loads(
+            (
+                self.state_directory / "last-recovery-report.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(local_report, report)
         commands = [
             " ".join(call["command"])
             for call in runner.calls
@@ -331,6 +339,17 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertFalse(
             (self.state_directory / "recovery-in-progress.json").exists()
         )
+        local_report = json.loads(
+            (
+                self.state_directory / "last-recovery-report.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(local_report["status"], "critical")
+        self.assertEqual(local_report["recovery_phase"], "runtime-guard")
+        self.assertEqual(
+            local_report["recovery_attempt_id"],
+            RECOVERY_ATTEMPT_ID,
+        )
 
     def test_existing_volumes_block_recovery(self):
         runner = FakeRunner(existing_volumes="vapes-shop_mysql_data\n")
@@ -353,6 +372,31 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertFalse(
             any(" external-recovery " in command for command in commands)
         )
+
+    def test_audit_failure_preserves_recovery_journal(self):
+        runner = FakeRunner(existing_services="db\n")
+        controller = self.controller(runner)
+
+        with mock.patch.object(
+            controller,
+            "write_recovery_audit",
+            side_effect=recovery.ProductionRecoveryError(
+                "No fue posible persistir la auditoria."
+            ),
+        ):
+            with self.assertRaisesRegex(
+                recovery.ProductionRecoveryError,
+                "persistir la auditoria",
+            ):
+                self.manual_recover(
+                    controller,
+                    APP_IMAGE,
+                    BACKUP_IMAGE,
+                    rto_seconds=1800,
+                )
+
+        self.assertTrue(controller.recovery_journal_path.exists())
+        self.assertFalse(controller.lock_directory.exists())
 
     def test_recovered_service_reports_rto_violation(self):
         runner = FakeRunner()

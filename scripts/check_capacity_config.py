@@ -622,8 +622,14 @@ def validate_disaster_recovery(
         "validate_recovery_attempt_id",
         '"recovery_attempt_id": recovery_attempt_id',
         "recovery-in-progress.json",
+        "last-recovery-report.json",
         "write_recovery_journal",
         "remove_recovery_journal",
+        "write_recovery_audit",
+        "audit_persisted",
+        "if audit_persisted:",
+        "exc.recovery_report = failure_report",
+        'getattr(exc, "recovery_report", None)',
         '"phase": phase',
         "exc.recovery_phase = phase",
         'report["recovery_phase"] = recovery_phase',
@@ -732,6 +738,11 @@ def validate_disaster_recovery(
         (
             disaster_docs_text,
             "recovery-in-progress.json",
+            "DISASTER_RECOVERY.md",
+        ),
+        (
+            disaster_docs_text,
+            "last-recovery-report.json",
             "DISASTER_RECOVERY.md",
         ),
     ):

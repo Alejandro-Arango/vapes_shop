@@ -163,10 +163,17 @@ confirmar el estado de contenedores, volúmenes, MySQL y media, y decidir la
 recuperacion segura. Los reportes de fallo controlado incluyen
 `recovery_phase`.
 
+Antes de retirar el journal, el controlador persiste el resultado controlado en
+`.deploy/last-recovery-report.json` con modo `0600`. Esta copia local conserva
+la auditoria aunque falle el webhook o no se pueda escribir el destino indicado
+por `--output`. Si tampoco puede persistirse esta copia, el journal permanece y
+el siguiente intento queda bloqueado.
+
 ## Fallos
 
 - No borrar `.deploy.lock` sin confirmar que no hay otra operacion activa.
 - No borrar `recovery-in-progress.json` antes de registrar su contenido.
+- Conservar `last-recovery-report.json` con la evidencia del ultimo intento.
 - No vaciar un `BACKUP_PATH` existente para forzar este flujo.
 - No usar etiquetas mutables como `latest`.
 - No confiar en el manifiesto antes de verificar atestacion y checksum.
