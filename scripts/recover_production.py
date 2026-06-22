@@ -24,6 +24,8 @@ from monitor_backups import (
 from release_manifest import (
     ReleaseManifestError,
     load_verified_manifest,
+    validate_commit,
+    validate_release_tag,
 )
 
 
@@ -106,6 +108,73 @@ def load_rto_objective(env_file, default=1800.0):
     return objective
 
 
+def validate_break_glass_reason(value):
+    normalized_reason = value.strip()
+
+    if "\n" in normalized_reason or "\r" in normalized_reason:
+        raise ProductionRecoveryError(
+            "--break-glass-reason debe ocupar una sola linea."
+        )
+
+    if not (
+        MIN_BREAK_GLASS_REASON_LENGTH
+        <= len(normalized_reason)
+        <= MAX_BREAK_GLASS_REASON_LENGTH
+    ):
+        raise ProductionRecoveryError(
+            "--break-glass-reason debe tener entre "
+            f"{MIN_BREAK_GLASS_REASON_LENGTH} y "
+            f"{MAX_BREAK_GLASS_REASON_LENGTH} caracteres."
+        )
+
+    return normalized_reason
+
+
+def validate_recovery_provenance(
+    source_mode,
+    release_tag="",
+    source_commit="",
+    break_glass_reason="",
+):
+    if source_mode == "verified-manifest":
+        if break_glass_reason:
+            raise ProductionRecoveryError(
+                "verified-manifest no admite un motivo break-glass."
+            )
+
+        try:
+            validated_tag = validate_release_tag(release_tag)
+            validated_commit = validate_commit(source_commit)
+        except ReleaseManifestError as exc:
+            raise ProductionRecoveryError(str(exc)) from exc
+
+        return {
+            "source_mode": source_mode,
+            "release_tag": validated_tag,
+            "source_commit": validated_commit,
+            "break_glass_reason": "",
+        }
+
+    if source_mode == "manual-break-glass":
+        if release_tag or source_commit:
+            raise ProductionRecoveryError(
+                "manual-break-glass no admite identidad de manifiesto."
+            )
+
+        return {
+            "source_mode": source_mode,
+            "release_tag": "",
+            "source_commit": "",
+            "break_glass_reason": validate_break_glass_reason(
+                break_glass_reason
+            ),
+        }
+
+    raise ProductionRecoveryError(
+        "source_mode debe ser verified-manifest o manual-break-glass."
+    )
+
+
 def load_recovery_source(
     app_image,
     backup_image,
@@ -163,23 +232,7 @@ def load_recovery_source(
             f"--break-glass-confirm {BREAK_GLASS_CONFIRMATION}."
         )
 
-    normalized_reason = break_glass_reason.strip()
-
-    if "\n" in normalized_reason or "\r" in normalized_reason:
-        raise ProductionRecoveryError(
-            "--break-glass-reason debe ocupar una sola linea."
-        )
-
-    if not (
-        MIN_BREAK_GLASS_REASON_LENGTH
-        <= len(normalized_reason)
-        <= MAX_BREAK_GLASS_REASON_LENGTH
-    ):
-        raise ProductionRecoveryError(
-            "--break-glass-reason debe tener entre "
-            f"{MIN_BREAK_GLASS_REASON_LENGTH} y "
-            f"{MAX_BREAK_GLASS_REASON_LENGTH} caracteres."
-        )
+    normalized_reason = validate_break_glass_reason(break_glass_reason)
 
     return {
         "app_image": app_image,
@@ -555,6 +608,13 @@ class ProductionRecoveryController:
         source_mode="",
         break_glass_reason="",
     ):
+        provenance = validate_recovery_provenance(
+            source_mode=source_mode,
+            release_tag=release_tag,
+            source_commit=source_commit,
+            break_glass_reason=break_glass_reason,
+        )
+
         try:
             state = {
                 "app_image": validate_image_reference(
@@ -575,7 +635,7 @@ class ProductionRecoveryController:
         try:
             source_verified = self.verify_source_checkout(
                 state,
-                source_commit,
+                provenance["source_commit"],
             )
             self.assert_clean_runtime(state)
             self.prepare(state)
@@ -599,19 +659,21 @@ class ProductionRecoveryController:
                 "deployed_at": utc_now(),
                 "recovered_from_backup": backup_id,
                 "recovered_from_snapshot": snapshot_id,
+                "source_mode": provenance["source_mode"],
             }
 
-            if source_mode:
-                recovered_state["source_mode"] = source_mode
+            if provenance["break_glass_reason"]:
+                recovered_state["break_glass_reason"] = provenance[
+                    "break_glass_reason"
+                ]
 
-            if break_glass_reason:
-                recovered_state["break_glass_reason"] = break_glass_reason
+            if provenance["release_tag"]:
+                recovered_state["release_tag"] = provenance["release_tag"]
 
-            if release_tag:
-                recovered_state["release_tag"] = release_tag
-
-            if source_commit:
-                recovered_state["source_commit"] = source_commit
+            if provenance["source_commit"]:
+                recovered_state["source_commit"] = provenance[
+                    "source_commit"
+                ]
 
             self.write_state(recovered_state)
             report = {
@@ -624,20 +686,20 @@ class ProductionRecoveryController:
                 "rto_actual_seconds": round(elapsed, 3),
                 "catalog_probe_products": recovered_products,
                 "source_checkout_verified": source_verified,
+                "source_mode": provenance["source_mode"],
                 **state,
             }
 
-            if source_mode:
-                report["source_mode"] = source_mode
+            if provenance["break_glass_reason"]:
+                report["break_glass_reason"] = provenance[
+                    "break_glass_reason"
+                ]
 
-            if break_glass_reason:
-                report["break_glass_reason"] = break_glass_reason
+            if provenance["release_tag"]:
+                report["release_tag"] = provenance["release_tag"]
 
-            if release_tag:
-                report["release_tag"] = release_tag
-
-            if source_commit:
-                report["source_commit"] = source_commit
+            if provenance["source_commit"]:
+                report["source_commit"] = provenance["source_commit"]
 
             if elapsed > rto_seconds:
                 report["status"] = "critical"

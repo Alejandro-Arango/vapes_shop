@@ -16,6 +16,7 @@ APP_IMAGE = f"ghcr.io/example/vapes-shop@sha256:{'1' * 64}"
 BACKUP_IMAGE = f"ghcr.io/example/vapes-shop-backup@sha256:{'2' * 64}"
 BACKUP_ID = "20260621T120000Z"
 SNAPSHOT_ID = "a" * 64
+BREAK_GLASS_REASON = "GitHub no disponible; aprobacion INC-1234."
 
 
 class FakeRunner:
@@ -108,6 +109,11 @@ class ProductionRecoveryTests(unittest.TestCase):
             monotonic=lambda: next(values),
         )
 
+    def manual_recover(self, controller, *args, **kwargs):
+        kwargs.setdefault("source_mode", "manual-break-glass")
+        kwargs.setdefault("break_glass_reason", BREAK_GLASS_REASON)
+        return controller.recover(*args, **kwargs)
+
     def test_recovery_restores_data_starts_service_and_writes_state(self):
         runner = FakeRunner()
         controller = self.controller(runner)
@@ -191,7 +197,8 @@ class ProductionRecoveryTests(unittest.TestCase):
             recovery.ProductionRecoveryError,
             "Ya existe estado productivo",
         ):
-            self.controller(runner).recover(
+            self.manual_recover(
+                self.controller(runner),
                 APP_IMAGE,
                 BACKUP_IMAGE,
                 rto_seconds=1800,
@@ -212,6 +219,7 @@ class ProductionRecoveryTests(unittest.TestCase):
                 rto_seconds=1800,
                 release_tag="v1.2.3",
                 source_commit="a" * 40,
+                source_mode="verified-manifest",
             )
 
         commands = [
@@ -233,6 +241,7 @@ class ProductionRecoveryTests(unittest.TestCase):
                 rto_seconds=1800,
                 release_tag="v1.2.3",
                 source_commit="a" * 40,
+                source_mode="verified-manifest",
             )
 
         self.assertFalse(
@@ -246,7 +255,8 @@ class ProductionRecoveryTests(unittest.TestCase):
             recovery.ProductionRecoveryError,
             "no existan contenedores previos",
         ):
-            self.controller(runner).recover(
+            self.manual_recover(
+                self.controller(runner),
                 APP_IMAGE,
                 BACKUP_IMAGE,
                 rto_seconds=1800,
@@ -263,7 +273,8 @@ class ProductionRecoveryTests(unittest.TestCase):
             recovery.ProductionRecoveryError,
             "no existan volumenes previos",
         ):
-            self.controller(runner).recover(
+            self.manual_recover(
+                self.controller(runner),
                 APP_IMAGE,
                 BACKUP_IMAGE,
                 rto_seconds=1800,
@@ -281,7 +292,8 @@ class ProductionRecoveryTests(unittest.TestCase):
         runner = FakeRunner()
         controller = self.controller(runner, times=(100.0, 2001.0))
 
-        report = controller.recover(
+        report = self.manual_recover(
+            controller,
             APP_IMAGE,
             BACKUP_IMAGE,
             rto_seconds=1800,
@@ -300,7 +312,8 @@ class ProductionRecoveryTests(unittest.TestCase):
             recovery.ProductionRecoveryError,
             "no devolvio results",
         ):
-            self.controller(runner).recover(
+            self.manual_recover(
+                self.controller(runner),
                 APP_IMAGE,
                 BACKUP_IMAGE,
                 rto_seconds=1800,
@@ -314,7 +327,8 @@ class ProductionRecoveryTests(unittest.TestCase):
         runner = FakeRunner()
 
         with self.assertRaises(recovery.ProductionRecoveryError):
-            self.controller(runner).recover(
+            self.manual_recover(
+                self.controller(runner),
                 "ghcr.io/example/vapes-shop:latest",
                 BACKUP_IMAGE,
                 rto_seconds=1800,
@@ -419,7 +433,7 @@ class ProductionRecoveryTests(unittest.TestCase):
 
     def test_break_glass_reason_is_persisted_in_report_and_state(self):
         runner = FakeRunner()
-        reason = "GitHub no disponible; aprobacion INC-1234."
+        reason = BREAK_GLASS_REASON
 
         report = self.controller(runner).recover(
             APP_IMAGE,
@@ -439,6 +453,57 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertFalse(report["source_checkout_verified"])
         self.assertEqual(state["source_mode"], "manual-break-glass")
         self.assertEqual(state["break_glass_reason"], reason)
+
+    def test_controller_rejects_inconsistent_provenance(self):
+        invalid_cases = (
+            (
+                {
+                    "source_mode": "verified-manifest",
+                    "release_tag": "",
+                    "source_commit": "",
+                },
+                "release_tag",
+            ),
+            (
+                {
+                    "source_mode": "verified-manifest",
+                    "release_tag": "v1.2.3",
+                    "source_commit": "a" * 40,
+                    "break_glass_reason": BREAK_GLASS_REASON,
+                },
+                "no admite un motivo break-glass",
+            ),
+            (
+                {
+                    "source_mode": "manual-break-glass",
+                    "release_tag": "v1.2.3",
+                    "source_commit": "a" * 40,
+                    "break_glass_reason": BREAK_GLASS_REASON,
+                },
+                "no admite identidad de manifiesto",
+            ),
+            (
+                {"source_mode": "desconocido"},
+                "source_mode debe ser",
+            ),
+        )
+
+        for provenance, error in invalid_cases:
+            with self.subTest(provenance=provenance):
+                runner = FakeRunner()
+
+                with self.assertRaisesRegex(
+                    recovery.ProductionRecoveryError,
+                    error,
+                ):
+                    self.controller(runner).recover(
+                        APP_IMAGE,
+                        BACKUP_IMAGE,
+                        rto_seconds=1800,
+                        **provenance,
+                    )
+
+                self.assertEqual(runner.calls, [])
 
     def test_manual_images_require_a_bounded_single_line_reason(self):
         for reason in ("corto", "motivo valido\nsegunda linea", "x" * 201):

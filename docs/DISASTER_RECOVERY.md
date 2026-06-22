@@ -146,6 +146,8 @@ motivo debe ocupar una sola linea de 12 a 200 caracteres y queda registrado
 junto con `source_mode: manual-break-glass` en el reporte y el estado
 productivo. Debe existir autorizacion humana y seguimiento posterior del
 incidente. No usar esta ruta solo para ahorrar los pasos de verificacion.
+El controlador rechaza combinaciones incoherentes: el modo de manifiesto exige
+tag y commit validos, mientras que break-glass los prohibe y exige el motivo.
 
 ## Fallos
 
