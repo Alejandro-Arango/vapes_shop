@@ -28,7 +28,7 @@ actividades cuando exista proveedor y dominio.
 - `compose.production.env` con modo `0600`;
 - credenciales Restic y secretos recuperados desde un gestor independiente;
 - el mismo `EXTERNAL_BACKUP_HOST` usado para crear los snapshots;
-- referencias por digest de las imagenes de aplicacion y operaciones;
+- manifiesto de recuperacion y checksum de una release aprobada;
 - `/srv/vapes-shop/backups` vacio;
 - ausencia de `.deploy/current.json`;
 - ningun contenedor ni volumen previo del proyecto.
@@ -46,17 +46,33 @@ cd /srv/vapes-shop
 sudo python3 scripts/check_host_readiness.py --mode bootstrap
 ```
 
-2. Confirmar que las imágenes corresponden a una release aprobada y copiar sus
-   referencias completas por digest.
+2. Confirmar que las imágenes corresponden a una release aprobada y descargar
+   el manifiesto atestiguado y su checksum:
+
+```bash
+gh release download v1.2.3 \
+  --repo ORGANIZACION/REPOSITORIO \
+  --pattern 'recovery-manifest.*'
+gh attestation verify recovery-manifest.json \
+  --repo ORGANIZACION/REPOSITORIO
+python3 scripts/release_manifest.py verify \
+  --manifest recovery-manifest.json \
+  --checksum recovery-manifest.sha256 \
+  --expected-repository ORGANIZACION/REPOSITORIO \
+  --expected-tag v1.2.3
+```
+
+La atestacion confirma la procedencia en GitHub Actions; el checksum detecta
+corrupcion y el verificador restringe repositorio, release, commit e imagenes.
 
 3. Ejecutar como el usuario de servicio:
 
 ```bash
 sudo -u vapes-shop python3 scripts/recover_production.py \
-  --app-image \
-  "ghcr.io/ORGANIZACION/REPOSITORIO@sha256:DIGEST_APP" \
-  --backup-image \
-  "ghcr.io/ORGANIZACION/REPOSITORIO-backup@sha256:DIGEST_OPS" \
+  --release-manifest recovery-manifest.json \
+  --manifest-checksum recovery-manifest.sha256 \
+  --expected-repository ORGANIZACION/REPOSITORIO \
+  --expected-tag v1.2.3 \
   --confirm RECOVER-PRODUCTION-FROM-EXTERNAL-BACKUP \
   --output /var/lib/vapes-shop/disaster-recovery.json
 ```
@@ -95,6 +111,7 @@ Solo despues deben actualizarse el balanceador, DNS o reglas publicas.
 - No borrar `.deploy.lock` sin confirmar que no hay otra operacion activa.
 - No vaciar un `BACKUP_PATH` existente para forzar este flujo.
 - No usar etiquetas mutables como `latest`.
+- No confiar en el manifiesto antes de verificar atestacion y checksum.
 - No desactivar el backup externo obligatorio.
 - Conservar el reporte, logs de Compose y tiempos del incidente.
 

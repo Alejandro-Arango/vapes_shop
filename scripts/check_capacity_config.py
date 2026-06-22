@@ -25,6 +25,11 @@ RESOURCE_POLICY = {
         "EXTERNAL_BACKUP_CPU_LIMIT",
         "pids_limit",
     ),
+    "external-recovery": (
+        "EXTERNAL_BACKUP_MEMORY_LIMIT",
+        "EXTERNAL_BACKUP_CPU_LIMIT",
+        "pids_limit",
+    ),
     "restore": ("RESTORE_MEMORY_LIMIT", "RESTORE_CPU_LIMIT", "pids_limit"),
 }
 ENV_RESOURCE_KEYS = tuple(
@@ -690,6 +695,74 @@ def validate_disaster_recovery(
     return findings
 
 
+def validate_release_manifest(
+    manifest_text,
+    recovery_text,
+    publish_workflow_text,
+    disaster_docs_text,
+):
+    findings = []
+    manifest_fragments = (
+        "vapes-shop/recovery-manifest/v1",
+        "release_tag",
+        "source_commit",
+        "images.application",
+        "images.operations",
+        "recovery.rto_seconds",
+        "recovery-manifest.sha256",
+        "load_verified_manifest",
+        "expected_repository",
+        "expected_tag",
+        "os.replace",
+    )
+    recovery_fragments = (
+        "load_verified_manifest",
+        "--release-manifest",
+        "--manifest-checksum",
+        "--expected-repository",
+        "--expected-tag",
+        "No combines un manifiesto con imagenes explicitas",
+    )
+    workflow_fragments = (
+        "python scripts/release_manifest.py create",
+        'git rev-parse "${RELEASE_TAG}^{commit}"',
+        'test "$source_commit" = "$tag_commit"',
+        "actions/attest@v4",
+        "subject-path: recovery-manifest.json",
+        'gh release upload "$RELEASE_TAG"',
+        "recovery-manifest.sha256",
+        "release-recovery-manifest",
+    )
+    docs_fragments = (
+        "gh attestation verify recovery-manifest.json",
+        "scripts/release_manifest.py verify",
+        "--release-manifest recovery-manifest.json",
+    )
+
+    for text, fragments, label in (
+        (manifest_text, manifest_fragments, "release_manifest.py"),
+        (recovery_text, recovery_fragments, "recover_production.py"),
+        (
+            publish_workflow_text,
+            workflow_fragments,
+            "publish-images.yml",
+        ),
+        (disaster_docs_text, docs_fragments, "DISASTER_RECOVERY.md"),
+    ):
+        for fragment in fragments:
+            if fragment not in text:
+                findings.append(f"{label} no contiene {fragment}")
+
+    if "gh release upload \"$RELEASE_TAG\"" in publish_workflow_text and (
+        "--clobber" in publish_workflow_text
+    ):
+        findings.append(
+            "publish-images.yml no debe reemplazar manifiestos publicados"
+        )
+
+    return findings
+
+
 def validate_backup_operations(script_text):
     required_fragments = (
         "BackupOperationsController",
@@ -1141,6 +1214,12 @@ def find_capacity_findings(project_root):
         "disaster_docs": (
             project_root / "docs" / "DISASTER_RECOVERY.md"
         ),
+        "release_manifest": (
+            project_root / "scripts" / "release_manifest.py"
+        ),
+        "publish_workflow": (
+            project_root / ".github" / "workflows" / "publish-images.yml"
+        ),
     }
     missing_paths = [
         str(path.relative_to(project_root))
@@ -1271,6 +1350,14 @@ def find_capacity_findings(project_root):
             paths["local_env"].read_text(encoding="utf-8"),
             paths["production_env"].read_text(encoding="utf-8"),
             paths["django_workflow"].read_text(encoding="utf-8"),
+            paths["disaster_docs"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_release_manifest(
+            paths["release_manifest"].read_text(encoding="utf-8"),
+            paths["production_recovery"].read_text(encoding="utf-8"),
+            paths["publish_workflow"].read_text(encoding="utf-8"),
             paths["disaster_docs"].read_text(encoding="utf-8"),
         )
     )

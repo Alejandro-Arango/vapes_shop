@@ -841,8 +841,10 @@ construye y publica en GHCR:
 - `ghcr.io/ORGANIZACION/REPOSITORIO-backup`
 
 No publica `latest`. Cada imagen recibe la etiqueta de la release, una etiqueta
-del commit y una atestacion de procedencia. Para desplegar se debe copiar del
-resumen del workflow la referencia completa por digest, no solo la etiqueta.
+del commit y una atestacion de procedencia. La release adjunta
+`recovery-manifest.json`, su SHA-256 y una atestacion del manifiesto. Ese
+archivo conserva tag, commit y referencias completas por digest para desplegar
+o reconstruir el servicio.
 La publicación solo continúa después de validar pruebas, migraciones pendientes
 y que la etiqueta use el formato `vMAJOR.MINOR.PATCH`.
 
@@ -1104,8 +1106,9 @@ Procedimiento completo, requisitos y limites:
 ### Recuperacion integral ante perdida del host
 
 `scripts/recover_production.py` reconstruye el servicio desde el ultimo
-snapshot externo sobre un host limpio. Exige imagenes por digest, confirmacion
-literal, ausencia de estado previo y un directorio local de backups vacio.
+snapshot externo sobre un host limpio. Consume el manifiesto atestiguado de la
+release, exige confirmacion literal, ausencia de estado previo y un directorio
+local de backups vacio.
 Restaura MySQL y media, aplica migraciones, inicia Django/Nginx y valida tanto
 `/healthz` como el catalogo.
 

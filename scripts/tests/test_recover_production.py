@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import tempfile
 import unittest
@@ -105,18 +106,24 @@ class ProductionRecoveryTests(unittest.TestCase):
             APP_IMAGE,
             BACKUP_IMAGE,
             rto_seconds=1800,
+            release_tag="v1.2.3",
+            source_commit="a" * 40,
         )
 
         self.assertEqual(report["status"], "ok")
         self.assertEqual(report["backup_id"], BACKUP_ID)
         self.assertEqual(report["rto_actual_seconds"], 30.0)
         self.assertEqual(report["catalog_probe_products"], 1)
+        self.assertEqual(report["release_tag"], "v1.2.3")
+        self.assertEqual(report["source_commit"], "a" * 40)
         state = json.loads(
             (self.state_directory / "current.json").read_text(
                 encoding="utf-8"
             )
         )
         self.assertEqual(state["recovered_from_backup"], BACKUP_ID)
+        self.assertEqual(state["release_tag"], "v1.2.3")
+        self.assertEqual(state["source_commit"], "a" * 40)
         commands = [
             " ".join(call["command"])
             for call in runner.calls
@@ -273,6 +280,57 @@ class ProductionRecoveryTests(unittest.TestCase):
         objective = recovery.load_rto_objective(self.env_file)
 
         self.assertEqual(objective, 2400.0)
+
+    def test_verified_release_manifest_supplies_images_and_identity(self):
+        manifest_path = self.root / "recovery-manifest.json"
+        checksum_path = self.root / "recovery-manifest.sha256"
+        payload = {
+            "schema": "vapes-shop/recovery-manifest/v1",
+            "repository": "example/vapes-shop",
+            "release_tag": "v1.2.3",
+            "source_commit": "a" * 40,
+            "images": {
+                "application": APP_IMAGE,
+                "operations": BACKUP_IMAGE,
+            },
+            "recovery": {"rto_seconds": 1800.0},
+        }
+        manifest_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        checksum_path.write_text(
+            f"{digest}  recovery-manifest.json\n",
+            encoding="ascii",
+        )
+
+        source = recovery.load_recovery_source(
+            app_image="",
+            backup_image="",
+            release_manifest=str(manifest_path),
+            manifest_checksum=str(checksum_path),
+            expected_repository="example/vapes-shop",
+            expected_tag="v1.2.3",
+        )
+
+        self.assertEqual(source["app_image"], APP_IMAGE)
+        self.assertEqual(source["backup_image"], BACKUP_IMAGE)
+        self.assertEqual(source["release_tag"], "v1.2.3")
+        self.assertEqual(source["source_commit"], "a" * 40)
+
+    def test_manifest_cannot_be_combined_with_explicit_images(self):
+        with self.assertRaisesRegex(
+            recovery.ProductionRecoveryError,
+            "No combines",
+        ):
+            recovery.load_recovery_source(
+                app_image=APP_IMAGE,
+                backup_image=BACKUP_IMAGE,
+                release_manifest="manifest.json",
+                manifest_checksum="manifest.sha256",
+                expected_repository="example/vapes-shop",
+            )
 
 
 if __name__ == "__main__":

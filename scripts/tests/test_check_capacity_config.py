@@ -688,6 +688,56 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def release_manifest_inputs(self):
+        return {
+            "manifest_text": (
+                PROJECT_ROOT / "scripts" / "release_manifest.py"
+            ).read_text(encoding="utf-8"),
+            "recovery_text": (
+                PROJECT_ROOT / "scripts" / "recover_production.py"
+            ).read_text(encoding="utf-8"),
+            "publish_workflow_text": (
+                PROJECT_ROOT
+                / ".github"
+                / "workflows"
+                / "publish-images.yml"
+            ).read_text(encoding="utf-8"),
+            "disaster_docs_text": (
+                PROJECT_ROOT / "docs" / "DISASTER_RECOVERY.md"
+            ).read_text(encoding="utf-8"),
+        }
+
+    def test_release_manifest_without_attestation_is_rejected(self):
+        inputs = self.release_manifest_inputs()
+        inputs["publish_workflow_text"] = inputs[
+            "publish_workflow_text"
+        ].replace(
+            "subject-path: recovery-manifest.json",
+            "subject-path: untrusted.txt",
+            1,
+        )
+
+        findings = capacity.validate_release_manifest(**inputs)
+
+        self.assertIn(
+            (
+                "publish-images.yml no contiene "
+                "subject-path: recovery-manifest.json"
+            ),
+            findings,
+        )
+
+    def test_release_manifest_cannot_be_overwritten(self):
+        inputs = self.release_manifest_inputs()
+        inputs["publish_workflow_text"] += "\n--clobber\n"
+
+        findings = capacity.validate_release_manifest(**inputs)
+
+        self.assertIn(
+            "publish-images.yml no debe reemplazar manifiestos publicados",
+            findings,
+        )
+
     def test_backup_operations_without_shared_lock_is_rejected(self):
         script_text = (
             PROJECT_ROOT / "scripts" / "backup_operations.py"

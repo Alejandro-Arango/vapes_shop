@@ -176,6 +176,53 @@ jobs:
           upload-artifact-retention: 90
           upload-release-assets: true
 
+      - name: Crear manifiesto de recuperacion
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          APP_DIGEST: ${{ steps.app-push.outputs.digest }}
+          BACKUP_DIGEST: ${{ steps.backup-push.outputs.digest }}
+        run: |
+          repository="${GITHUB_REPOSITORY,,}"
+          source_commit="$(git rev-parse HEAD)"
+          tag_commit="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          test "$source_commit" = "$tag_commit"
+          python scripts/release_manifest.py create \
+            --repository "$repository" \
+            --release-tag "$RELEASE_TAG" \
+            --source-commit "$source_commit" \
+            --app-image \
+            "${REGISTRY}/${repository}@${APP_DIGEST}" \
+            --backup-image \
+            "${REGISTRY}/${repository}-backup@${BACKUP_DIGEST}" \
+            --rto-seconds 1800
+          python scripts/release_manifest.py verify \
+            --expected-repository "$repository" \
+            --expected-tag "$RELEASE_TAG"
+
+      - name: Atestiguar manifiesto de recuperacion
+        uses: actions/attest@v4
+        with:
+          subject-path: recovery-manifest.json
+
+      - name: Adjuntar manifiesto a la release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            recovery-manifest.json \
+            recovery-manifest.sha256
+
+      - name: Conservar manifiesto como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-recovery-manifest
+          path: |
+            recovery-manifest.json
+            recovery-manifest.sha256
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Resumen de digests
         run: |
           {
@@ -183,4 +230,5 @@ jobs:
             echo
             echo "- Aplicacion: \`${{ env.REGISTRY }}/${{ env.APP_IMAGE_NAME }}@${{ steps.app-push.outputs.digest }}\`"
             echo "- Operaciones: \`${{ env.REGISTRY }}/${{ env.BACKUP_IMAGE_NAME }}@${{ steps.backup-push.outputs.digest }}\`"
+            echo "- Recuperacion: assets \`recovery-manifest.json\` y \`recovery-manifest.sha256\`"
           } >> "$GITHUB_STEP_SUMMARY"

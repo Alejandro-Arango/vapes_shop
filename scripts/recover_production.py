@@ -21,6 +21,10 @@ from monitor_backups import (
     send_webhook,
     validate_webhook_url,
 )
+from release_manifest import (
+    ReleaseManifestError,
+    load_verified_manifest,
+)
 
 
 RECOVERY_CONFIRMATION = "RECOVER-PRODUCTION-FROM-EXTERNAL-BACKUP"
@@ -97,6 +101,57 @@ def load_rto_objective(env_file, default=1800.0):
         )
 
     return objective
+
+
+def load_recovery_source(
+    app_image,
+    backup_image,
+    release_manifest="",
+    manifest_checksum="",
+    expected_repository="",
+    expected_tag="",
+):
+    if release_manifest:
+        if app_image or backup_image:
+            raise ProductionRecoveryError(
+                "No combines un manifiesto con imagenes explicitas."
+            )
+
+        if not manifest_checksum or not expected_repository:
+            raise ProductionRecoveryError(
+                "El manifiesto requiere checksum y repositorio esperado."
+            )
+
+        try:
+            manifest = load_verified_manifest(
+                manifest_path=release_manifest,
+                checksum_path=manifest_checksum,
+                expected_repository=expected_repository,
+                expected_tag=expected_tag,
+            )
+        except ReleaseManifestError as exc:
+            raise ProductionRecoveryError(str(exc)) from exc
+
+        return {
+            "app_image": manifest["images"]["application"],
+            "backup_image": manifest["images"]["operations"],
+            "release_tag": manifest["release_tag"],
+            "source_commit": manifest["source_commit"],
+            "manifest_rto_seconds": manifest["recovery"]["rto_seconds"],
+        }
+
+    if not app_image or not backup_image:
+        raise ProductionRecoveryError(
+            "--app-image y --backup-image son obligatorios sin manifiesto."
+        )
+
+    return {
+        "app_image": app_image,
+        "backup_image": backup_image,
+        "release_tag": "",
+        "source_commit": "",
+        "manifest_rto_seconds": None,
+    }
 
 
 class CommandRunner:
@@ -399,6 +454,8 @@ class ProductionRecoveryController:
         app_image,
         backup_image,
         rto_seconds,
+        release_tag="",
+        source_commit="",
     ):
         try:
             state = {
@@ -441,6 +498,13 @@ class ProductionRecoveryController:
                 "recovered_from_backup": backup_id,
                 "recovered_from_snapshot": snapshot_id,
             }
+
+            if release_tag:
+                recovered_state["release_tag"] = release_tag
+
+            if source_commit:
+                recovered_state["source_commit"] = source_commit
+
             self.write_state(recovered_state)
             report = {
                 "event": "production_disaster_recovery",
@@ -453,6 +517,12 @@ class ProductionRecoveryController:
                 "catalog_probe_products": recovered_products,
                 **state,
             }
+
+            if release_tag:
+                report["release_tag"] = release_tag
+
+            if source_commit:
+                report["source_commit"] = source_commit
 
             if elapsed > rto_seconds:
                 report["status"] = "critical"
@@ -547,6 +617,10 @@ def build_parser():
         "--backup-image",
         default=os.environ.get("BACKUP_IMAGE", ""),
     )
+    parser.add_argument("--release-manifest", default="")
+    parser.add_argument("--manifest-checksum", default="")
+    parser.add_argument("--expected-repository", default="")
+    parser.add_argument("--expected-tag", default="")
     parser.add_argument(
         "--rto-seconds",
         type=positive_float,
@@ -576,10 +650,14 @@ def main():
                 f"Confirma con --confirm {RECOVERY_CONFIRMATION}."
             )
 
-        if not arguments.app_image or not arguments.backup_image:
-            raise ProductionRecoveryError(
-                "--app-image y --backup-image son obligatorios."
-            )
+        source = load_recovery_source(
+            app_image=arguments.app_image,
+            backup_image=arguments.backup_image,
+            release_manifest=arguments.release_manifest,
+            manifest_checksum=arguments.manifest_checksum,
+            expected_repository=arguments.expected_repository,
+            expected_tag=arguments.expected_tag,
+        )
 
         controller = ProductionRecoveryController(
             project_root=arguments.project_root,
@@ -588,14 +666,21 @@ def main():
             command_timeout=arguments.command_timeout,
             wait_timeout=arguments.wait_timeout,
         )
-        report = controller.recover(
-            app_image=arguments.app_image,
-            backup_image=arguments.backup_image,
-            rto_seconds=(
-                arguments.rto_seconds
-                if arguments.rto_seconds is not None
+        rto_seconds = arguments.rto_seconds
+
+        if rto_seconds is None:
+            rto_seconds = (
+                source["manifest_rto_seconds"]
+                if source["manifest_rto_seconds"] is not None
                 else load_rto_objective(arguments.env_file)
-            ),
+            )
+
+        report = controller.recover(
+            app_image=source["app_image"],
+            backup_image=source["backup_image"],
+            rto_seconds=rto_seconds,
+            release_tag=source["release_tag"],
+            source_commit=source["source_commit"],
         )
         exit_code = 0 if report["status"] == "ok" else 1
     except (
