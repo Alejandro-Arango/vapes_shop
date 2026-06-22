@@ -9,6 +9,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 SCRIPT_DIRECTORY = Path(__file__).resolve().parent
 
@@ -34,6 +35,7 @@ EXTERNAL_RECOVERY_CONFIRMATION = "RECOVER-LATEST-EXTERNAL-BACKUP"
 BREAK_GLASS_CONFIRMATION = "USE-MANUAL-RECOVERY-IMAGES"
 MIN_BREAK_GLASS_REASON_LENGTH = 12
 MAX_BREAK_GLASS_REASON_LENGTH = 200
+RECOVERY_ATTEMPT_ID_LENGTH = 32
 
 
 class ProductionRecoveryError(RuntimeError):
@@ -175,13 +177,34 @@ def validate_recovery_provenance(
     )
 
 
-def build_failure_report(error, source=None):
+def new_recovery_attempt_id():
+    return uuid4().hex
+
+
+def validate_recovery_attempt_id(value):
+    attempt_id = value.strip().lower()
+
+    if (
+        len(attempt_id) != RECOVERY_ATTEMPT_ID_LENGTH
+        or any(character not in "0123456789abcdef" for character in attempt_id)
+    ):
+        raise ProductionRecoveryError(
+            "recovery_attempt_id debe contener 32 caracteres hexadecimales."
+        )
+
+    return attempt_id
+
+
+def build_failure_report(error, source=None, attempt_id=""):
     report = {
         "event": "production_disaster_recovery",
         "status": "critical",
         "checked_at": utc_now(),
         "error": str(error),
     }
+
+    if attempt_id:
+        report["recovery_attempt_id"] = attempt_id
 
     if not source:
         return report
@@ -634,7 +657,11 @@ class ProductionRecoveryController:
         source_commit="",
         source_mode="",
         break_glass_reason="",
+        attempt_id="",
     ):
+        recovery_attempt_id = validate_recovery_attempt_id(
+            attempt_id or new_recovery_attempt_id()
+        )
         provenance = validate_recovery_provenance(
             source_mode=source_mode,
             release_tag=release_tag,
@@ -686,6 +713,7 @@ class ProductionRecoveryController:
                 "deployed_at": utc_now(),
                 "recovered_from_backup": backup_id,
                 "recovered_from_snapshot": snapshot_id,
+                "recovery_attempt_id": recovery_attempt_id,
                 "source_mode": provenance["source_mode"],
             }
 
@@ -712,6 +740,7 @@ class ProductionRecoveryController:
                 "rto_objective_seconds": rto_seconds,
                 "rto_actual_seconds": round(elapsed, 3),
                 "catalog_probe_products": recovered_products,
+                "recovery_attempt_id": recovery_attempt_id,
                 "source_checkout_verified": source_verified,
                 "source_mode": provenance["source_mode"],
                 **state,
@@ -849,6 +878,7 @@ def build_parser():
 
 def main():
     arguments = build_parser().parse_args()
+    attempt_id = new_recovery_attempt_id()
     source = None
 
     try:
@@ -892,6 +922,7 @@ def main():
             source_commit=source["source_commit"],
             source_mode=source["source_mode"],
             break_glass_reason=source["break_glass_reason"],
+            attempt_id=attempt_id,
         )
         exit_code = 0 if report["status"] == "ok" else 1
     except (
@@ -900,7 +931,7 @@ def main():
         ValueError,
         subprocess.SubprocessError,
     ) as exc:
-        report = build_failure_report(exc, source)
+        report = build_failure_report(exc, source, attempt_id)
         exit_code = 1
 
     if exit_code:

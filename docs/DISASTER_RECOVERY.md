@@ -98,7 +98,8 @@ El archivo de reporte y `.deploy/current.json` se escriben atomicamente con
 modo `0600`. Si la recuperacion funciona pero supera el objetivo, el servicio
 queda iniciado y el comando termina con error para registrar el incumplimiento.
 En la ruta normal ambos archivos registran `source_mode` como
-`verified-manifest`.
+`verified-manifest`. Cada ejecucion genera un `recovery_attempt_id` hexadecimal
+que se conserva en el estado, el reporte y cualquier alerta relacionada.
 
 5. Revisar:
 
@@ -151,6 +152,8 @@ tag y commit validos, mientras que break-glass los prohibe y exige el motivo.
 Una vez validada la fuente, los reportes de error también conservan el modo,
 las referencias de imagen y la identidad de release o el motivo break-glass.
 Los fallos anteriores a esa validacion no registran datos no confiables.
+El `recovery_attempt_id` sí aparece desde el inicio y debe usarse para
+correlacionar reporte, alerta, logs y seguimiento del incidente.
 
 ## Fallos
 

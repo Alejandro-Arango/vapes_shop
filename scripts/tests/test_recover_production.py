@@ -17,6 +17,7 @@ BACKUP_IMAGE = f"ghcr.io/example/vapes-shop-backup@sha256:{'2' * 64}"
 BACKUP_ID = "20260621T120000Z"
 SNAPSHOT_ID = "a" * 64
 BREAK_GLASS_REASON = "GitHub no disponible; aprobacion INC-1234."
+RECOVERY_ATTEMPT_ID = "b" * 32
 
 
 class FakeRunner:
@@ -125,6 +126,7 @@ class ProductionRecoveryTests(unittest.TestCase):
             release_tag="v1.2.3",
             source_commit="a" * 40,
             source_mode="verified-manifest",
+            attempt_id=RECOVERY_ATTEMPT_ID,
         )
 
         self.assertEqual(report["status"], "ok")
@@ -134,6 +136,10 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertEqual(report["release_tag"], "v1.2.3")
         self.assertEqual(report["source_commit"], "a" * 40)
         self.assertEqual(report["source_mode"], "verified-manifest")
+        self.assertEqual(
+            report["recovery_attempt_id"],
+            RECOVERY_ATTEMPT_ID,
+        )
         self.assertTrue(report["source_checkout_verified"])
         state = json.loads(
             (self.state_directory / "current.json").read_text(
@@ -144,6 +150,10 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertEqual(state["release_tag"], "v1.2.3")
         self.assertEqual(state["source_commit"], "a" * 40)
         self.assertEqual(state["source_mode"], "verified-manifest")
+        self.assertEqual(
+            state["recovery_attempt_id"],
+            RECOVERY_ATTEMPT_ID,
+        )
         commands = [
             " ".join(call["command"])
             for call in runner.calls
@@ -441,6 +451,7 @@ class ProductionRecoveryTests(unittest.TestCase):
             rto_seconds=1800,
             source_mode="manual-break-glass",
             break_glass_reason=reason,
+            attempt_id=RECOVERY_ATTEMPT_ID,
         )
 
         state = json.loads(
@@ -450,9 +461,17 @@ class ProductionRecoveryTests(unittest.TestCase):
         )
         self.assertEqual(report["source_mode"], "manual-break-glass")
         self.assertEqual(report["break_glass_reason"], reason)
+        self.assertEqual(
+            report["recovery_attempt_id"],
+            RECOVERY_ATTEMPT_ID,
+        )
         self.assertFalse(report["source_checkout_verified"])
         self.assertEqual(state["source_mode"], "manual-break-glass")
         self.assertEqual(state["break_glass_reason"], reason)
+        self.assertEqual(
+            state["recovery_attempt_id"],
+            RECOVERY_ATTEMPT_ID,
+        )
 
     def test_controller_rejects_inconsistent_provenance(self):
         invalid_cases = (
@@ -518,6 +537,7 @@ class ProductionRecoveryTests(unittest.TestCase):
         report = recovery.build_failure_report(
             recovery.ProductionRecoveryError("Docker no disponible."),
             source,
+            RECOVERY_ATTEMPT_ID,
         )
 
         self.assertEqual(report["status"], "critical")
@@ -526,6 +546,10 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertEqual(report["backup_image"], BACKUP_IMAGE)
         self.assertEqual(report["release_tag"], "v1.2.3")
         self.assertEqual(report["source_commit"], "a" * 40)
+        self.assertEqual(
+            report["recovery_attempt_id"],
+            RECOVERY_ATTEMPT_ID,
+        )
         self.assertNotIn("break_glass_reason", report)
 
     def test_failure_report_preserves_break_glass_reason(self):
@@ -541,22 +565,49 @@ class ProductionRecoveryTests(unittest.TestCase):
         report = recovery.build_failure_report(
             recovery.ProductionRecoveryError("Restic no disponible."),
             source,
+            RECOVERY_ATTEMPT_ID,
         )
 
         self.assertEqual(report["source_mode"], "manual-break-glass")
         self.assertEqual(report["break_glass_reason"], BREAK_GLASS_REASON)
+        self.assertEqual(
+            report["recovery_attempt_id"],
+            RECOVERY_ATTEMPT_ID,
+        )
         self.assertNotIn("release_tag", report)
         self.assertNotIn("source_commit", report)
 
     def test_failure_before_source_validation_has_no_provenance(self):
         report = recovery.build_failure_report(
             recovery.ProductionRecoveryError("Confirmacion invalida."),
+            attempt_id=RECOVERY_ATTEMPT_ID,
         )
 
         self.assertEqual(report["status"], "critical")
+        self.assertEqual(
+            report["recovery_attempt_id"],
+            RECOVERY_ATTEMPT_ID,
+        )
         self.assertNotIn("source_mode", report)
         self.assertNotIn("app_image", report)
         self.assertNotIn("break_glass_reason", report)
+
+    def test_invalid_recovery_attempt_id_is_rejected_before_commands(self):
+        runner = FakeRunner()
+
+        with self.assertRaisesRegex(
+            recovery.ProductionRecoveryError,
+            "recovery_attempt_id",
+        ):
+            self.manual_recover(
+                self.controller(runner),
+                APP_IMAGE,
+                BACKUP_IMAGE,
+                rto_seconds=1800,
+                attempt_id="invalid",
+            )
+
+        self.assertEqual(runner.calls, [])
 
     def test_manual_images_require_a_bounded_single_line_reason(self):
         for reason in ("corto", "motivo valido\nsegunda linea", "x" * 201):
