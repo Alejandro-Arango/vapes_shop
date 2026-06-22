@@ -97,6 +97,8 @@ sudo -u vapes-shop python3 scripts/recover_production.py \
 El archivo de reporte y `.deploy/current.json` se escriben atomicamente con
 modo `0600`. Si la recuperacion funciona pero supera el objetivo, el servicio
 queda iniciado y el comando termina con error para registrar el incumplimiento.
+En la ruta normal ambos archivos registran `source_mode` como
+`verified-manifest`.
 
 5. Revisar:
 
@@ -123,6 +125,28 @@ sudo python3 scripts/check_host_readiness.py --mode production
 
 Solo despues deben actualizarse el balanceador, DNS o reglas publicas.
 
+## Excepcion break-glass
+
+Si GitHub no permite obtener el manifiesto durante el incidente, pero el equipo
+de respuesta conserva referencias por digest aprobadas por otro canal, se puede
+usar la ruta manual:
+
+```bash
+sudo -u vapes-shop python3 scripts/recover_production.py \
+  --app-image ghcr.io/ORGANIZACION/REPOSITORIO@sha256:DIGEST_APP \
+  --backup-image ghcr.io/ORGANIZACION/REPOSITORIO-backup@sha256:DIGEST_OPS \
+  --break-glass-confirm USE-MANUAL-RECOVERY-IMAGES \
+  --break-glass-reason "GitHub no disponible; digests aprobados en INC-1234" \
+  --confirm RECOVER-PRODUCTION-FROM-EXTERNAL-BACKUP \
+  --output /var/lib/vapes-shop/disaster-recovery.json
+```
+
+Esta excepcion no verifica tag, commit ni checkout contra un manifiesto. El
+motivo debe ocupar una sola linea de 12 a 200 caracteres y queda registrado
+junto con `source_mode: manual-break-glass` en el reporte y el estado
+productivo. Debe existir autorizacion humana y seguimiento posterior del
+incidente. No usar esta ruta solo para ahorrar los pasos de verificacion.
+
 ## Fallos
 
 - No borrar `.deploy.lock` sin confirmar que no hay otra operacion activa.
@@ -130,6 +154,7 @@ Solo despues deben actualizarse el balanceador, DNS o reglas publicas.
 - No usar etiquetas mutables como `latest`.
 - No confiar en el manifiesto antes de verificar atestacion y checksum.
 - No ejecutar desde una rama, commit distinto o checkout modificado.
+- No usar `manual-break-glass` sin documentar la indisponibilidad y los digests.
 - No desactivar el backup externo obligatorio.
 - Conservar el reporte, logs de Compose y tiempos del incidente.
 

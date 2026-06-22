@@ -87,7 +87,9 @@ proveedor de hosting.
 - Aprovisionar un host limpio siguiendo `docs/HOST_PROVISIONING.md`.
 - Recuperar secretos desde su gestor independiente.
 - Usar referencias de imagen por digest de una release aprobada.
-- Ejecutar `scripts/recover_production.py` con la confirmacion literal.
+- Recuperar con el manifiesto verificado y la confirmacion literal.
+- Reservar `manual-break-glass` para una indisponibilidad documentada de los
+  assets de release y exigir aprobacion humana.
 - Revisar `/var/lib/vapes-shop/disaster-recovery.json` antes de cambiar DNS.
 - El procedimiento completo esta en `docs/DISASTER_RECOVERY.md`.
 

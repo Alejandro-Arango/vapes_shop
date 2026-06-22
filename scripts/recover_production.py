@@ -29,6 +29,9 @@ from release_manifest import (
 
 RECOVERY_CONFIRMATION = "RECOVER-PRODUCTION-FROM-EXTERNAL-BACKUP"
 EXTERNAL_RECOVERY_CONFIRMATION = "RECOVER-LATEST-EXTERNAL-BACKUP"
+BREAK_GLASS_CONFIRMATION = "USE-MANUAL-RECOVERY-IMAGES"
+MIN_BREAK_GLASS_REASON_LENGTH = 12
+MAX_BREAK_GLASS_REASON_LENGTH = 200
 
 
 class ProductionRecoveryError(RuntimeError):
@@ -110,11 +113,18 @@ def load_recovery_source(
     manifest_checksum="",
     expected_repository="",
     expected_tag="",
+    break_glass_confirmation="",
+    break_glass_reason="",
 ):
     if release_manifest:
-        if app_image or backup_image:
+        if (
+            app_image
+            or backup_image
+            or break_glass_confirmation
+            or break_glass_reason
+        ):
             raise ProductionRecoveryError(
-                "No combines un manifiesto con imagenes explicitas."
+                "No combines un manifiesto con parametros break-glass."
             )
 
         if not manifest_checksum or not expected_repository:
@@ -138,11 +148,37 @@ def load_recovery_source(
             "release_tag": manifest["release_tag"],
             "source_commit": manifest["source_commit"],
             "manifest_rto_seconds": manifest["recovery"]["rto_seconds"],
+            "source_mode": "verified-manifest",
+            "break_glass_reason": "",
         }
 
     if not app_image or not backup_image:
         raise ProductionRecoveryError(
             "--app-image y --backup-image son obligatorios sin manifiesto."
+        )
+
+    if break_glass_confirmation != BREAK_GLASS_CONFIRMATION:
+        raise ProductionRecoveryError(
+            "Las imagenes manuales requieren "
+            f"--break-glass-confirm {BREAK_GLASS_CONFIRMATION}."
+        )
+
+    normalized_reason = break_glass_reason.strip()
+
+    if "\n" in normalized_reason or "\r" in normalized_reason:
+        raise ProductionRecoveryError(
+            "--break-glass-reason debe ocupar una sola linea."
+        )
+
+    if not (
+        MIN_BREAK_GLASS_REASON_LENGTH
+        <= len(normalized_reason)
+        <= MAX_BREAK_GLASS_REASON_LENGTH
+    ):
+        raise ProductionRecoveryError(
+            "--break-glass-reason debe tener entre "
+            f"{MIN_BREAK_GLASS_REASON_LENGTH} y "
+            f"{MAX_BREAK_GLASS_REASON_LENGTH} caracteres."
         )
 
     return {
@@ -151,6 +187,8 @@ def load_recovery_source(
         "release_tag": "",
         "source_commit": "",
         "manifest_rto_seconds": None,
+        "source_mode": "manual-break-glass",
+        "break_glass_reason": normalized_reason,
     }
 
 
@@ -514,6 +552,8 @@ class ProductionRecoveryController:
         rto_seconds,
         release_tag="",
         source_commit="",
+        source_mode="",
+        break_glass_reason="",
     ):
         try:
             state = {
@@ -561,6 +601,12 @@ class ProductionRecoveryController:
                 "recovered_from_snapshot": snapshot_id,
             }
 
+            if source_mode:
+                recovered_state["source_mode"] = source_mode
+
+            if break_glass_reason:
+                recovered_state["break_glass_reason"] = break_glass_reason
+
             if release_tag:
                 recovered_state["release_tag"] = release_tag
 
@@ -580,6 +626,12 @@ class ProductionRecoveryController:
                 "source_checkout_verified": source_verified,
                 **state,
             }
+
+            if source_mode:
+                report["source_mode"] = source_mode
+
+            if break_glass_reason:
+                report["break_glass_reason"] = break_glass_reason
 
             if release_tag:
                 report["release_tag"] = release_tag
@@ -684,6 +736,8 @@ def build_parser():
     parser.add_argument("--manifest-checksum", default="")
     parser.add_argument("--expected-repository", default="")
     parser.add_argument("--expected-tag", default="")
+    parser.add_argument("--break-glass-confirm", default="")
+    parser.add_argument("--break-glass-reason", default="")
     parser.add_argument(
         "--rto-seconds",
         type=positive_float,
@@ -720,6 +774,8 @@ def main():
             manifest_checksum=arguments.manifest_checksum,
             expected_repository=arguments.expected_repository,
             expected_tag=arguments.expected_tag,
+            break_glass_confirmation=arguments.break_glass_confirm,
+            break_glass_reason=arguments.break_glass_reason,
         )
 
         controller = ProductionRecoveryController(
@@ -744,6 +800,8 @@ def main():
             rto_seconds=rto_seconds,
             release_tag=source["release_tag"],
             source_commit=source["source_commit"],
+            source_mode=source["source_mode"],
+            break_glass_reason=source["break_glass_reason"],
         )
         exit_code = 0 if report["status"] == "ok" else 1
     except (

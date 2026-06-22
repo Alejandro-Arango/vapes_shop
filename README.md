@@ -1113,6 +1113,8 @@ local de backups vacio.
 la copia local si falla la atestacion, el checksum o la identidad de release.
 Antes de tocar Docker, la recuperacion exige que `HEAD` coincida con el commit
 del manifiesto y que el checkout no tenga cambios rastreados.
+Las imagenes manuales quedan restringidas a una excepcion `break-glass` con
+confirmacion literal y motivo auditable; el modo normal usa el manifiesto.
 Restaura MySQL y media, aplica migraciones, inicia Django/Nginx y valida tanto
 `/healthz` como el catalogo.
 

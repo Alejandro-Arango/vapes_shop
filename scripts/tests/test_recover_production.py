@@ -118,6 +118,7 @@ class ProductionRecoveryTests(unittest.TestCase):
             rto_seconds=1800,
             release_tag="v1.2.3",
             source_commit="a" * 40,
+            source_mode="verified-manifest",
         )
 
         self.assertEqual(report["status"], "ok")
@@ -126,6 +127,7 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertEqual(report["catalog_probe_products"], 1)
         self.assertEqual(report["release_tag"], "v1.2.3")
         self.assertEqual(report["source_commit"], "a" * 40)
+        self.assertEqual(report["source_mode"], "verified-manifest")
         self.assertTrue(report["source_checkout_verified"])
         state = json.loads(
             (self.state_directory / "current.json").read_text(
@@ -135,6 +137,7 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertEqual(state["recovered_from_backup"], BACKUP_ID)
         self.assertEqual(state["release_tag"], "v1.2.3")
         self.assertEqual(state["source_commit"], "a" * 40)
+        self.assertEqual(state["source_mode"], "verified-manifest")
         commands = [
             " ".join(call["command"])
             for call in runner.calls
@@ -369,6 +372,8 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertEqual(source["backup_image"], BACKUP_IMAGE)
         self.assertEqual(source["release_tag"], "v1.2.3")
         self.assertEqual(source["source_commit"], "a" * 40)
+        self.assertEqual(source["source_mode"], "verified-manifest")
+        self.assertEqual(source["break_glass_reason"], "")
 
     def test_manifest_cannot_be_combined_with_explicit_images(self):
         with self.assertRaisesRegex(
@@ -382,6 +387,74 @@ class ProductionRecoveryTests(unittest.TestCase):
                 manifest_checksum="manifest.sha256",
                 expected_repository="example/vapes-shop",
             )
+
+    def test_manual_images_require_break_glass_confirmation(self):
+        with self.assertRaisesRegex(
+            recovery.ProductionRecoveryError,
+            "--break-glass-confirm",
+        ):
+            recovery.load_recovery_source(
+                app_image=APP_IMAGE,
+                backup_image=BACKUP_IMAGE,
+            )
+
+    def test_manual_images_record_break_glass_reason(self):
+        source = recovery.load_recovery_source(
+            app_image=APP_IMAGE,
+            backup_image=BACKUP_IMAGE,
+            break_glass_confirmation=(
+                recovery.BREAK_GLASS_CONFIRMATION
+            ),
+            break_glass_reason=(
+                "GitHub no disponible; digests aprobados por incidente."
+            ),
+        )
+
+        self.assertEqual(source["source_mode"], "manual-break-glass")
+        self.assertEqual(
+            source["break_glass_reason"],
+            "GitHub no disponible; digests aprobados por incidente.",
+        )
+        self.assertEqual(source["source_commit"], "")
+
+    def test_break_glass_reason_is_persisted_in_report_and_state(self):
+        runner = FakeRunner()
+        reason = "GitHub no disponible; aprobacion INC-1234."
+
+        report = self.controller(runner).recover(
+            APP_IMAGE,
+            BACKUP_IMAGE,
+            rto_seconds=1800,
+            source_mode="manual-break-glass",
+            break_glass_reason=reason,
+        )
+
+        state = json.loads(
+            (self.state_directory / "current.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(report["source_mode"], "manual-break-glass")
+        self.assertEqual(report["break_glass_reason"], reason)
+        self.assertFalse(report["source_checkout_verified"])
+        self.assertEqual(state["source_mode"], "manual-break-glass")
+        self.assertEqual(state["break_glass_reason"], reason)
+
+    def test_manual_images_require_a_bounded_single_line_reason(self):
+        for reason in ("corto", "motivo valido\nsegunda linea", "x" * 201):
+            with self.subTest(reason=reason):
+                with self.assertRaisesRegex(
+                    recovery.ProductionRecoveryError,
+                    "--break-glass-reason",
+                ):
+                    recovery.load_recovery_source(
+                        app_image=APP_IMAGE,
+                        backup_image=BACKUP_IMAGE,
+                        break_glass_confirmation=(
+                            recovery.BREAK_GLASS_CONFIRMATION
+                        ),
+                        break_glass_reason=reason,
+                    )
 
 
 if __name__ == "__main__":

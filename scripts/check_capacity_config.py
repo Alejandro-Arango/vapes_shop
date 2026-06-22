@@ -612,6 +612,13 @@ def validate_disaster_recovery(
     recovery_fragments = (
         "ProductionRecoveryController",
         "RECOVER-PRODUCTION-FROM-EXTERNAL-BACKUP",
+        "USE-MANUAL-RECOVERY-IMAGES",
+        "--break-glass-confirm",
+        "--break-glass-reason",
+        '"source_mode": "verified-manifest"',
+        '"source_mode": "manual-break-glass"',
+        "MIN_BREAK_GLASS_REASON_LENGTH",
+        "MAX_BREAK_GLASS_REASON_LENGTH",
         "self.state_directory.with_name",
         "Ya existe estado productivo",
         '"ps",',
@@ -686,6 +693,16 @@ def validate_disaster_recovery(
             "RECOVER-PRODUCTION-FROM-EXTERNAL-BACKUP",
             "DISASTER_RECOVERY.md",
         ),
+        (
+            disaster_docs_text,
+            "USE-MANUAL-RECOVERY-IMAGES",
+            "DISASTER_RECOVERY.md",
+        ),
+        (
+            disaster_docs_text,
+            "manual-break-glass",
+            "DISASTER_RECOVERY.md",
+        ),
     ):
         if fragment not in text:
             findings.append(f"{label} no contiene {fragment}")
@@ -731,7 +748,7 @@ def validate_release_manifest(
         "--manifest-checksum",
         "--expected-repository",
         "--expected-tag",
-        "No combines un manifiesto con imagenes explicitas",
+        "No combines un manifiesto con parametros break-glass",
     )
     fetch_fragments = (
         "gh",
