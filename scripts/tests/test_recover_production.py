@@ -28,11 +28,14 @@ class FakeRunner:
         checkout_commit="a" * 40,
         tracked_changes="",
         catalog=None,
+        journal_path=None,
     ):
         self.existing_services = existing_services
         self.existing_volumes = existing_volumes
         self.checkout_commit = checkout_commit
         self.tracked_changes = tracked_changes
+        self.journal_path = journal_path
+        self.observed_journal = None
         self.catalog = (
             {"results": [{"id": 1}], "pagination": {}}
             if catalog is None
@@ -61,6 +64,10 @@ class FakeRunner:
         if "docker volume ls --quiet --filter" in joined:
             return self.existing_volumes
         if " external-recovery recover-latest " in joined:
+            if self.journal_path:
+                self.observed_journal = json.loads(
+                    self.journal_path.read_text(encoding="utf-8")
+                )
             return json.dumps(
                 {
                     "status": "recovered",
@@ -116,7 +123,11 @@ class ProductionRecoveryTests(unittest.TestCase):
         return controller.recover(*args, **kwargs)
 
     def test_recovery_restores_data_starts_service_and_writes_state(self):
-        runner = FakeRunner()
+        runner = FakeRunner(
+            journal_path=(
+                self.state_directory / "recovery-in-progress.json"
+            )
+        )
         controller = self.controller(runner)
 
         report = controller.recover(
@@ -153,6 +164,17 @@ class ProductionRecoveryTests(unittest.TestCase):
         self.assertEqual(
             state["recovery_attempt_id"],
             RECOVERY_ATTEMPT_ID,
+        )
+        self.assertEqual(
+            runner.observed_journal["phase"],
+            "external-backup-recovery",
+        )
+        self.assertEqual(
+            runner.observed_journal["recovery_attempt_id"],
+            RECOVERY_ATTEMPT_ID,
+        )
+        self.assertFalse(
+            (self.state_directory / "recovery-in-progress.json").exists()
         )
         commands = [
             " ".join(call["command"])
@@ -216,6 +238,36 @@ class ProductionRecoveryTests(unittest.TestCase):
 
         self.assertEqual(runner.calls, [])
 
+    def test_interrupted_recovery_journal_blocks_retry(self):
+        self.state_directory.mkdir()
+        journal_path = (
+            self.state_directory / "recovery-in-progress.json"
+        )
+        journal_path.write_text(
+            json.dumps(
+                {
+                    "recovery_attempt_id": RECOVERY_ATTEMPT_ID,
+                    "phase": "data-restore",
+                }
+            ),
+            encoding="utf-8",
+        )
+        runner = FakeRunner()
+
+        with self.assertRaisesRegex(
+            recovery.ProductionRecoveryError,
+            "journal de recuperacion interrumpida",
+        ):
+            self.manual_recover(
+                self.controller(runner),
+                APP_IMAGE,
+                BACKUP_IMAGE,
+                rto_seconds=1800,
+            )
+
+        self.assertEqual(runner.calls, [])
+        self.assertTrue(journal_path.exists())
+
     def test_manifest_commit_must_match_local_checkout(self):
         runner = FakeRunner(checkout_commit="b" * 40)
 
@@ -264,7 +316,7 @@ class ProductionRecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(
             recovery.ProductionRecoveryError,
             "no existan contenedores previos",
-        ):
+        ) as raised:
             self.manual_recover(
                 self.controller(runner),
                 APP_IMAGE,
@@ -272,8 +324,12 @@ class ProductionRecoveryTests(unittest.TestCase):
                 rto_seconds=1800,
             )
 
+        self.assertEqual(raised.exception.recovery_phase, "runtime-guard")
         self.assertFalse(
             self.state_directory.with_name(".deploy.lock").exists()
+        )
+        self.assertFalse(
+            (self.state_directory / "recovery-in-progress.json").exists()
         )
 
     def test_existing_volumes_block_recovery(self):
@@ -551,6 +607,19 @@ class ProductionRecoveryTests(unittest.TestCase):
             RECOVERY_ATTEMPT_ID,
         )
         self.assertNotIn("break_glass_reason", report)
+
+    def test_failure_report_preserves_recovery_phase(self):
+        error = recovery.ProductionRecoveryError(
+            "Restauracion interrumpida."
+        )
+        error.recovery_phase = "data-restore"
+
+        report = recovery.build_failure_report(
+            error,
+            attempt_id=RECOVERY_ATTEMPT_ID,
+        )
+
+        self.assertEqual(report["recovery_phase"], "data-restore")
 
     def test_failure_report_preserves_break_glass_reason(self):
         source = {

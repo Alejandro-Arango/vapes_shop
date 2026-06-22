@@ -91,6 +91,8 @@ proveedor de hosting.
 - Reservar `manual-break-glass` para una indisponibilidad documentada de los
   assets de release y exigir aprobacion humana.
 - Usar `recovery_attempt_id` para correlacionar alerta, reporte y estado.
+- Si existe `recovery-in-progress.json`, preservar la ultima fase antes de
+  retirar el bloqueo o reintentar.
 - Revisar `/var/lib/vapes-shop/disaster-recovery.json` antes de cambiar DNS.
 - El procedimiento completo esta en `docs/DISASTER_RECOVERY.md`.
 

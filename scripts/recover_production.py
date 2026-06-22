@@ -206,6 +206,11 @@ def build_failure_report(error, source=None, attempt_id=""):
     if attempt_id:
         report["recovery_attempt_id"] = attempt_id
 
+    recovery_phase = getattr(error, "recovery_phase", "")
+
+    if recovery_phase:
+        report["recovery_phase"] = recovery_phase
+
     if not source:
         return report
 
@@ -337,6 +342,9 @@ class ProductionRecoveryController:
         self.env_file = Path(env_file).resolve()
         self.state_directory = Path(state_directory).resolve()
         self.current_state_path = self.state_directory / "current.json"
+        self.recovery_journal_path = (
+            self.state_directory / "recovery-in-progress.json"
+        )
         self.lock_directory = self.state_directory.with_name(
             f"{self.state_directory.name}.lock"
         )
@@ -361,6 +369,15 @@ class ProductionRecoveryController:
                 "Ya existe estado productivo; usa despliegue o rollback."
             )
 
+        if (
+            self.recovery_journal_path.exists()
+            or self.recovery_journal_path.is_symlink()
+        ):
+            raise ProductionRecoveryError(
+                "Existe un journal de recuperacion interrumpida; "
+                "preserva y revisa la evidencia antes de reintentar."
+            )
+
     def acquire_lock(self):
         try:
             self.lock_directory.mkdir(parents=False)
@@ -372,6 +389,36 @@ class ProductionRecoveryController:
     def release_lock(self):
         try:
             self.lock_directory.rmdir()
+        except FileNotFoundError:
+            pass
+
+    def write_recovery_journal(self, journal, phase):
+        self.state_directory.mkdir(parents=True, exist_ok=True)
+        temporary_path = self.recovery_journal_path.with_suffix(".tmp")
+
+        if (
+            self.recovery_journal_path.is_symlink()
+            or temporary_path.is_symlink()
+        ):
+            raise ProductionRecoveryError(
+                "El journal de recuperacion no admite enlaces simbolicos."
+            )
+
+        payload = {
+            **journal,
+            "phase": phase,
+            "updated_at": utc_now(),
+        }
+        temporary_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.chmod(temporary_path, 0o600)
+        os.replace(temporary_path, self.recovery_journal_path)
+
+    def remove_recovery_journal(self):
+        try:
+            self.recovery_journal_path.unlink()
         except FileNotFoundError:
             pass
 
@@ -685,16 +732,46 @@ class ProductionRecoveryController:
         self.verify_files()
         self.acquire_lock()
         started_at = self.monotonic()
+        phase = "source-checkout"
+        journal = {
+            **state,
+            "event": "production_disaster_recovery",
+            "recovery_attempt_id": recovery_attempt_id,
+            "source_mode": provenance["source_mode"],
+            "started_at": utc_now(),
+        }
+
+        if provenance["break_glass_reason"]:
+            journal["break_glass_reason"] = provenance[
+                "break_glass_reason"
+            ]
+
+        if provenance["release_tag"]:
+            journal["release_tag"] = provenance["release_tag"]
+
+        if provenance["source_commit"]:
+            journal["source_commit"] = provenance["source_commit"]
 
         try:
+            self.write_recovery_journal(journal, phase)
             source_verified = self.verify_source_checkout(
                 state,
                 provenance["source_commit"],
             )
+            phase = "runtime-guard"
+            self.write_recovery_journal(journal, phase)
             self.assert_clean_runtime(state)
+            phase = "image-preparation"
+            self.write_recovery_journal(journal, phase)
             self.prepare(state)
+            phase = "application-validation"
+            self.write_recovery_journal(journal, phase)
             self.validate_application(state)
+            phase = "database-start"
+            self.write_recovery_journal(journal, phase)
             self.start_database(state)
+            phase = "external-backup-recovery"
+            self.write_recovery_journal(journal, phase)
             external_report = self.recover_external_backup(state)
             backup_id = external_report.get("backup_id", "")
             snapshot_id = external_report.get("snapshot_id", "")
@@ -704,8 +781,19 @@ class ProductionRecoveryController:
                     "external-recovery no reporto backup_id y snapshot_id."
                 )
 
+            journal = {
+                **journal,
+                "backup_id": backup_id,
+                "snapshot_id": snapshot_id,
+            }
+            phase = "data-restore"
+            self.write_recovery_journal(journal, phase)
             self.restore_data(state, backup_id)
+            phase = "migrations"
+            self.write_recovery_journal(journal, phase)
             self.migrate(state)
+            phase = "application-start"
+            self.write_recovery_journal(journal, phase)
             recovered_products = self.start_application(state)
             elapsed = self.monotonic() - started_at
             recovered_state = {
@@ -730,6 +818,8 @@ class ProductionRecoveryController:
                     "source_commit"
                 ]
 
+            phase = "state-commit"
+            self.write_recovery_journal(journal, phase)
             self.write_state(recovered_state)
             report = {
                 "event": "production_disaster_recovery",
@@ -765,7 +855,14 @@ class ProductionRecoveryController:
                 )
 
             return report
+        except Exception as exc:
+            try:
+                exc.recovery_phase = phase
+            except (AttributeError, TypeError):
+                pass
+            raise
         finally:
+            self.remove_recovery_journal()
             self.release_lock()
 
 

@@ -155,9 +155,18 @@ Los fallos anteriores a esa validacion no registran datos no confiables.
 El `recovery_attempt_id` sí aparece desde el inicio y debe usarse para
 correlacionar reporte, alerta, logs y seguimiento del incidente.
 
+Durante la operacion, `.deploy/recovery-in-progress.json` registra de forma
+atomica el intento, la procedencia y la ultima fase iniciada. Se elimina en
+salidas controladas. Si el proceso o el host terminan abruptamente, el journal
+y `.deploy.lock` permanecen y bloquean otro intento hasta preservar evidencia,
+confirmar el estado de contenedores, volúmenes, MySQL y media, y decidir la
+recuperacion segura. Los reportes de fallo controlado incluyen
+`recovery_phase`.
+
 ## Fallos
 
 - No borrar `.deploy.lock` sin confirmar que no hay otra operacion activa.
+- No borrar `recovery-in-progress.json` antes de registrar su contenido.
 - No vaciar un `BACKUP_PATH` existente para forzar este flujo.
 - No usar etiquetas mutables como `latest`.
 - No confiar en el manifiesto antes de verificar atestacion y checksum.

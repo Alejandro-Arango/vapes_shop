@@ -621,6 +621,13 @@ def validate_disaster_recovery(
         "new_recovery_attempt_id",
         "validate_recovery_attempt_id",
         '"recovery_attempt_id": recovery_attempt_id',
+        "recovery-in-progress.json",
+        "write_recovery_journal",
+        "remove_recovery_journal",
+        '"phase": phase',
+        "exc.recovery_phase = phase",
+        'report["recovery_phase"] = recovery_phase',
+        "journal de recuperacion interrumpida",
         "recovery_attempt_id debe contener 32 caracteres hexadecimales",
         "build_failure_report",
         "report = build_failure_report(exc, source, attempt_id)",
@@ -720,6 +727,11 @@ def validate_disaster_recovery(
         (
             disaster_docs_text,
             "recovery_attempt_id",
+            "DISASTER_RECOVERY.md",
+        ),
+        (
+            disaster_docs_text,
+            "recovery-in-progress.json",
             "DISASTER_RECOVERY.md",
         ),
     ):
