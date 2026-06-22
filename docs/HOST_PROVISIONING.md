@@ -10,6 +10,7 @@ El bootstrap:
 
 - admite Ubuntu 22.04 y 24.04 LTS de 64 bits;
 - instala Docker Engine y Compose desde el repositorio oficial de Docker;
+- instala GitHub CLI 2.95.0 desde su release oficial y valida su SHA-256;
 - crea el usuario de sistema `vapes-shop`;
 - crea directorios con permisos restrictivos;
 - activa actualizaciones de seguridad sin reinicios automaticos;
@@ -22,6 +23,9 @@ red administrativa.
 
 El grupo `docker` equivale practicamente a acceso root. Solo el usuario de
 servicio y administradores autorizados deben pertenecer a ese grupo.
+
+GitHub CLI se usa para descargar y verificar atestaciones de los manifiestos
+de release. El bootstrap fija version y checksums para `amd64` y `arm64`.
 
 ## Requisitos
 

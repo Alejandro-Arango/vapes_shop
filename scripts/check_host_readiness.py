@@ -188,7 +188,14 @@ def audit_host(
             f"{exc.__class__.__name__}."
         )
 
-    for executable in ("docker", "git", "python3", "systemctl", "ufw"):
+    for executable in (
+        "docker",
+        "gh",
+        "git",
+        "python3",
+        "systemctl",
+        "ufw",
+    ):
         if shutil.which(executable) is None:
             findings.append(f"No existe el ejecutable requerido: {executable}.")
 
@@ -205,6 +212,12 @@ def audit_host(
                 "docker_compose",
                 ["docker", "compose", "version", "--short"],
                 bool,
+            ),
+            command_check(
+                runner,
+                "github_cli",
+                ["gh", "version"],
+                lambda value: "gh version 2.95.0" in value,
             ),
             command_check(
                 runner,

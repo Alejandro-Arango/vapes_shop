@@ -697,9 +697,12 @@ def validate_disaster_recovery(
 
 def validate_release_manifest(
     manifest_text,
+    fetch_text,
     recovery_text,
     publish_workflow_text,
     disaster_docs_text,
+    bootstrap_text,
+    readiness_text,
 ):
     findings = []
     manifest_fragments = (
@@ -723,6 +726,18 @@ def validate_release_manifest(
         "--expected-tag",
         "No combines un manifiesto con imagenes explicitas",
     )
+    fetch_fragments = (
+        "gh",
+        "release",
+        "download",
+        "attestation",
+        "verify",
+        "prepare_output_directory",
+        "El directorio de salida debe estar vacio",
+        "validate_downloaded_assets",
+        "load_verified_manifest",
+        "cleanup_assets",
+    )
     workflow_fragments = (
         "python scripts/release_manifest.py create",
         'git rev-parse "${RELEASE_TAG}^{commit}"',
@@ -734,13 +749,26 @@ def validate_release_manifest(
         "release-recovery-manifest",
     )
     docs_fragments = (
-        "gh attestation verify recovery-manifest.json",
-        "scripts/release_manifest.py verify",
-        "--release-manifest recovery-manifest.json",
+        "scripts/fetch_release_manifest.py",
+        "--release-manifest",
+    )
+    bootstrap_fragments = (
+        "GH_VERSION",
+        'gh_${GH_VERSION}_linux_',
+        "25d1e4729e8808c9ed3d613e96ebd3f3e44446f2d368c89d878a71a36ddb3d8c",
+        "d41e0b3b6218e5741c8bb4db39b16e53a59e0e06299a8489bd38f623ef7ebaae",
+        "sha256sum --check --strict",
+        "install_github_cli",
+    )
+    readiness_fragments = (
+        '"gh",',
+        '"github_cli"',
+        "gh version 2.95.0",
     )
 
     for text, fragments, label in (
         (manifest_text, manifest_fragments, "release_manifest.py"),
+        (fetch_text, fetch_fragments, "fetch_release_manifest.py"),
         (recovery_text, recovery_fragments, "recover_production.py"),
         (
             publish_workflow_text,
@@ -748,6 +776,8 @@ def validate_release_manifest(
             "publish-images.yml",
         ),
         (disaster_docs_text, docs_fragments, "DISASTER_RECOVERY.md"),
+        (bootstrap_text, bootstrap_fragments, "ubuntu-bootstrap.sh"),
+        (readiness_text, readiness_fragments, "check_host_readiness.py"),
     ):
         for fragment in fragments:
             if fragment not in text:
@@ -1217,6 +1247,9 @@ def find_capacity_findings(project_root):
         "release_manifest": (
             project_root / "scripts" / "release_manifest.py"
         ),
+        "release_fetcher": (
+            project_root / "scripts" / "fetch_release_manifest.py"
+        ),
         "publish_workflow": (
             project_root / ".github" / "workflows" / "publish-images.yml"
         ),
@@ -1356,9 +1389,12 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_release_manifest(
             paths["release_manifest"].read_text(encoding="utf-8"),
+            paths["release_fetcher"].read_text(encoding="utf-8"),
             paths["production_recovery"].read_text(encoding="utf-8"),
             paths["publish_workflow"].read_text(encoding="utf-8"),
             paths["disaster_docs"].read_text(encoding="utf-8"),
+            paths["host_bootstrap"].read_text(encoding="utf-8"),
+            paths["host_readiness"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

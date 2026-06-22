@@ -46,31 +46,32 @@ cd /srv/vapes-shop
 sudo python3 scripts/check_host_readiness.py --mode bootstrap
 ```
 
-2. Confirmar que las imágenes corresponden a una release aprobada y descargar
-   el manifiesto atestiguado y su checksum:
+2. Confirmar que las imágenes corresponden a una release aprobada y preparar
+   los assets verificados:
 
 ```bash
-gh release download v1.2.3 \
-  --repo ORGANIZACION/REPOSITORIO \
-  --pattern 'recovery-manifest.*'
-gh attestation verify recovery-manifest.json \
-  --repo ORGANIZACION/REPOSITORIO
-python3 scripts/release_manifest.py verify \
-  --manifest recovery-manifest.json \
-  --checksum recovery-manifest.sha256 \
-  --expected-repository ORGANIZACION/REPOSITORIO \
-  --expected-tag v1.2.3
+python3 scripts/fetch_release_manifest.py \
+  --repository ORGANIZACION/REPOSITORIO \
+  --release-tag v1.2.3 \
+  --output-dir /srv/vapes-shop/recovery-assets/v1.2.3
 ```
 
-La atestacion confirma la procedencia en GitHub Actions; el checksum detecta
-corrupcion y el verificador restringe repositorio, release, commit e imagenes.
+El comando exige un directorio vacio, descarga únicamente los dos assets,
+valida la atestacion de GitHub Actions, comprueba el checksum y restringe
+repositorio, release, commit e imagenes. Elimina los archivos si cualquier
+verificacion falla.
+
+Para un repositorio privado, entrega `GH_TOKEN` temporalmente con permiso
+minimo de lectura de contenidos. No guardes ese token en el servidor.
 
 3. Ejecutar como el usuario de servicio:
 
 ```bash
 sudo -u vapes-shop python3 scripts/recover_production.py \
-  --release-manifest recovery-manifest.json \
-  --manifest-checksum recovery-manifest.sha256 \
+  --release-manifest \
+  recovery-assets/v1.2.3/recovery-manifest.json \
+  --manifest-checksum \
+  recovery-assets/v1.2.3/recovery-manifest.sha256 \
   --expected-repository ORGANIZACION/REPOSITORIO \
   --expected-tag v1.2.3 \
   --confirm RECOVER-PRODUCTION-FROM-EXTERNAL-BACKUP \

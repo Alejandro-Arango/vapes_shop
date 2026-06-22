@@ -10,6 +10,9 @@ APP_ROOT="${APP_ROOT:-/srv/vapes-shop}"
 SSH_PORT="${SSH_PORT:-22}"
 SSH_ALLOWED_CIDR="${SSH_ALLOWED_CIDR:-}"
 PUBLIC_WEB="${PUBLIC_WEB:-false}"
+GH_VERSION="${GH_VERSION:-2.95.0}"
+GH_SHA256_AMD64="${GH_SHA256_AMD64:-25d1e4729e8808c9ed3d613e96ebd3f3e44446f2d368c89d878a71a36ddb3d8c}"
+GH_SHA256_ARM64="${GH_SHA256_ARM64:-d41e0b3b6218e5741c8bb4db39b16e53a59e0e06299a8489bd38f623ef7ebaae}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
@@ -81,6 +84,7 @@ install_base_packages() {
     git \
     gnupg \
     python3 \
+    tar \
     ufw \
     unattended-upgrades
 }
@@ -117,6 +121,51 @@ EOF
     docker-buildx-plugin \
     docker-compose-plugin
   systemctl enable --now docker.service
+}
+
+install_github_cli() {
+  local architecture archive_architecture expected_sha256
+
+  architecture="$(dpkg --print-architecture)"
+
+  case "${architecture}" in
+    amd64)
+      archive_architecture="amd64"
+      expected_sha256="${GH_SHA256_AMD64}"
+      ;;
+    arm64)
+      archive_architecture="arm64"
+      expected_sha256="${GH_SHA256_ARM64}"
+      ;;
+    *)
+      fail "Arquitectura GitHub CLI no soportada: ${architecture}."
+      ;;
+  esac
+
+  local archive_name="gh_${GH_VERSION}_linux_${archive_architecture}.tar.gz"
+  local download_url="https://github.com/cli/cli/releases/download/v${GH_VERSION}/${archive_name}"
+  local temporary_directory
+  temporary_directory="$(mktemp -d)"
+  trap "rm -rf -- '${temporary_directory}'" EXIT
+
+  curl --fail --silent --show-error --location \
+    "${download_url}" \
+    --output "${temporary_directory}/${archive_name}"
+  printf '%s  %s\n' \
+    "${expected_sha256}" \
+    "${temporary_directory}/${archive_name}" \
+    | sha256sum --check --strict
+  tar \
+    --extract \
+    --gzip \
+    --file="${temporary_directory}/${archive_name}" \
+    --directory="${temporary_directory}"
+  install -m 0755 \
+    "${temporary_directory}/gh_${GH_VERSION}_linux_${archive_architecture}/bin/gh" \
+    /usr/local/bin/gh
+  gh version
+  rm -rf -- "${temporary_directory}"
+  trap - EXIT
 }
 
 create_service_identity() {
@@ -198,6 +247,7 @@ main() {
   load_ubuntu_release
   install_base_packages
   install_docker
+  install_github_cli
   create_service_identity
   create_directories
   configure_security_updates

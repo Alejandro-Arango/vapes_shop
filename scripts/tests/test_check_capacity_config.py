@@ -693,6 +693,9 @@ class CapacityConfigTests(unittest.TestCase):
             "manifest_text": (
                 PROJECT_ROOT / "scripts" / "release_manifest.py"
             ).read_text(encoding="utf-8"),
+            "fetch_text": (
+                PROJECT_ROOT / "scripts" / "fetch_release_manifest.py"
+            ).read_text(encoding="utf-8"),
             "recovery_text": (
                 PROJECT_ROOT / "scripts" / "recover_production.py"
             ).read_text(encoding="utf-8"),
@@ -704,6 +707,15 @@ class CapacityConfigTests(unittest.TestCase):
             ).read_text(encoding="utf-8"),
             "disaster_docs_text": (
                 PROJECT_ROOT / "docs" / "DISASTER_RECOVERY.md"
+            ).read_text(encoding="utf-8"),
+            "bootstrap_text": (
+                PROJECT_ROOT
+                / "ops"
+                / "provision"
+                / "ubuntu-bootstrap.sh"
+            ).read_text(encoding="utf-8"),
+            "readiness_text": (
+                PROJECT_ROOT / "scripts" / "check_host_readiness.py"
             ).read_text(encoding="utf-8"),
         }
 
@@ -735,6 +747,21 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn(
             "publish-images.yml no debe reemplazar manifiestos publicados",
+            findings,
+        )
+
+    def test_release_fetch_without_attestation_is_rejected(self):
+        inputs = self.release_manifest_inputs()
+        inputs["fetch_text"] = inputs["fetch_text"].replace(
+            '"attestation",',
+            '"unverified",',
+            1,
+        )
+
+        findings = capacity.validate_release_manifest(**inputs)
+
+        self.assertIn(
+            "fetch_release_manifest.py no contiene attestation",
             findings,
         )
 
