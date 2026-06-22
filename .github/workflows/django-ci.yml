@@ -56,6 +56,12 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: python -m unittest discover -s scripts/tests -v
 
+      - name: Validar aprovisionamiento del host
+        working-directory: ${{ github.workspace }}
+        run: |
+          bash -n ops/provision/ubuntu-bootstrap.sh
+          python scripts/check_host_readiness.py --help
+
       - name: Validar programacion systemd
         working-directory: ${{ github.workspace }}
         run: |

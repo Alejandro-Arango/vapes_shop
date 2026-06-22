@@ -738,6 +738,66 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def host_provisioning_inputs(self):
+        return {
+            "bootstrap_text": (
+                PROJECT_ROOT
+                / "ops"
+                / "provision"
+                / "ubuntu-bootstrap.sh"
+            ).read_text(encoding="utf-8"),
+            "readiness_text": (
+                PROJECT_ROOT / "scripts" / "check_host_readiness.py"
+            ).read_text(encoding="utf-8"),
+            "deploy_text": (
+                PROJECT_ROOT / "scripts" / "deploy_production.py"
+            ).read_text(encoding="utf-8"),
+            "compose_text": (
+                PROJECT_ROOT / "compose.yaml"
+            ).read_text(encoding="utf-8"),
+            "local_env_text": (
+                PROJECT_ROOT / "compose.env.example"
+            ).read_text(encoding="utf-8"),
+            "production_env_text": (
+                PROJECT_ROOT / "compose.production.env.example"
+            ).read_text(encoding="utf-8"),
+            "django_workflow_text": (
+                PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+            ).read_text(encoding="utf-8"),
+        }
+
+    def test_host_bootstrap_without_default_deny_is_rejected(self):
+        inputs = self.host_provisioning_inputs()
+        inputs["bootstrap_text"] = inputs["bootstrap_text"].replace(
+            "ufw default deny incoming",
+            "ufw default allow incoming",
+            1,
+        )
+
+        findings = capacity.validate_host_provisioning(**inputs)
+
+        self.assertIn(
+            "ubuntu-bootstrap.sh no contiene ufw default deny incoming",
+            findings,
+        )
+
+    def test_production_host_exposed_on_all_interfaces_is_rejected(self):
+        inputs = self.host_provisioning_inputs()
+        inputs["production_env_text"] = inputs[
+            "production_env_text"
+        ].replace(
+            "APP_BIND_ADDRESS=127.0.0.1",
+            "APP_BIND_ADDRESS=0.0.0.0",
+            1,
+        )
+
+        findings = capacity.validate_host_provisioning(**inputs)
+
+        self.assertIn(
+            "compose.production.env.example no limita APP_BIND_ADDRESS",
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

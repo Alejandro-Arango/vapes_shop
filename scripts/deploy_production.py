@@ -161,6 +161,7 @@ class DeploymentController:
             json.dumps(state, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        os.chmod(temporary_path, 0o600)
         os.replace(temporary_path, path)
 
     def verify_files(self):

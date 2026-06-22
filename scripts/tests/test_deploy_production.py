@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "deploy_production.py"
@@ -62,6 +63,24 @@ class DeploymentControllerTests(unittest.TestCase):
             state_directory=self.state_directory,
             runner=runner,
             wait_timeout=30,
+        )
+
+    def test_state_files_are_written_with_restricted_permissions(self):
+        controller = self.build_controller(FakeRunner())
+        state_path = self.state_directory / "current.json"
+
+        with mock.patch.object(deploy.os, "chmod") as chmod:
+            controller.write_state(
+                state_path,
+                {
+                    "app_image": APP_V1,
+                    "backup_image": BACKUP_V1,
+                },
+            )
+
+        chmod.assert_called_once_with(
+            state_path.with_suffix(".tmp"),
+            0o600,
         )
 
     def write_current_state(self):

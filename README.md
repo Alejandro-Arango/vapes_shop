@@ -1076,6 +1076,31 @@ Las unidades en `ops/systemd/` programan:
 Instalacion, comandos de verificacion y alcance exacto de los objetivos:
 [docs/BACKUP_OPERATIONS.md](docs/BACKUP_OPERATIONS.md).
 
+### Aprovisionamiento del servidor
+
+`ops/provision/ubuntu-bootstrap.sh` prepara de forma idempotente un host Ubuntu
+soportado con Docker Engine, Compose, usuario de servicio, directorios
+restringidos, actualizaciones de seguridad, UFW y unidades operativas. No
+modifica SSH ni habilita trafico web mientras no exista dominio y terminacion
+TLS.
+
+El entorno productivo usa `APP_BIND_ADDRESS=127.0.0.1`, de modo que el puerto
+8080 solo queda disponible para el futuro proxy TLS local y no se publica
+directamente en Internet.
+
+La auditoria `scripts/check_host_readiness.py` comprueba el host tras el
+bootstrap y vuelve a comprobar permisos, backups externos, estado de despliegue
+y timers antes de produccion:
+
+```bash
+sudo python3 scripts/check_host_readiness.py \
+  --mode production \
+  --output /var/lib/vapes-shop/host-readiness.json
+```
+
+Procedimiento completo, requisitos y limites:
+[docs/HOST_PROVISIONING.md](docs/HOST_PROVISIONING.md).
+
 El respaldo puede ejecutarse con la tienda activa porque MySQL usa una
 transaccion consistente. Si necesitas consistencia estricta entre una fila y
 su archivo media, detén temporalmente `web` mientras se genera el respaldo.

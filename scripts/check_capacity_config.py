@@ -631,6 +631,11 @@ def validate_backup_schedule(
         ),
         (
             backup_service_text,
+            "StateDirectoryMode=0750",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
             "EnvironmentFile=-/etc/vapes-shop/backup-operations.env",
             "vapes-shop-backup.service",
         ),
@@ -647,6 +652,11 @@ def validate_backup_schedule(
         (
             drill_service_text,
             "backup_operations.py drill",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "StateDirectoryMode=0750",
             "vapes-shop-recovery-drill.service",
         ),
         (
@@ -691,6 +701,89 @@ def validate_backup_schedule(
         findings.append(
             "compose.production.env.example no exige backup externo"
         )
+
+    return findings
+
+
+def validate_host_provisioning(
+    bootstrap_text,
+    readiness_text,
+    deploy_text,
+    compose_text,
+    local_env_text,
+    production_env_text,
+    django_workflow_text,
+):
+    findings = []
+    bootstrap_fragments = (
+        "set -Eeuo pipefail",
+        "https://download.docker.com/linux/ubuntu",
+        "docker-compose-plugin",
+        "unattended-upgrades",
+        'Unattended-Upgrade::Automatic-Reboot "false"',
+        "ufw default deny incoming",
+        "ufw --force enable",
+        "useradd",
+        "--shell /usr/sbin/nologin",
+        "usermod --append --groups docker",
+        "systemctl daemon-reload",
+    )
+    readiness_fragments = (
+        "SUPPORTED_UBUNTU_RELEASES",
+        "SAFE_BIND_ADDRESSES",
+        "APP_BIND_ADDRESS debe limitar el proxy a loopback",
+        "EXTERNAL_BACKUP_ENABLED debe ser true",
+        "BACKUP_REQUIRE_EXTERNAL debe ser true",
+        "apt-daily-upgrade.timer",
+        "vapes-shop-backup.timer",
+        "vapes-shop-recovery-drill.timer",
+        "os.replace(temporary_path, output_path)",
+        "output_path.is_symlink()",
+    )
+
+    for fragment in bootstrap_fragments:
+        if fragment not in bootstrap_text:
+            findings.append(
+                f"ubuntu-bootstrap.sh no contiene {fragment}"
+            )
+
+    if "sshd_config" in bootstrap_text:
+        findings.append(
+            "ubuntu-bootstrap.sh no debe modificar sshd_config"
+        )
+
+    for fragment in readiness_fragments:
+        if fragment not in readiness_text:
+            findings.append(
+                f"check_host_readiness.py no contiene {fragment}"
+            )
+
+    if "os.chmod(temporary_path, 0o600)" not in deploy_text:
+        findings.append(
+            "deploy_production.py no restringe los archivos de estado"
+        )
+
+    if "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-8080}:8080" not in (
+        compose_text
+    ):
+        findings.append("compose.yaml no permite limitar APP_BIND_ADDRESS")
+
+    if "APP_BIND_ADDRESS=0.0.0.0" not in local_env_text:
+        findings.append(
+            "compose.env.example no conserva acceso local por APP_BIND_ADDRESS"
+        )
+
+    if "APP_BIND_ADDRESS=127.0.0.1" not in production_env_text:
+        findings.append(
+            "compose.production.env.example no limita APP_BIND_ADDRESS"
+        )
+
+    for fragment in (
+        "bash -n ops/provision/ubuntu-bootstrap.sh",
+        "python scripts/check_host_readiness.py --help",
+    ):
+        if fragment not in django_workflow_text:
+            findings.append(f"django-ci.yml no contiene {fragment}")
 
     return findings
 
@@ -920,6 +1013,15 @@ def find_capacity_findings(project_root):
             / "systemd"
             / "backup-operations.env.example"
         ),
+        "host_bootstrap": (
+            project_root
+            / "ops"
+            / "provision"
+            / "ubuntu-bootstrap.sh"
+        ),
+        "host_readiness": (
+            project_root / "scripts" / "check_host_readiness.py"
+        ),
     }
     missing_paths = [
         str(path.relative_to(project_root))
@@ -1055,6 +1157,17 @@ def find_capacity_findings(project_root):
             paths["drill_service"].read_text(encoding="utf-8"),
             paths["drill_timer"].read_text(encoding="utf-8"),
             paths["schedule_env"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_host_provisioning(
+            paths["host_bootstrap"].read_text(encoding="utf-8"),
+            paths["host_readiness"].read_text(encoding="utf-8"),
+            paths["deploy"].read_text(encoding="utf-8"),
+            paths["compose"].read_text(encoding="utf-8"),
+            paths["local_env"].read_text(encoding="utf-8"),
+            paths["production_env"].read_text(encoding="utf-8"),
+            paths["django_workflow"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

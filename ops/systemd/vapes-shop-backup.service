@@ -18,6 +18,7 @@ Environment=BACKUP_RTO_SECONDS=900
 Environment=BACKUP_OPERATION_TIMEOUT=7200
 EnvironmentFile=-/etc/vapes-shop/backup-operations.env
 StateDirectory=vapes-shop
+StateDirectoryMode=0750
 UMask=0077
 Nice=10
 IOSchedulingClass=best-effort
