@@ -367,7 +367,10 @@ class ProductionRecoveryController:
                     f"No existe el archivo requerido: {required_path}"
                 )
 
-        if self.current_state_path.exists():
+        if (
+            self.current_state_path.exists()
+            or self.current_state_path.is_symlink()
+        ):
             raise ProductionRecoveryError(
                 "Ya existe estado productivo; usa despliegue o rollback."
             )
@@ -711,6 +714,15 @@ class ProductionRecoveryController:
     def write_state(self, state):
         self.state_directory.mkdir(parents=True, exist_ok=True)
         temporary_path = self.current_state_path.with_suffix(".tmp")
+
+        if (
+            self.current_state_path.is_symlink()
+            or temporary_path.is_symlink()
+        ):
+            raise ProductionRecoveryError(
+                "El estado productivo no admite enlaces simbolicos."
+            )
+
         temporary_path.write_text(
             json.dumps(state, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",

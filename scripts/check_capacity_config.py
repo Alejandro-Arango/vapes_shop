@@ -634,6 +634,8 @@ def validate_disaster_recovery(
         "exc.recovery_phase = phase",
         'report["recovery_phase"] = recovery_phase',
         "journal de recuperacion interrumpida",
+        "current_state_path.is_symlink()",
+        "El estado productivo no admite enlaces simbolicos",
         "recovery_attempt_id debe contener 32 caracteres hexadecimales",
         "build_failure_report",
         "report = build_failure_report(exc, source, attempt_id)",

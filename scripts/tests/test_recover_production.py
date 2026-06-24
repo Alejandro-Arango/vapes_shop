@@ -246,6 +246,52 @@ class ProductionRecoveryTests(unittest.TestCase):
 
         self.assertEqual(runner.calls, [])
 
+    def test_productive_state_symlink_is_rejected_before_commands(self):
+        runner = FakeRunner()
+        current_state_path = self.state_directory / "current.json"
+
+        def is_symlink(path):
+            return path == current_state_path
+
+        with mock.patch.object(
+            recovery.Path,
+            "is_symlink",
+            is_symlink,
+        ):
+            with self.assertRaisesRegex(
+                recovery.ProductionRecoveryError,
+                "Ya existe estado productivo",
+            ):
+                self.manual_recover(
+                    self.controller(runner),
+                    APP_IMAGE,
+                    BACKUP_IMAGE,
+                    rto_seconds=1800,
+                )
+
+        self.assertEqual(runner.calls, [])
+
+    def test_temporary_state_symlink_is_rejected(self):
+        runner = FakeRunner()
+        controller = self.controller(runner)
+        temporary_path = controller.current_state_path.with_suffix(".tmp")
+
+        def is_symlink(path):
+            return path == temporary_path
+
+        with mock.patch.object(
+            recovery.Path,
+            "is_symlink",
+            is_symlink,
+        ):
+            with self.assertRaisesRegex(
+                recovery.ProductionRecoveryError,
+                "estado productivo no admite enlaces simbolicos",
+            ):
+                controller.write_state({"status": "ok"})
+
+        self.assertFalse(controller.current_state_path.exists())
+
     def test_interrupted_recovery_journal_blocks_retry(self):
         self.state_directory.mkdir()
         journal_path = (
