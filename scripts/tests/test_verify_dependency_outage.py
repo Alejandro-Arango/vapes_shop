@@ -1,9 +1,11 @@
 import importlib.util
 import json
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT_PATH = (
@@ -134,6 +136,49 @@ class DependencyOutageVerifierTests(unittest.TestCase):
                 budget=0,
                 allow_http=True,
             )
+
+    def test_report_file_is_written_with_restricted_permissions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "dependency-report.json"
+
+            with patch.object(outage.os, "chmod") as chmod:
+                outage.write_report(report_path, {"status": "timeout"})
+
+            chmod.assert_called_once_with(
+                report_path.with_suffix(".json.tmp"),
+                0o600,
+            )
+            self.assertEqual(
+                json.loads(report_path.read_text(encoding="utf-8")),
+                {"status": "timeout"},
+            )
+
+    def test_report_symlink_paths_are_rejected_before_write(self):
+        for blocked_name in ("output", "parent", "temporary"):
+            with self.subTest(blocked_name=blocked_name):
+                with tempfile.TemporaryDirectory() as directory:
+                    report_path = Path(directory) / "dependency-report.json"
+                    temporary_path = report_path.with_suffix(".json.tmp")
+                    blocked_path = {
+                        "output": report_path,
+                        "parent": report_path.parent,
+                        "temporary": temporary_path,
+                    }[blocked_name]
+
+                    def is_symlink(path):
+                        return path == blocked_path
+
+                    with patch.object(outage.Path, "is_symlink", is_symlink):
+                        with self.assertRaisesRegex(
+                            outage.MonitorError,
+                            "reporte de dependencia no admite enlaces simbolicos",
+                        ):
+                            outage.write_report(
+                                report_path,
+                                {"status": "timeout"},
+                            )
+
+                    self.assertFalse(report_path.exists())
 
 
 if __name__ == "__main__":

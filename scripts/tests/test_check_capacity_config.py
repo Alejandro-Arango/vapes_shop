@@ -235,6 +235,26 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_recovery_verifier_without_report_symlink_guard_is_rejected(self):
+        verifier_text = (
+            PROJECT_ROOT / "scripts" / "verify_recovery.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = verifier_text.replace(
+            "temporary_path.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_recovery_verifier(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/verify_recovery.py no contiene "
+                "temporary_path.is_symlink()"
+            ),
+            findings,
+        )
+
     def test_resilience_config_without_backlog_is_rejected(self):
         start_text = (
             PROJECT_ROOT / "docker" / "start.sh"
@@ -287,6 +307,28 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "scripts/verify_dependency_outage.py no contiene "
                 'database": "unavailable"'
+            ),
+            findings,
+        )
+
+    def test_dependency_outage_verifier_without_report_guard_is_rejected(self):
+        verifier_text = (
+            PROJECT_ROOT / "scripts" / "verify_dependency_outage.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = verifier_text.replace(
+            "temporary_path.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_dependency_outage_verifier(
+            invalid_text
+        )
+
+        self.assertIn(
+            (
+                "scripts/verify_dependency_outage.py no contiene "
+                "temporary_path.is_symlink()"
             ),
             findings,
         )
@@ -372,6 +414,26 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "scripts/verify_media_storage.py no contiene "
                 "storage.delete(saved_name)"
+            ),
+            findings,
+        )
+
+    def test_media_storage_verifier_without_report_guard_is_rejected(self):
+        verifier_text = (
+            PROJECT_ROOT / "scripts" / "verify_media_storage.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = verifier_text.replace(
+            "temporary_path.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_media_storage_verifier(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/verify_media_storage.py no contiene "
+                "temporary_path.is_symlink()"
             ),
             findings,
         )

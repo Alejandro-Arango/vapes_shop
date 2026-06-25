@@ -122,12 +122,25 @@ def configure_django():
 
 
 def write_report(path, report):
-    output_path = Path(path)
+    output_path = Path(os.path.abspath(os.fspath(path)))
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
+    temporary_path = output_path.with_suffix(f"{output_path.suffix}.tmp")
+
+    if (
+        output_path.is_symlink()
+        or output_path.parent.is_symlink()
+        or temporary_path.is_symlink()
+    ):
+        raise RuntimeError(
+            "El reporte de almacenamiento media no admite enlaces simbolicos."
+        )
+
+    temporary_path.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    os.chmod(temporary_path, 0o600)
+    os.replace(temporary_path, output_path)
 
 
 def build_parser():

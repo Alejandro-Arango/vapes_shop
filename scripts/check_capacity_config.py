@@ -325,6 +325,12 @@ def validate_recovery_verifier(verifier_text):
         "status\": \"timeout\"",
         "check_readiness",
         "elapsed_seconds",
+        "output_path.is_symlink()",
+        "output_path.parent.is_symlink()",
+        "temporary_path.is_symlink()",
+        "El reporte de recuperacion no admite enlaces simbolicos",
+        "os.chmod(temporary_path, 0o600)",
+        "os.replace(temporary_path, output_path)",
     )
 
     return [
@@ -342,6 +348,12 @@ def validate_dependency_outage_verifier(verifier_text):
         "cache\": \"not_checked\"",
         "status\": \"degraded_as_expected\"",
         "consecutive_successes",
+        "output_path.is_symlink()",
+        "output_path.parent.is_symlink()",
+        "temporary_path.is_symlink()",
+        "El reporte de dependencia no admite enlaces simbolicos",
+        "os.chmod(temporary_path, 0o600)",
+        "os.replace(temporary_path, output_path)",
     )
 
     return [
@@ -359,6 +371,12 @@ def validate_media_storage_verifier(verifier_text):
         "unavailable_as_expected",
         "El archivo persistente no conserva su contenido.",
         "storage.delete(saved_name)",
+        "output_path.is_symlink()",
+        "output_path.parent.is_symlink()",
+        "temporary_path.is_symlink()",
+        "El reporte de almacenamiento media no admite enlaces simbolicos",
+        "os.chmod(temporary_path, 0o600)",
+        "os.replace(temporary_path, output_path)",
     )
 
     return [
