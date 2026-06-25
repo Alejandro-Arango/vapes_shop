@@ -398,6 +398,12 @@ def validate_backup_monitor(monitor_text):
         "BACKUP_MIN_FREE_PERCENT",
         "BACKUP_MIN_FREE_COPIES",
         "status\": \"critical\"",
+        "output_path.is_symlink()",
+        "output_path.parent.is_symlink()",
+        "temporary_path.is_symlink()",
+        "El reporte de monitoreo de backups no admite enlaces simbolicos",
+        "os.chmod(temporary_path, 0o600)",
+        "os.replace(temporary_path, output_path)",
     )
 
     return [

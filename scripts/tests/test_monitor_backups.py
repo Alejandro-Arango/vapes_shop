@@ -213,6 +213,52 @@ class BackupMonitorTests(unittest.TestCase):
         self.assertEqual(event["alert"], "sent")
         send_webhook.assert_called_once()
 
+    def test_report_file_is_written_with_restricted_permissions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "backup-monitor-report.json"
+
+            with patch.object(monitor.os, "chmod") as chmod:
+                monitor.write_report(report_path, {"status": "ok"})
+
+            chmod.assert_called_once_with(
+                report_path.with_suffix(".json.tmp"),
+                0o600,
+            )
+            self.assertEqual(
+                json.loads(report_path.read_text(encoding="utf-8")),
+                {"status": "ok"},
+            )
+
+    def test_report_symlink_paths_are_rejected_before_write(self):
+        for blocked_name in ("output", "parent", "temporary"):
+            with self.subTest(blocked_name=blocked_name):
+                with tempfile.TemporaryDirectory() as directory:
+                    report_path = Path(directory) / "backup-monitor-report.json"
+                    temporary_path = report_path.with_suffix(".json.tmp")
+                    blocked_path = {
+                        "output": report_path,
+                        "parent": report_path.parent,
+                        "temporary": temporary_path,
+                    }[blocked_name]
+
+                    def is_symlink(path):
+                        return path == blocked_path
+
+                    with patch.object(monitor.Path, "is_symlink", is_symlink):
+                        with self.assertRaisesRegex(
+                            monitor.BackupMonitorError,
+                            (
+                                "reporte de monitoreo de backups "
+                                "no admite enlaces simbolicos"
+                            ),
+                        ):
+                            monitor.write_report(
+                                report_path,
+                                {"status": "ok"},
+                            )
+
+                    self.assertFalse(report_path.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
