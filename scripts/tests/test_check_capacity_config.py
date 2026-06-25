@@ -528,6 +528,26 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_external_backup_without_report_symlink_guard_is_rejected(self):
+        script_text = (
+            PROJECT_ROOT / "scripts" / "external_backup.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = script_text.replace(
+            "temporary_path.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_external_backup_script(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/external_backup.py no contiene "
+                "temporary_path.is_symlink()"
+            ),
+            findings,
+        )
+
     def test_external_backup_config_without_pinned_checksum_is_rejected(self):
         backup_dockerfile_text = (
             PROJECT_ROOT / "docker" / "backup.Dockerfile"

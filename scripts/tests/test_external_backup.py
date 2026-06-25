@@ -346,6 +346,67 @@ class ExternalBackupTests(unittest.TestCase):
             ):
                 external.check_repository(runner)
 
+    def test_report_file_is_written_with_restricted_permissions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "external-backup-report.json"
+
+            with patch.object(external.os, "chmod") as chmod:
+                external.write_report(report_path, {"status": "ok"})
+
+            chmod.assert_called_once_with(
+                report_path.with_suffix(".json.tmp"),
+                0o600,
+            )
+
+    def test_report_output_symlink_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "external-backup-report.json"
+
+            def is_symlink(path):
+                return path == report_path
+
+            with patch.object(external.Path, "is_symlink", is_symlink):
+                with self.assertRaisesRegex(
+                    external.ExternalBackupError,
+                    "reporte de backup externo no admite enlaces simbolicos",
+                ):
+                    external.write_report(report_path, {"status": "ok"})
+
+            self.assertFalse(report_path.exists())
+
+    def test_report_parent_symlink_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "external-backup-report.json"
+
+            def is_symlink(path):
+                return path == report_path.parent
+
+            with patch.object(external.Path, "is_symlink", is_symlink):
+                with self.assertRaisesRegex(
+                    external.ExternalBackupError,
+                    "reporte de backup externo no admite enlaces simbolicos",
+                ):
+                    external.write_report(report_path, {"status": "ok"})
+
+            self.assertFalse(report_path.exists())
+
+    def test_temporary_report_symlink_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "external-backup-report.json"
+            temporary_path = report_path.with_suffix(".json.tmp")
+
+            def is_symlink(path):
+                return path == temporary_path
+
+            with patch.object(external.Path, "is_symlink", is_symlink):
+                with self.assertRaisesRegex(
+                    external.ExternalBackupError,
+                    "reporte de backup externo no admite enlaces simbolicos",
+                ):
+                    external.write_report(report_path, {"status": "ok"})
+
+            self.assertFalse(report_path.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

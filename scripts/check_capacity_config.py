@@ -456,6 +456,12 @@ def validate_external_backup_script(script_text):
         "stored_and_restored",
         "recover_latest_external_backup",
         "BACKUP_ROOT debe estar vacio",
+        "output_path.is_symlink()",
+        "output_path.parent.is_symlink()",
+        "temporary_path.is_symlink()",
+        "El reporte de backup externo no admite enlaces simbolicos",
+        "os.chmod(temporary_path, 0o600)",
+        "os.replace(temporary_path, output_path)",
         '"status": "recovered"',
     )
 
