@@ -1047,10 +1047,16 @@ def validate_host_provisioning(
                 f"check_host_readiness.py no contiene {fragment}"
             )
 
-    if "os.chmod(temporary_path, 0o600)" not in deploy_text:
-        findings.append(
-            "deploy_production.py no restringe los archivos de estado"
-        )
+    for fragment in (
+        "os.chmod(temporary_path, 0o600)",
+        "path.is_symlink()",
+        "temporary_path.is_symlink()",
+        "El estado de despliegue no admite enlaces simbolicos",
+    ):
+        if fragment not in deploy_text:
+            findings.append(
+                "deploy_production.py no restringe los archivos de estado"
+            )
 
     if "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-8080}:8080" not in (
         compose_text

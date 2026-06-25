@@ -204,6 +204,12 @@ class DeploymentController:
     def write_state(self, path, state):
         self.state_directory.mkdir(parents=True, exist_ok=True)
         temporary_path = path.with_suffix(".tmp")
+
+        if path.is_symlink() or temporary_path.is_symlink():
+            raise DeploymentError(
+                "El estado de despliegue no admite enlaces simbolicos."
+            )
+
         temporary_path.write_text(
             json.dumps(state, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
