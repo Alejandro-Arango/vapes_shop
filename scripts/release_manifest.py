@@ -228,6 +228,12 @@ def write_manifest(output_path, payload):
 
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = path.with_suffix(path.suffix + ".tmp")
+
+    if temporary_path.is_symlink():
+        raise ReleaseManifestError(
+            "El manifiesto no puede escribir sobre un temporal simbolico."
+        )
+
     temporary_path.write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -266,6 +272,12 @@ def write_checksum(checksum_path, manifest_path):
 
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = path.with_suffix(path.suffix + ".tmp")
+
+    if temporary_path.is_symlink():
+        raise ReleaseManifestError(
+            "El checksum no puede escribir sobre un temporal simbolico."
+        )
+
     temporary_path.write_text(
         f"{sha256_file(manifest)}  recovery-manifest.json\n",
         encoding="ascii",

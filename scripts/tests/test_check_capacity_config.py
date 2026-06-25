@@ -852,6 +852,24 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_release_manifest_without_temporary_guard_is_rejected(self):
+        inputs = self.release_manifest_inputs()
+        inputs["manifest_text"] = inputs["manifest_text"].replace(
+            "temporary_path.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_release_manifest(**inputs)
+
+        self.assertIn(
+            (
+                "release_manifest.py debe validar temporales simbolicos "
+                "en manifiesto y checksum"
+            ),
+            findings,
+        )
+
     def test_release_fetch_without_attestation_is_rejected(self):
         inputs = self.release_manifest_inputs()
         inputs["fetch_text"] = inputs["fetch_text"].replace(

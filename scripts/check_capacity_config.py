@@ -814,6 +814,9 @@ def validate_release_manifest(
         "load_verified_manifest",
         "expected_repository",
         "expected_tag",
+        "temporary_path.is_symlink()",
+        "temporal simbolico",
+        "os.chmod(temporary_path, 0o600)",
         "os.replace",
     )
     recovery_fragments = (
@@ -882,6 +885,14 @@ def validate_release_manifest(
         for fragment in fragments:
             if fragment not in text:
                 findings.append(f"{label} no contiene {fragment}")
+
+    if manifest_text.count("temporary_path.is_symlink()") < 2:
+        findings.append(
+            (
+                "release_manifest.py debe validar temporales simbolicos "
+                "en manifiesto y checksum"
+            )
+        )
 
     if "gh release upload \"$RELEASE_TAG\"" in publish_workflow_text and (
         "--clobber" in publish_workflow_text

@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "release_manifest.py"
@@ -134,6 +135,46 @@ class ReleaseManifestTests(unittest.TestCase):
                 "sobrescribir",
             ):
                 manifest.write_checksum(manifest_path, manifest_path)
+
+    def test_temporary_manifest_symlink_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest_path = Path(directory) / "recovery-manifest.json"
+            temporary_path = manifest_path.with_suffix(".json.tmp")
+
+            def is_symlink(path):
+                return path == temporary_path
+
+            with patch.object(manifest.Path, "is_symlink", is_symlink):
+                with self.assertRaisesRegex(
+                    manifest.ReleaseManifestError,
+                    "temporal simbolico",
+                ):
+                    manifest.write_manifest(
+                        manifest_path,
+                        self.valid_manifest(),
+                    )
+
+            self.assertFalse(manifest_path.exists())
+
+    def test_temporary_checksum_symlink_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest_path = root / "recovery-manifest.json"
+            checksum_path = root / "recovery-manifest.sha256"
+            temporary_path = checksum_path.with_suffix(".sha256.tmp")
+            manifest.write_manifest(manifest_path, self.valid_manifest())
+
+            def is_symlink(path):
+                return path == temporary_path
+
+            with patch.object(manifest.Path, "is_symlink", is_symlink):
+                with self.assertRaisesRegex(
+                    manifest.ReleaseManifestError,
+                    "temporal simbolico",
+                ):
+                    manifest.write_checksum(checksum_path, manifest_path)
+
+            self.assertFalse(checksum_path.exists())
 
 
 if __name__ == "__main__":
