@@ -876,6 +876,11 @@ def validate_backup_operations(script_text):
         "rpo_actual_hours",
         "rto_actual_seconds",
         "alert_failure",
+        "output_path.is_symlink()",
+        "output_path.parent.is_symlink()",
+        "temporary_path.is_symlink()",
+        "El reporte de backup no admite enlaces simbolicos",
+        "os.chmod(temporary_path, 0o600)",
         "os.replace(temporary_path, output_path)",
     )
 

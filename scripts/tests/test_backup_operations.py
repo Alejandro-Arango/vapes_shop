@@ -225,6 +225,63 @@ class BackupOperationsTests(unittest.TestCase):
         self.assertEqual(report["alert"], "sent")
         send_webhook.assert_called_once()
 
+    def test_report_file_is_written_with_restricted_permissions(self):
+        report_path = self.project_root / "backup-report.json"
+
+        with patch.object(operations.os, "chmod") as chmod:
+            operations.write_report(report_path, {"status": "ok"})
+
+        chmod.assert_called_once_with(
+            report_path.with_suffix(".json.tmp"),
+            0o600,
+        )
+
+    def test_report_output_symlink_is_rejected_before_write(self):
+        report_path = self.project_root / "backup-report.json"
+
+        def is_symlink(path):
+            return path == report_path
+
+        with patch.object(operations.Path, "is_symlink", is_symlink):
+            with self.assertRaisesRegex(
+                operations.BackupOperationError,
+                "reporte de backup no admite enlaces simbolicos",
+            ):
+                operations.write_report(report_path, {"status": "ok"})
+
+        self.assertFalse(report_path.exists())
+
+    def test_report_parent_symlink_is_rejected_before_write(self):
+        report_path = self.project_root / "backup-report.json"
+
+        def is_symlink(path):
+            return path == report_path.parent
+
+        with patch.object(operations.Path, "is_symlink", is_symlink):
+            with self.assertRaisesRegex(
+                operations.BackupOperationError,
+                "reporte de backup no admite enlaces simbolicos",
+            ):
+                operations.write_report(report_path, {"status": "ok"})
+
+        self.assertFalse(report_path.exists())
+
+    def test_temporary_report_symlink_is_rejected_before_write(self):
+        report_path = self.project_root / "backup-report.json"
+        temporary_path = report_path.with_suffix(".json.tmp")
+
+        def is_symlink(path):
+            return path == temporary_path
+
+        with patch.object(operations.Path, "is_symlink", is_symlink):
+            with self.assertRaisesRegex(
+                operations.BackupOperationError,
+                "reporte de backup no admite enlaces simbolicos",
+            ):
+                operations.write_report(report_path, {"status": "ok"})
+
+        self.assertFalse(report_path.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
