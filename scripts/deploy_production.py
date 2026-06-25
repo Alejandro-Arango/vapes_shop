@@ -205,7 +205,11 @@ class DeploymentController:
         self.state_directory.mkdir(parents=True, exist_ok=True)
         temporary_path = path.with_suffix(".tmp")
 
-        if path.is_symlink() or temporary_path.is_symlink():
+        if (
+            path.is_symlink()
+            or path.parent.is_symlink()
+            or temporary_path.is_symlink()
+        ):
             raise DeploymentError(
                 "El estado de despliegue no admite enlaces simbolicos."
             )

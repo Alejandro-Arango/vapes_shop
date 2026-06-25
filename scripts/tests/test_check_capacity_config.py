@@ -1084,6 +1084,21 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_deployment_state_parent_symlink_guard_is_rejected(self):
+        inputs = self.host_provisioning_inputs()
+        inputs["deploy_text"] = inputs["deploy_text"].replace(
+            "path.parent.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_host_provisioning(**inputs)
+
+        self.assertIn(
+            "deploy_production.py no restringe los archivos de estado",
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

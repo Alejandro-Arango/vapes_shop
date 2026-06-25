@@ -1096,6 +1096,7 @@ def validate_host_provisioning(
     for fragment in (
         "os.chmod(temporary_path, 0o600)",
         "path.is_symlink()",
+        "path.parent.is_symlink()",
         "temporary_path.is_symlink()",
         "El estado de despliegue no admite enlaces simbolicos",
     ):

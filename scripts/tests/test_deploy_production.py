@@ -131,6 +131,28 @@ class DeploymentControllerTests(unittest.TestCase):
 
         self.assertFalse(state_path.exists())
 
+    def test_state_parent_symlink_is_rejected_before_write(self):
+        controller = self.build_controller(FakeRunner())
+        state_path = self.state_directory / "current.json"
+
+        def is_symlink(path):
+            return path == state_path.parent
+
+        with mock.patch.object(deploy.Path, "is_symlink", is_symlink):
+            with self.assertRaisesRegex(
+                deploy.DeploymentError,
+                "estado de despliegue no admite enlaces simbolicos",
+            ):
+                controller.write_state(
+                    state_path,
+                    {
+                        "app_image": APP_V1,
+                        "backup_image": BACKUP_V1,
+                    },
+                )
+
+        self.assertFalse(state_path.exists())
+
     def write_current_state(self):
         self.state_directory.mkdir()
         (self.state_directory / "current.json").write_text(
