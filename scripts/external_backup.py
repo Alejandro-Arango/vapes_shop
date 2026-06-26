@@ -614,6 +614,17 @@ def recover_latest_external_backup(runner, confirmation):
                 "El backup recuperado ya existe en BACKUP_ROOT."
             )
 
+        if (
+            latest_path.exists()
+            or latest_path.is_symlink()
+            or temporary_latest.exists()
+            or temporary_latest.is_symlink()
+        ):
+            raise ExternalBackupError(
+                "El indice latest de backup externo no admite rutas "
+                "preexistentes ni enlaces simbolicos."
+            )
+
         temporary_latest.write_text(
             f"{backup_id}\n",
             encoding="ascii",

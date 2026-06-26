@@ -808,6 +808,23 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_external_recovery_without_latest_guard_is_rejected(self):
+        inputs = self.disaster_recovery_inputs()
+        inputs["external_backup_text"] = inputs[
+            "external_backup_text"
+        ].replace(
+            "temporary_latest.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_disaster_recovery(**inputs)
+
+        self.assertIn(
+            "external_backup.py no contiene temporary_latest.is_symlink()",
+            findings,
+        )
+
     def release_manifest_inputs(self):
         return {
             "manifest_text": (

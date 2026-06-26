@@ -712,6 +712,9 @@ def validate_disaster_recovery(
         "recover_latest_external_backup",
         "BACKUP_ROOT debe estar vacio",
         "os.replace(restored_backup_directory, destination)",
+        "latest_path.is_symlink()",
+        "temporary_latest.is_symlink()",
+        "El indice latest de backup externo no admite rutas",
     ):
         if fragment not in external_backup_text:
             findings.append(

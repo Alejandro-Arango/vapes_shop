@@ -226,6 +226,70 @@ class ExternalBackupTests(unittest.TestCase):
         actions = [command[1] for command in runner.commands]
         self.assertEqual(actions, ["snapshots", "check", "restore"])
 
+    def test_external_recovery_rejects_latest_symlink_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source_root = workspace / "source"
+            recovered_root = workspace / "recovered"
+            restore_root = workspace / "restore"
+            source_root.mkdir()
+            recovered_root.mkdir()
+            self.create_backup(source_root)
+            runner = FakeRunner(source_root)
+            latest_path = recovered_root / "latest.txt"
+
+            def is_symlink(path):
+                return path == latest_path
+
+            with patch.dict(
+                os.environ,
+                self.base_environment(recovered_root, restore_root),
+                clear=False,
+            ):
+                with patch.object(external.Path, "is_symlink", is_symlink):
+                    with self.assertRaisesRegex(
+                        external.ExternalBackupError,
+                        "indice latest de backup externo",
+                    ):
+                        external.recover_latest_external_backup(
+                            runner,
+                            external.RECOVERY_CONFIRMATION,
+                        )
+
+            self.assertFalse(latest_path.exists())
+
+    def test_external_recovery_rejects_temporary_latest_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source_root = workspace / "source"
+            recovered_root = workspace / "recovered"
+            restore_root = workspace / "restore"
+            source_root.mkdir()
+            recovered_root.mkdir()
+            self.create_backup(source_root)
+            runner = FakeRunner(source_root)
+            temporary_latest = recovered_root / ".latest-recovery.tmp"
+
+            def is_symlink(path):
+                return path == temporary_latest
+
+            with patch.dict(
+                os.environ,
+                self.base_environment(recovered_root, restore_root),
+                clear=False,
+            ):
+                with patch.object(external.Path, "is_symlink", is_symlink):
+                    with self.assertRaisesRegex(
+                        external.ExternalBackupError,
+                        "indice latest de backup externo",
+                    ):
+                        external.recover_latest_external_backup(
+                            runner,
+                            external.RECOVERY_CONFIRMATION,
+                        )
+
+            self.assertFalse(temporary_latest.exists())
+
     def test_external_recovery_requires_empty_destination(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
