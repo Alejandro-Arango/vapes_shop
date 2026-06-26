@@ -808,6 +808,26 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_recovery_output_report_without_temporary_guard_is_rejected(
+        self,
+    ):
+        inputs = self.disaster_recovery_inputs()
+        inputs["recovery_text"] = inputs["recovery_text"].replace(
+            "    if temporary_path.is_symlink():",
+            "    if False:",
+            1,
+        )
+
+        findings = capacity.validate_disaster_recovery(**inputs)
+
+        self.assertIn(
+            (
+                "recover_production.py no contiene 4 validaciones "
+                "temporary_path.is_symlink()"
+            ),
+            findings,
+        )
+
     def test_external_recovery_without_latest_guard_is_rejected(self):
         inputs = self.disaster_recovery_inputs()
         inputs["external_backup_text"] = inputs[

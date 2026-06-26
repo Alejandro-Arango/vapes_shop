@@ -355,6 +355,27 @@ class ProductionRecoveryTests(unittest.TestCase):
 
         self.assertFalse(controller.last_recovery_report_path.exists())
 
+    def test_output_report_temporary_symlink_is_rejected_before_write(self):
+        report_path = self.root / "recovery-report.json"
+        temporary_path = report_path.with_suffix(".json.tmp")
+
+        def is_symlink(path):
+            return path == temporary_path
+
+        with mock.patch.object(
+            recovery.Path,
+            "is_symlink",
+            is_symlink,
+        ):
+            with self.assertRaisesRegex(
+                recovery.ProductionRecoveryError,
+                "reporte no puede reemplazar un enlace simbolico",
+            ):
+                recovery.write_report(report_path, {"status": "critical"})
+
+        self.assertFalse(report_path.exists())
+        self.assertFalse(temporary_path.exists())
+
     def test_interrupted_recovery_journal_blocks_retry(self):
         self.state_directory.mkdir()
         journal_path = (

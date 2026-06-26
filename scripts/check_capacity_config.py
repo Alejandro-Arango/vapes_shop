@@ -668,6 +668,8 @@ def validate_disaster_recovery(
         "current_state_path.parent.is_symlink()",
         "recovery_journal_path.parent.is_symlink()",
         "last_recovery_report_path.parent.is_symlink()",
+        "temporary_path.is_symlink()",
+        "El reporte no puede reemplazar un enlace simbolico",
         "El estado productivo no admite enlaces simbolicos",
         "recovery_attempt_id debe contener 32 caracteres hexadecimales",
         "build_failure_report",
@@ -707,6 +709,14 @@ def validate_disaster_recovery(
             findings.append(
                 f"recover_production.py no contiene {fragment}"
             )
+
+    if recovery_text.count("temporary_path.is_symlink()") < 4:
+        findings.append(
+            (
+                "recover_production.py no contiene 4 validaciones "
+                "temporary_path.is_symlink()"
+            )
+        )
 
     for fragment in (
         "recover_latest_external_backup",

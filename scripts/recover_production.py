@@ -957,6 +957,12 @@ def write_report(path, report):
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = output_path.with_suffix(f"{output_path.suffix}.tmp")
+
+    if temporary_path.is_symlink():
+        raise ProductionRecoveryError(
+            "El reporte no puede reemplazar un enlace simbolico."
+        )
+
     temporary_path.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
