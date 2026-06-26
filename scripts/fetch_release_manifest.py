@@ -69,6 +69,11 @@ def prepare_output_directory(path):
             "El directorio de salida no puede ser un enlace simbolico."
         )
 
+    if output_directory.exists() and not output_directory.is_dir():
+        raise ReleaseFetchError(
+            "El destino debe ser un directorio regular."
+        )
+
     created = not output_directory.exists()
     output_directory.mkdir(parents=True, mode=0o700, exist_ok=True)
     os.chmod(output_directory, 0o700)

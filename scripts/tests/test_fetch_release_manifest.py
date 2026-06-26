@@ -153,6 +153,26 @@ class ReleaseFetchTests(unittest.TestCase):
 
             self.assertEqual(runner.commands, [])
 
+    def test_regular_file_destination_is_rejected_before_download(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_directory = Path(directory) / "release-assets"
+            output_directory.write_text("not a directory\n", encoding="utf-8")
+            runner = FakeRunner()
+
+            with self.assertRaisesRegex(
+                fetcher.ReleaseFetchError,
+                "directorio regular",
+            ):
+                fetcher.fetch_release_manifest(
+                    repository="example/vapes-shop",
+                    release_tag="v1.2.3",
+                    output_directory=output_directory,
+                    runner=runner,
+                )
+
+            self.assertEqual(runner.commands, [])
+            self.assertTrue(output_directory.is_file())
+
     def test_unexpected_asset_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             output_directory = Path(directory) / "release-assets"
