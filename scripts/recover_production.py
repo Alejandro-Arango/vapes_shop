@@ -404,6 +404,7 @@ class ProductionRecoveryController:
 
         if (
             self.recovery_journal_path.is_symlink()
+            or self.recovery_journal_path.parent.is_symlink()
             or temporary_path.is_symlink()
         ):
             raise ProductionRecoveryError(
@@ -434,6 +435,7 @@ class ProductionRecoveryController:
 
         if (
             self.last_recovery_report_path.is_symlink()
+            or self.last_recovery_report_path.parent.is_symlink()
             or temporary_path.is_symlink()
         ):
             raise ProductionRecoveryError(
@@ -717,6 +719,7 @@ class ProductionRecoveryController:
 
         if (
             self.current_state_path.is_symlink()
+            or self.current_state_path.parent.is_symlink()
             or temporary_path.is_symlink()
         ):
             raise ProductionRecoveryError(

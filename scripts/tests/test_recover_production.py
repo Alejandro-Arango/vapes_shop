@@ -292,6 +292,69 @@ class ProductionRecoveryTests(unittest.TestCase):
 
         self.assertFalse(controller.current_state_path.exists())
 
+    def test_state_parent_symlink_is_rejected(self):
+        runner = FakeRunner()
+        controller = self.controller(runner)
+
+        def is_symlink(path):
+            return path == controller.current_state_path.parent
+
+        with mock.patch.object(
+            recovery.Path,
+            "is_symlink",
+            is_symlink,
+        ):
+            with self.assertRaisesRegex(
+                recovery.ProductionRecoveryError,
+                "estado productivo no admite enlaces simbolicos",
+            ):
+                controller.write_state({"status": "ok"})
+
+        self.assertFalse(controller.current_state_path.exists())
+
+    def test_journal_parent_symlink_is_rejected(self):
+        runner = FakeRunner()
+        controller = self.controller(runner)
+
+        def is_symlink(path):
+            return path == controller.recovery_journal_path.parent
+
+        with mock.patch.object(
+            recovery.Path,
+            "is_symlink",
+            is_symlink,
+        ):
+            with self.assertRaisesRegex(
+                recovery.ProductionRecoveryError,
+                "journal de recuperacion no admite enlaces simbolicos",
+            ):
+                controller.write_recovery_journal(
+                    {"recovery_attempt_id": RECOVERY_ATTEMPT_ID},
+                    "start",
+                )
+
+        self.assertFalse(controller.recovery_journal_path.exists())
+
+    def test_audit_parent_symlink_is_rejected(self):
+        runner = FakeRunner()
+        controller = self.controller(runner)
+
+        def is_symlink(path):
+            return path == controller.last_recovery_report_path.parent
+
+        with mock.patch.object(
+            recovery.Path,
+            "is_symlink",
+            is_symlink,
+        ):
+            with self.assertRaisesRegex(
+                recovery.ProductionRecoveryError,
+                "reporte local de recuperacion no admite enlaces simbolicos",
+            ):
+                controller.write_recovery_audit({"status": "critical"})
+
+        self.assertFalse(controller.last_recovery_report_path.exists())
+
     def test_interrupted_recovery_journal_blocks_retry(self):
         self.state_directory.mkdir()
         journal_path = (
