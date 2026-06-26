@@ -403,10 +403,15 @@ def audit_host(
 
 def write_report(path, report):
     output_path = Path(os.path.abspath(os.fspath(path)))
-    if output_path.is_symlink() or output_path.parent.is_symlink():
+    temporary_path = output_path.with_suffix(output_path.suffix + ".tmp")
+
+    if (
+        output_path.is_symlink()
+        or output_path.parent.is_symlink()
+        or temporary_path.is_symlink()
+    ):
         raise ValueError("El reporte no puede reemplazar un enlace simbolico.")
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = output_path.with_suffix(output_path.suffix + ".tmp")
     temporary_path.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",

@@ -1117,6 +1117,21 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_host_readiness_without_report_temporary_guard_is_rejected(self):
+        inputs = self.host_provisioning_inputs()
+        inputs["readiness_text"] = inputs["readiness_text"].replace(
+            "temporary_path.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_host_provisioning(**inputs)
+
+        self.assertIn(
+            "check_host_readiness.py no contiene temporary_path.is_symlink()",
+            findings,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

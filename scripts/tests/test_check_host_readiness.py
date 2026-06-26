@@ -3,6 +3,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT_PATH = (
@@ -199,6 +200,26 @@ class HostReadinessTests(unittest.TestCase):
                     output_path,
                     {"status": "healthy"},
                 )
+
+    def test_temporary_report_symlink_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_path = Path(temporary_directory) / "report.json"
+            temporary_path = output_path.with_suffix(".json.tmp")
+
+            def is_symlink(path):
+                return path == temporary_path
+
+            with mock.patch.object(readiness.Path, "is_symlink", is_symlink):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "reporte no puede reemplazar un enlace simbolico",
+                ):
+                    readiness.write_report(
+                        output_path,
+                        {"status": "healthy"},
+                    )
+
+            self.assertFalse(output_path.exists())
 
 
 if __name__ == "__main__":

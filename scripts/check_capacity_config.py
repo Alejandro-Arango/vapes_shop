@@ -1074,6 +1074,7 @@ def validate_host_provisioning(
         "vapes-shop-recovery-drill.timer",
         "os.replace(temporary_path, output_path)",
         "output_path.is_symlink()",
+        "temporary_path.is_symlink()",
         '"source_checkout"',
         '"source_clean"',
         '"--untracked-files=no"',
