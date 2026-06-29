@@ -115,7 +115,20 @@ class BackupOperationsController:
     ):
         self.project_root = Path(project_root).resolve()
         self.env_file = Path(env_file).resolve()
-        self.state_directory = Path(state_directory).resolve()
+        state_directory_path = Path(
+            os.path.abspath(os.fspath(state_directory))
+        )
+
+        if (
+            state_directory_path.is_symlink()
+            or state_directory_path.parent.is_symlink()
+        ):
+            raise BackupOperationError(
+                "El directorio de estado de backups no admite "
+                "enlaces simbolicos."
+            )
+
+        self.state_directory = state_directory_path
         self.current_state_path = self.state_directory / "current.json"
         self.lock_directory = self.state_directory.with_name(
             f"{self.state_directory.name}.lock"

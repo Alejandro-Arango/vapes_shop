@@ -1049,6 +1049,28 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_backup_operations_without_state_directory_guard_is_rejected(
+        self,
+    ):
+        script_text = (
+            PROJECT_ROOT / "scripts" / "backup_operations.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = script_text.replace(
+            "state_directory_path.parent.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_backup_operations(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/backup_operations.py no contiene "
+                "state_directory_path.parent.is_symlink()"
+            ),
+            findings,
+        )
+
     def test_backup_operations_without_report_symlink_guard_is_rejected(self):
         script_text = (
             PROJECT_ROOT / "scripts" / "backup_operations.py"

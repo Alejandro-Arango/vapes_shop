@@ -110,6 +110,24 @@ class BackupOperationsTests(unittest.TestCase):
             monotonic=lambda: next(time_values),
         )
 
+    def test_state_directory_symlink_is_rejected_before_lock(self):
+        runner = FakeRunner()
+
+        def is_symlink(path):
+            return path == self.state_directory
+
+        with patch.object(operations.Path, "is_symlink", is_symlink):
+            with self.assertRaisesRegex(
+                operations.BackupOperationError,
+                "directorio de estado de backups no admite enlaces simbolicos",
+            ):
+                self.build_controller(runner, (10.0, 25.0))
+
+        self.assertEqual(runner.calls, [])
+        self.assertFalse(
+            self.state_directory.with_name(".deploy.lock").exists()
+        )
+
     def test_cycle_runs_local_external_and_reports_rpo(self):
         runner = FakeRunner()
         controller = self.build_controller(runner, (10.0, 25.0))
