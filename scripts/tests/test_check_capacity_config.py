@@ -566,6 +566,12 @@ class CapacityConfigTests(unittest.TestCase):
             "monitor_env_text": (
                 systemd_root / "production-monitor.env.example"
             ).read_text(encoding="utf-8"),
+            "monitor_workflow_text": (
+                PROJECT_ROOT
+                / ".github"
+                / "workflows"
+                / "production-monitor.yml"
+            ).read_text(encoding="utf-8"),
             "django_workflow_text": (
                 PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
             ).read_text(encoding="utf-8"),
@@ -614,6 +620,26 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "vapes-shop-production-monitor.service no contiene "
                 "EnvironmentFile=/etc/vapes-shop/production-monitor.env"
+            ),
+            findings,
+        )
+
+    def test_production_monitor_schedule_without_artifact_is_rejected(self):
+        inputs = self.production_monitor_schedule_inputs()
+        inputs["monitor_workflow_text"] = inputs[
+            "monitor_workflow_text"
+        ].replace(
+            "--output monitor-results/production-monitor.json",
+            "--output /tmp/ephemeral-monitor.json",
+            1,
+        )
+
+        findings = capacity.validate_production_monitor_schedule(**inputs)
+
+        self.assertIn(
+            (
+                "production-monitor.yml no contiene "
+                "--output monitor-results/production-monitor.json"
             ),
             findings,
         )

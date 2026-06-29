@@ -443,6 +443,7 @@ def validate_production_monitor_schedule(
     monitor_service_text,
     monitor_timer_text,
     monitor_env_text,
+    monitor_workflow_text,
     django_workflow_text,
     bootstrap_text,
     host_docs_text,
@@ -507,6 +508,26 @@ def validate_production_monitor_schedule(
             monitor_env_text,
             "MONITOR_WEBHOOK_TOKEN=",
             "production-monitor.env.example",
+        ),
+        (
+            monitor_workflow_text,
+            "--output monitor-results/production-monitor.json",
+            "production-monitor.yml",
+        ),
+        (
+            monitor_workflow_text,
+            "actions/upload-artifact@v4",
+            "production-monitor.yml",
+        ),
+        (
+            monitor_workflow_text,
+            "production-monitor-report",
+            "production-monitor.yml",
+        ),
+        (
+            monitor_workflow_text,
+            "if: always()",
+            "production-monitor.yml",
         ),
         (
             django_workflow_text,
@@ -1574,6 +1595,12 @@ def find_capacity_findings(project_root):
         "publish_workflow": (
             project_root / ".github" / "workflows" / "publish-images.yml"
         ),
+        "production_monitor_workflow": (
+            project_root
+            / ".github"
+            / "workflows"
+            / "production-monitor.yml"
+        ),
         "host_docs": (
             project_root / "docs" / "HOST_PROVISIONING.md"
         ),
@@ -1681,6 +1708,9 @@ def find_capacity_findings(project_root):
             paths["monitor_service"].read_text(encoding="utf-8"),
             paths["monitor_timer"].read_text(encoding="utf-8"),
             paths["monitor_env"].read_text(encoding="utf-8"),
+            paths["production_monitor_workflow"].read_text(
+                encoding="utf-8"
+            ),
             paths["django_workflow"].read_text(encoding="utf-8"),
             paths["host_bootstrap"].read_text(encoding="utf-8"),
             paths["host_docs"].read_text(encoding="utf-8"),

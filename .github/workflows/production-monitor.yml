@@ -34,7 +34,18 @@ jobs:
           MONITOR_WEBHOOK_URL: ${{ secrets.MONITOR_WEBHOOK_URL }}
           MONITOR_WEBHOOK_TOKEN: ${{ secrets.MONITOR_WEBHOOK_TOKEN }}
         run: |
+          mkdir -p monitor-results
           python scripts/monitor_production.py \
             --attempts 3 \
             --retry-delay 10 \
-            --timeout 10
+            --timeout 10 \
+            --output monitor-results/production-monitor.json
+
+      - name: Subir evidencia del monitoreo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-monitor-report
+          path: monitor-results/
+          if-no-files-found: warn
+          retention-days: 30
