@@ -479,6 +479,8 @@ def validate_external_backup_script(script_text):
         "verify_backup",
         "stored_and_restored",
         "recover_latest_external_backup",
+        "backup_root.exists() and not backup_root.is_dir()",
+        "restore_parent.exists() and not restore_parent.is_dir()",
         "BACKUP_ROOT debe estar vacio",
         "output_path.is_symlink()",
         "output_path.parent.is_symlink()",

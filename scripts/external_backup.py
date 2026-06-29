@@ -340,6 +340,12 @@ def verify_restored_snapshot(
         raise ExternalBackupError(
             "EXTERNAL_BACKUP_RESTORE_ROOT no puede ser un enlace simbolico."
         )
+
+    if restore_parent.exists() and not restore_parent.is_dir():
+        raise ExternalBackupError(
+            "EXTERNAL_BACKUP_RESTORE_ROOT debe ser un directorio regular."
+        )
+
     restore_parent.mkdir(parents=True, exist_ok=True)
 
     if not restore_parent.is_dir():
@@ -550,6 +556,11 @@ def recover_latest_external_backup(runner, confirmation):
     if backup_root.is_symlink() or backup_root.parent.is_symlink():
         raise ExternalBackupError(
             "BACKUP_ROOT no puede ser un enlace simbolico."
+        )
+
+    if backup_root.exists() and not backup_root.is_dir():
+        raise ExternalBackupError(
+            "BACKUP_ROOT debe ser un directorio regular."
         )
 
     backup_root.mkdir(parents=True, exist_ok=True)

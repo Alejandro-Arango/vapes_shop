@@ -321,6 +321,61 @@ class ExternalBackupTests(unittest.TestCase):
 
         self.assertEqual(runner.commands, [])
 
+    def test_external_recovery_rejects_file_backup_root_before_restore(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source_root = workspace / "source"
+            recovered_root = workspace / "recovered"
+            restore_root = workspace / "restore"
+            source_root.mkdir()
+            restore_root.mkdir()
+            recovered_root.write_text("not a directory\n", encoding="utf-8")
+            self.create_backup(source_root)
+            runner = FakeRunner(source_root)
+
+            with patch.dict(
+                os.environ,
+                self.base_environment(recovered_root, restore_root),
+                clear=False,
+            ):
+                with self.assertRaisesRegex(
+                    external.ExternalBackupError,
+                    "BACKUP_ROOT debe ser un directorio regular",
+                ):
+                    external.recover_latest_external_backup(
+                        runner,
+                        external.RECOVERY_CONFIRMATION,
+                    )
+
+            self.assertEqual(runner.commands, [])
+            self.assertTrue(recovered_root.is_file())
+
+    def test_restore_rejects_file_restore_root_before_restore(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source_root = workspace / "source"
+            restore_root = workspace / "restore"
+            source_root.mkdir()
+            restore_root.write_text("not a directory\n", encoding="utf-8")
+            self.create_backup(source_root)
+            runner = FakeRunner(source_root)
+
+            with self.assertRaisesRegex(
+                external.ExternalBackupError,
+                (
+                    "EXTERNAL_BACKUP_RESTORE_ROOT debe ser "
+                    "un directorio regular"
+                ),
+            ):
+                external.verify_restored_snapshot(
+                    runner,
+                    "b" * 64,
+                    restore_root,
+                )
+
+            self.assertEqual(runner.commands, [])
+            self.assertTrue(restore_root.is_file())
+
     def test_external_recovery_requires_exact_confirmation(self):
         runner = FakeRunner(".")
 

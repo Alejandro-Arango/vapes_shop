@@ -630,6 +630,42 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_external_backup_without_directory_guards_is_rejected(self):
+        script_text = (
+            PROJECT_ROOT / "scripts" / "external_backup.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = script_text.replace(
+            "backup_root.exists() and not backup_root.is_dir()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_external_backup_script(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/external_backup.py no contiene "
+                "backup_root.exists() and not backup_root.is_dir()"
+            ),
+            findings,
+        )
+
+        invalid_text = script_text.replace(
+            "restore_parent.exists() and not restore_parent.is_dir()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_external_backup_script(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/external_backup.py no contiene "
+                "restore_parent.exists() and not restore_parent.is_dir()"
+            ),
+            findings,
+        )
+
     def test_external_backup_config_without_pinned_checksum_is_rejected(self):
         backup_dockerfile_text = (
             PROJECT_ROOT / "docker" / "backup.Dockerfile"
