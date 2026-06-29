@@ -1,9 +1,11 @@
 import importlib.util
 import json
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "monitor_production.py"
@@ -177,6 +179,58 @@ class ProductionMonitorTests(unittest.TestCase):
                         invalid_url,
                         attempts=1,
                     )
+
+    def test_report_file_is_written_with_restricted_permissions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "production-monitor.json"
+
+            with patch.object(monitor.os, "chmod") as chmod:
+                monitor.write_report(
+                    report_path,
+                    {"status": "ok", "event": "production_readiness"},
+                )
+
+            chmod.assert_called_once_with(
+                report_path.with_suffix(".json.tmp"),
+                0o600,
+            )
+            self.assertEqual(
+                json.loads(report_path.read_text(encoding="utf-8")),
+                {"status": "ok", "event": "production_readiness"},
+            )
+
+    def test_report_symlink_paths_are_rejected_before_write(self):
+        for blocked_name in ("output", "parent", "temporary"):
+            with self.subTest(blocked_name=blocked_name):
+                with tempfile.TemporaryDirectory() as directory:
+                    report_path = Path(directory) / "production-monitor.json"
+                    temporary_path = report_path.with_suffix(".json.tmp")
+                    blocked_path = {
+                        "output": report_path,
+                        "parent": report_path.parent,
+                        "temporary": temporary_path,
+                    }[blocked_name]
+
+                    def is_symlink(path):
+                        return path == blocked_path
+
+                    with patch.object(monitor.Path, "is_symlink", is_symlink):
+                        with self.assertRaisesRegex(
+                            monitor.MonitorError,
+                            (
+                                "reporte de monitoreo productivo no admite "
+                                "enlaces simbolicos"
+                            ),
+                        ):
+                            monitor.write_report(
+                                report_path,
+                                {
+                                    "status": "ok",
+                                    "event": "production_readiness",
+                                },
+                            )
+
+                    self.assertFalse(report_path.exists())
 
 
 if __name__ == "__main__":

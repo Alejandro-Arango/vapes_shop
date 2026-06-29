@@ -10,6 +10,7 @@ import os
 import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit, urlunsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -83,6 +84,31 @@ def read_limited(response):
         raise MonitorError("La respuesta supera el limite permitido.")
 
     return body
+
+
+def write_report(path, event):
+    if not path:
+        return
+
+    output_path = Path(os.path.abspath(os.fspath(path)))
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = output_path.with_suffix(f"{output_path.suffix}.tmp")
+
+    if (
+        output_path.is_symlink()
+        or output_path.parent.is_symlink()
+        or temporary_path.is_symlink()
+    ):
+        raise MonitorError(
+            "El reporte de monitoreo productivo no admite enlaces simbolicos."
+        )
+
+    temporary_path.write_text(
+        json.dumps(event, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(temporary_path, 0o600)
+    os.replace(temporary_path, output_path)
 
 
 def check_readiness(target_url, timeout):
@@ -328,6 +354,11 @@ def build_parser():
         default=os.environ.get("MONITOR_WEBHOOK_TOKEN", ""),
     )
     parser.add_argument(
+        "--output",
+        default=os.environ.get("MONITOR_REPORT_PATH", ""),
+        help="Ruta opcional para guardar el reporte JSON del monitoreo.",
+    )
+    parser.add_argument(
         "--allow-http",
         action="store_true",
         help="Permite HTTP solo para pruebas locales.",
@@ -354,6 +385,7 @@ def main():
             webhook_token=arguments.webhook_token,
             allow_http=arguments.allow_http,
         )
+        write_report(arguments.output, event)
     except (MonitorError, ValueError) as exc:
         event = {
             "event": "production_readiness",

@@ -416,6 +416,29 @@ def validate_backup_monitor(monitor_text):
     ]
 
 
+def validate_production_monitor(monitor_text):
+    required_fragments = (
+        "MAX_RESPONSE_BYTES",
+        "NoRedirectHandler",
+        "X-Request-ID",
+        "status\": \"critical\"",
+        "send_webhook",
+        "MONITOR_REPORT_PATH",
+        "output_path.is_symlink()",
+        "output_path.parent.is_symlink()",
+        "temporary_path.is_symlink()",
+        "El reporte de monitoreo productivo no admite enlaces simbolicos",
+        "os.chmod(temporary_path, 0o600)",
+        "os.replace(temporary_path, output_path)",
+    )
+
+    return [
+        f"scripts/monitor_production.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in monitor_text
+    ]
+
+
 def validate_backup_monitor_config(
     compose_text,
     production_compose_text,
@@ -1405,6 +1428,9 @@ def find_capacity_findings(project_root):
         "host_readiness": (
             project_root / "scripts" / "check_host_readiness.py"
         ),
+        "production_monitor": (
+            project_root / "scripts" / "monitor_production.py"
+        ),
         "production_recovery": (
             project_root / "scripts" / "recover_production.py"
         ),
@@ -1512,6 +1538,11 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_backup_monitor(
             paths["backup_monitor"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_production_monitor(
+            paths["production_monitor"].read_text(encoding="utf-8")
         )
     )
     findings.extend(
