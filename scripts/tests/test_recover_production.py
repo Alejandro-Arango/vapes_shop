@@ -118,6 +118,27 @@ class ProductionRecoveryTests(unittest.TestCase):
             monotonic=lambda: next(values),
         )
 
+    def test_state_directory_symlink_is_rejected_before_lock(self):
+        runner = FakeRunner()
+
+        def is_symlink(path):
+            return path == self.state_directory
+
+        with mock.patch.object(recovery.Path, "is_symlink", is_symlink):
+            with self.assertRaisesRegex(
+                recovery.ProductionRecoveryError,
+                (
+                    "directorio de estado de recuperacion no admite "
+                    "enlaces simbolicos"
+                ),
+            ):
+                self.controller(runner)
+
+        self.assertEqual(runner.calls, [])
+        self.assertFalse(
+            self.state_directory.with_name(".deploy.lock").exists()
+        )
+
     def manual_recover(self, controller, *args, **kwargs):
         kwargs.setdefault("source_mode", "manual-break-glass")
         kwargs.setdefault("break_glass_reason", BREAK_GLASS_REASON)

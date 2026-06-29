@@ -340,7 +340,20 @@ class ProductionRecoveryController:
     ):
         self.project_root = Path(project_root).resolve()
         self.env_file = Path(env_file).resolve()
-        self.state_directory = Path(state_directory).resolve()
+        state_directory_path = Path(
+            os.path.abspath(os.fspath(state_directory))
+        )
+
+        if (
+            state_directory_path.is_symlink()
+            or state_directory_path.parent.is_symlink()
+        ):
+            raise ProductionRecoveryError(
+                "El directorio de estado de recuperacion no admite "
+                "enlaces simbolicos."
+            )
+
+        self.state_directory = state_directory_path
         self.current_state_path = self.state_directory / "current.json"
         self.recovery_journal_path = (
             self.state_directory / "recovery-in-progress.json"

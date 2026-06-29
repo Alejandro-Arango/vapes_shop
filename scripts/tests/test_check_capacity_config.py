@@ -861,6 +861,24 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_recovery_state_directory_symlink_guard_is_rejected(self):
+        inputs = self.disaster_recovery_inputs()
+        inputs["recovery_text"] = inputs["recovery_text"].replace(
+            "state_directory_path.parent.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_disaster_recovery(**inputs)
+
+        self.assertIn(
+            (
+                "recover_production.py no contiene "
+                "state_directory_path.parent.is_symlink()"
+            ),
+            findings,
+        )
+
     def test_recovery_output_report_without_temporary_guard_is_rejected(
         self,
     ):
