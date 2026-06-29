@@ -68,6 +68,8 @@ jobs:
           systemd-analyze verify \
             ops/systemd/vapes-shop-backup.service \
             ops/systemd/vapes-shop-backup.timer \
+            ops/systemd/vapes-shop-production-monitor.service \
+            ops/systemd/vapes-shop-production-monitor.timer \
             ops/systemd/vapes-shop-recovery-drill.service \
             ops/systemd/vapes-shop-recovery-drill.timer
 

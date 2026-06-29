@@ -439,6 +439,109 @@ def validate_production_monitor(monitor_text):
     ]
 
 
+def validate_production_monitor_schedule(
+    monitor_service_text,
+    monitor_timer_text,
+    monitor_env_text,
+    django_workflow_text,
+    bootstrap_text,
+    host_docs_text,
+):
+    required_fragments = (
+        (
+            monitor_service_text,
+            "monitor_production.py --attempts 3 --retry-delay 10 --timeout 10",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "EnvironmentFile=/etc/vapes-shop/production-monitor.env",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "MONITOR_REPORT_PATH=/var/lib/vapes-shop/production-monitor.json",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "NoNewPrivileges=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "PrivateTmp=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "UMask=0077",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_timer_text,
+            "OnCalendar=*:0/15",
+            "vapes-shop-production-monitor.timer",
+        ),
+        (
+            monitor_timer_text,
+            "Persistent=true",
+            "vapes-shop-production-monitor.timer",
+        ),
+        (
+            monitor_timer_text,
+            "Unit=vapes-shop-production-monitor.service",
+            "vapes-shop-production-monitor.timer",
+        ),
+        (
+            monitor_env_text,
+            "PRODUCTION_HEALTH_URL=",
+            "production-monitor.env.example",
+        ),
+        (
+            monitor_env_text,
+            "MONITOR_WEBHOOK_URL=",
+            "production-monitor.env.example",
+        ),
+        (
+            monitor_env_text,
+            "MONITOR_WEBHOOK_TOKEN=",
+            "production-monitor.env.example",
+        ),
+        (
+            django_workflow_text,
+            "vapes-shop-production-monitor.service",
+            "django-ci.yml",
+        ),
+        (
+            django_workflow_text,
+            "vapes-shop-production-monitor.timer",
+            "django-ci.yml",
+        ),
+        (
+            bootstrap_text,
+            "production-monitor.env.example",
+            "ubuntu-bootstrap.sh",
+        ),
+        (
+            host_docs_text,
+            "production-monitor.env",
+            "HOST_PROVISIONING.md",
+        ),
+        (
+            host_docs_text,
+            "vapes-shop-production-monitor.timer",
+            "HOST_PROVISIONING.md",
+        ),
+    )
+
+    return [
+        f"{label} no contiene {fragment}"
+        for text, fragment, label in required_fragments
+        if fragment not in text
+    ]
+
+
 def validate_backup_monitor_config(
     compose_text,
     production_compose_text,
@@ -1118,17 +1221,24 @@ def validate_host_provisioning(
         "useradd",
         "--shell /usr/sbin/nologin",
         "usermod --append --groups docker",
+        "vapes-shop-production-monitor.service",
+        "production-monitor.env.example",
         "systemctl daemon-reload",
     )
     readiness_fragments = (
         "SUPPORTED_UBUNTU_RELEASES",
         "SAFE_BIND_ADDRESSES",
+        "OPERATIONAL_UNITS",
+        "PRODUCTION_TIMERS",
         "APP_BIND_ADDRESS debe limitar el proxy a loopback",
         "EXTERNAL_BACKUP_ENABLED debe ser true",
         "BACKUP_REQUIRE_EXTERNAL debe ser true",
         "apt-daily-upgrade.timer",
         "vapes-shop-backup.timer",
+        "vapes-shop-production-monitor.timer",
         "vapes-shop-recovery-drill.timer",
+        "production-monitor.env.example",
+        "production-monitor.env",
         "os.replace(temporary_path, output_path)",
         "output_path.is_symlink()",
         "temporary_path.is_symlink()",
@@ -1401,6 +1511,18 @@ def find_capacity_findings(project_root):
         "backup_timer": (
             project_root / "ops" / "systemd" / "vapes-shop-backup.timer"
         ),
+        "monitor_service": (
+            project_root
+            / "ops"
+            / "systemd"
+            / "vapes-shop-production-monitor.service"
+        ),
+        "monitor_timer": (
+            project_root
+            / "ops"
+            / "systemd"
+            / "vapes-shop-production-monitor.timer"
+        ),
         "drill_service": (
             project_root
             / "ops"
@@ -1418,6 +1540,12 @@ def find_capacity_findings(project_root):
             / "ops"
             / "systemd"
             / "backup-operations.env.example"
+        ),
+        "monitor_env": (
+            project_root
+            / "ops"
+            / "systemd"
+            / "production-monitor.env.example"
         ),
         "host_bootstrap": (
             project_root
@@ -1445,6 +1573,9 @@ def find_capacity_findings(project_root):
         ),
         "publish_workflow": (
             project_root / ".github" / "workflows" / "publish-images.yml"
+        ),
+        "host_docs": (
+            project_root / "docs" / "HOST_PROVISIONING.md"
         ),
     }
     missing_paths = [
@@ -1543,6 +1674,16 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_production_monitor(
             paths["production_monitor"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_production_monitor_schedule(
+            paths["monitor_service"].read_text(encoding="utf-8"),
+            paths["monitor_timer"].read_text(encoding="utf-8"),
+            paths["monitor_env"].read_text(encoding="utf-8"),
+            paths["django_workflow"].read_text(encoding="utf-8"),
+            paths["host_bootstrap"].read_text(encoding="utf-8"),
+            paths["host_docs"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

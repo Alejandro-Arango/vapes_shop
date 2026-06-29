@@ -554,6 +554,70 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def production_monitor_schedule_inputs(self):
+        systemd_root = PROJECT_ROOT / "ops" / "systemd"
+        return {
+            "monitor_service_text": (
+                systemd_root / "vapes-shop-production-monitor.service"
+            ).read_text(encoding="utf-8"),
+            "monitor_timer_text": (
+                systemd_root / "vapes-shop-production-monitor.timer"
+            ).read_text(encoding="utf-8"),
+            "monitor_env_text": (
+                systemd_root / "production-monitor.env.example"
+            ).read_text(encoding="utf-8"),
+            "django_workflow_text": (
+                PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+            ).read_text(encoding="utf-8"),
+            "bootstrap_text": (
+                PROJECT_ROOT
+                / "ops"
+                / "provision"
+                / "ubuntu-bootstrap.sh"
+            ).read_text(encoding="utf-8"),
+            "host_docs_text": (
+                PROJECT_ROOT / "docs" / "HOST_PROVISIONING.md"
+            ).read_text(encoding="utf-8"),
+        }
+
+    def test_production_monitor_schedule_without_timer_is_rejected(self):
+        inputs = self.production_monitor_schedule_inputs()
+        inputs["monitor_timer_text"] = inputs["monitor_timer_text"].replace(
+            "Persistent=true",
+            "Persistent=false",
+            1,
+        )
+
+        findings = capacity.validate_production_monitor_schedule(**inputs)
+
+        self.assertIn(
+            (
+                "vapes-shop-production-monitor.timer no contiene "
+                "Persistent=true"
+            ),
+            findings,
+        )
+
+    def test_production_monitor_schedule_without_env_file_is_rejected(self):
+        inputs = self.production_monitor_schedule_inputs()
+        inputs["monitor_service_text"] = inputs[
+            "monitor_service_text"
+        ].replace(
+            "EnvironmentFile=/etc/vapes-shop/production-monitor.env",
+            "EnvironmentFile=/etc/vapes-shop/unsafe-monitor.env",
+            1,
+        )
+
+        findings = capacity.validate_production_monitor_schedule(**inputs)
+
+        self.assertIn(
+            (
+                "vapes-shop-production-monitor.service no contiene "
+                "EnvironmentFile=/etc/vapes-shop/production-monitor.env"
+            ),
+            findings,
+        )
+
     def test_backup_monitor_without_root_symlink_guard_is_rejected(self):
         monitor_text = (
             PROJECT_ROOT / "scripts" / "monitor_backups.py"

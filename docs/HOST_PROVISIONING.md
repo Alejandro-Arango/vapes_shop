@@ -15,7 +15,8 @@ El bootstrap:
 - crea directorios con permisos restrictivos;
 - activa actualizaciones de seguridad sin reinicios automaticos;
 - configura UFW con entrada denegada por defecto;
-- instala, pero no activa, los timers de backup y recuperacion.
+- instala, pero no activa, los timers de backup, recuperacion y monitoreo
+  productivo.
 
 No modifica `sshd_config`, claves SSH, usuarios administrativos, DNS ni TLS.
 Esos cambios pueden cortar el acceso y requieren conocer el proveedor y la
@@ -110,6 +111,22 @@ Las actualizaciones automaticas cubren los repositorios oficiales de Ubuntu.
 Docker CE procede de un repositorio externo y debe actualizarse durante una
 ventana de mantenimiento, seguida de esta auditoria y una prueba de despliegue.
 
+Crea `/etc/vapes-shop/production-monitor.env` a partir del ejemplo cuando ya
+exista una URL HTTPS de readiness accesible desde el host. Sin dominio/TLS, el
+timer debe permanecer deshabilitado.
+
+```bash
+sudo cp \
+  /etc/vapes-shop/production-monitor.env.example \
+  /etc/vapes-shop/production-monitor.env
+sudo editor /etc/vapes-shop/production-monitor.env
+sudo chown root:vapes-shop /etc/vapes-shop/production-monitor.env
+sudo chmod 0640 /etc/vapes-shop/production-monitor.env
+```
+
+`PRODUCTION_HEALTH_URL` debe apuntar a `/healthz` por HTTPS. No incluyas tokens
+en la URL; usa `MONITOR_WEBHOOK_URL` y `MONITOR_WEBHOOK_TOKEN` para alertas.
+
 ## Auditoria
 
 Tras el bootstrap:
@@ -125,6 +142,7 @@ Despues del primer despliegue y de activar los timers:
 ```bash
 sudo systemctl enable --now \
   vapes-shop-backup.timer \
+  vapes-shop-production-monitor.timer \
   vapes-shop-recovery-drill.timer
 sudo python3 scripts/check_host_readiness.py \
   --mode production \
@@ -137,6 +155,7 @@ El modo `production` tambien exige:
 - puerto de aplicacion limitado a loopback;
 - backup externo obligatorio;
 - estado de despliegue `.deploy/current.json`;
+- entorno de monitoreo productivo con permisos restrictivos;
 - timers operativos habilitados.
 
 Un resultado `critical` bloquea la salida a produccion. El reporte no contiene

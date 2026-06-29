@@ -52,6 +52,8 @@ validate_input() {
   for unit in \
     vapes-shop-backup.service \
     vapes-shop-backup.timer \
+    vapes-shop-production-monitor.service \
+    vapes-shop-production-monitor.timer \
     vapes-shop-recovery-drill.service \
     vapes-shop-recovery-drill.timer; do
     [[ -f "${SYSTEMD_ROOT}/${unit}" ]] ||
@@ -232,12 +234,17 @@ install_operational_units() {
   install -m 0644 \
     "${SYSTEMD_ROOT}/vapes-shop-backup.service" \
     "${SYSTEMD_ROOT}/vapes-shop-backup.timer" \
+    "${SYSTEMD_ROOT}/vapes-shop-production-monitor.service" \
+    "${SYSTEMD_ROOT}/vapes-shop-production-monitor.timer" \
     "${SYSTEMD_ROOT}/vapes-shop-recovery-drill.service" \
     "${SYSTEMD_ROOT}/vapes-shop-recovery-drill.timer" \
     /etc/systemd/system/
   install -m 0640 -o root -g "${APP_GROUP}" \
     "${SYSTEMD_ROOT}/backup-operations.env.example" \
     /etc/vapes-shop/backup-operations.env.example
+  install -m 0640 -o root -g "${APP_GROUP}" \
+    "${SYSTEMD_ROOT}/production-monitor.env.example" \
+    /etc/vapes-shop/production-monitor.env.example
   systemctl daemon-reload
 }
 

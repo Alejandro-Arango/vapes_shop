@@ -46,6 +46,8 @@ proveedor de hosting.
 
 - Revisar `web`, `db` y la tabla de cache.
 - Buscar el `request_id` de la alerta en logs de `proxy` y `web`.
+- Conservar `/var/lib/vapes-shop/production-monitor.json` y el journal de
+  `vapes-shop-production-monitor.service`.
 - Confirmar espacio en disco, memoria, conexiones y estado de MySQL.
 
 ### El monitor de backups falla

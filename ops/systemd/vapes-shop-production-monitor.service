@@ -1,0 +1,21 @@
+[Unit]
+Description=Vape Shop external production readiness monitor
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/srv/vapes-shop/scripts/monitor_production.py
+ConditionPathExists=/etc/vapes-shop/production-monitor.env
+
+[Service]
+Type=oneshot
+User=vapes-shop
+Group=vapes-shop
+WorkingDirectory=/srv/vapes-shop
+Environment=MONITOR_REPORT_PATH=/var/lib/vapes-shop/production-monitor.json
+EnvironmentFile=/etc/vapes-shop/production-monitor.env
+StateDirectory=vapes-shop
+StateDirectoryMode=0750
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=2m
+ExecStart=/usr/bin/python3 /srv/vapes-shop/scripts/monitor_production.py --attempts 3 --retry-delay 10 --timeout 10

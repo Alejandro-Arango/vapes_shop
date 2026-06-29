@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule Vape Shop external production readiness monitor
+
+[Timer]
+OnCalendar=*:0/15
+RandomizedDelaySec=2m
+Persistent=true
+AccuracySec=30s
+Unit=vapes-shop-production-monitor.service
+
+[Install]
+WantedBy=timers.target

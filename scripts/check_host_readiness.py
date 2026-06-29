@@ -17,6 +17,19 @@ from pathlib import Path
 SUPPORTED_UBUNTU_RELEASES = {"22.04", "24.04"}
 SAFE_BIND_ADDRESSES = {"127.0.0.1"}
 ENV_KEY_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
+OPERATIONAL_UNITS = (
+    "vapes-shop-backup.service",
+    "vapes-shop-backup.timer",
+    "vapes-shop-production-monitor.service",
+    "vapes-shop-production-monitor.timer",
+    "vapes-shop-recovery-drill.service",
+    "vapes-shop-recovery-drill.timer",
+)
+PRODUCTION_TIMERS = (
+    "vapes-shop-backup.timer",
+    "vapes-shop-production-monitor.timer",
+    "vapes-shop-recovery-drill.timer",
+)
 
 
 def utc_now():
@@ -285,12 +298,18 @@ def audit_host(
             "ejemplo de configuracion operativa",
         )
     )
-    for unit in (
-        "vapes-shop-backup.service",
-        "vapes-shop-backup.timer",
-        "vapes-shop-recovery-drill.service",
-        "vapes-shop-recovery-drill.timer",
-    ):
+    findings.extend(
+        validate_path(
+            Path(
+                "/etc/vapes-shop/"
+                "production-monitor.env.example"
+            ),
+            0,
+            0o640,
+            "ejemplo de monitoreo productivo",
+        )
+    )
+    for unit in OPERATIONAL_UNITS:
         findings.extend(
             validate_path(
                 Path("/etc/systemd/system") / unit,
@@ -343,10 +362,15 @@ def audit_host(
                 "estado productivo actual",
             )
         )
-        for timer in (
-            "vapes-shop-backup.timer",
-            "vapes-shop-recovery-drill.timer",
-        ):
+        findings.extend(
+            validate_path(
+                Path("/etc/vapes-shop/production-monitor.env"),
+                0,
+                0o640,
+                "entorno de monitoreo productivo",
+            )
+        )
+        for timer in PRODUCTION_TIMERS:
             checks.append(
                 command_check(
                     runner,

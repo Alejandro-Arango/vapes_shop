@@ -86,6 +86,12 @@ class HostReadinessTests(unittest.TestCase):
         self.assertIn("EXTERNAL_BACKUP_ENABLED debe ser true.", findings)
         self.assertIn("BACKUP_REQUIRE_EXTERNAL debe ser true.", findings)
 
+    def test_production_timers_include_readiness_monitor(self):
+        self.assertIn(
+            "vapes-shop-production-monitor.timer",
+            readiness.PRODUCTION_TIMERS,
+        )
+
     def test_world_readable_secret_path_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             secret_path = Path(temporary_directory) / "secret"
