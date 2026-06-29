@@ -68,6 +68,27 @@ class DeploymentControllerTests(unittest.TestCase):
             wait_timeout=30,
         )
 
+    def test_state_directory_symlink_is_rejected_before_lock(self):
+        runner = FakeRunner()
+
+        def is_symlink(path):
+            return path == self.state_directory
+
+        with mock.patch.object(deploy.Path, "is_symlink", is_symlink):
+            with self.assertRaisesRegex(
+                deploy.DeploymentError,
+                (
+                    "directorio de estado de despliegue no admite "
+                    "enlaces simbolicos"
+                ),
+            ):
+                self.build_controller(runner)
+
+        self.assertEqual(runner.calls, [])
+        self.assertFalse(
+            self.state_directory.with_name(".deploy.lock").exists()
+        )
+
     def test_state_files_are_written_with_restricted_permissions(self):
         controller = self.build_controller(FakeRunner())
         state_path = self.state_directory / "current.json"

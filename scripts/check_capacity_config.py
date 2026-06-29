@@ -1130,6 +1130,9 @@ def validate_host_provisioning(
 
     for fragment in (
         "os.chmod(temporary_path, 0o600)",
+        "state_directory_path.is_symlink()",
+        "state_directory_path.parent.is_symlink()",
+        "El directorio de estado de despliegue no admite",
         "path.is_symlink()",
         "path.parent.is_symlink()",
         "temporary_path.is_symlink()",
