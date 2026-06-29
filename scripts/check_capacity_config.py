@@ -912,6 +912,14 @@ def validate_release_manifest(
             )
         )
 
+    if manifest_text.count("path.exists() and path.is_dir()") < 2:
+        findings.append(
+            (
+                "release_manifest.py debe rechazar destinos directorio "
+                "en manifiesto y checksum"
+            )
+        )
+
     if "gh release upload \"$RELEASE_TAG\"" in publish_workflow_text and (
         "--clobber" in publish_workflow_text
     ):

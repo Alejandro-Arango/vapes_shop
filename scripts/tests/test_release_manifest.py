@@ -136,6 +136,44 @@ class ReleaseManifestTests(unittest.TestCase):
             ):
                 manifest.write_checksum(manifest_path, manifest_path)
 
+    def test_manifest_directory_destination_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest_path = Path(directory) / "recovery-manifest.json"
+            manifest_path.mkdir()
+
+            with self.assertRaisesRegex(
+                manifest.ReleaseManifestError,
+                "archivo regular",
+            ):
+                manifest.write_manifest(
+                    manifest_path,
+                    self.valid_manifest(),
+                )
+
+            self.assertTrue(manifest_path.is_dir())
+            self.assertFalse(
+                manifest_path.with_suffix(".json.tmp").exists()
+            )
+
+    def test_checksum_directory_destination_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest_path = root / "recovery-manifest.json"
+            checksum_path = root / "recovery-manifest.sha256"
+            manifest.write_manifest(manifest_path, self.valid_manifest())
+            checksum_path.mkdir()
+
+            with self.assertRaisesRegex(
+                manifest.ReleaseManifestError,
+                "archivo regular",
+            ):
+                manifest.write_checksum(checksum_path, manifest_path)
+
+            self.assertTrue(checksum_path.is_dir())
+            self.assertFalse(
+                checksum_path.with_suffix(".sha256.tmp").exists()
+            )
+
     def test_temporary_manifest_symlink_is_rejected_before_write(self):
         with tempfile.TemporaryDirectory() as directory:
             manifest_path = Path(directory) / "recovery-manifest.json"

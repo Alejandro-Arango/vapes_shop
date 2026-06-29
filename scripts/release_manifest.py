@@ -226,6 +226,11 @@ def write_manifest(output_path, payload):
             "El manifiesto no puede reemplazar un enlace simbolico."
         )
 
+    if path.exists() and path.is_dir():
+        raise ReleaseManifestError(
+            "El manifiesto debe escribirse en un archivo regular."
+        )
+
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = path.with_suffix(path.suffix + ".tmp")
 
@@ -268,6 +273,11 @@ def write_checksum(checksum_path, manifest_path):
     if path.name != "recovery-manifest.sha256":
         raise ReleaseManifestError(
             "El asset debe llamarse recovery-manifest.sha256."
+        )
+
+    if path.exists() and path.is_dir():
+        raise ReleaseManifestError(
+            "El checksum debe escribirse en un archivo regular."
         )
 
     path.parent.mkdir(parents=True, exist_ok=True)
