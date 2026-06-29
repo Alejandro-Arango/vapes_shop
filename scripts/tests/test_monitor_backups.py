@@ -184,6 +184,38 @@ class BackupMonitorTests(unittest.TestCase):
                     disk_usage=lambda _: LowDisk(),
                 )
 
+    def test_backup_root_symlink_is_rejected_before_reading_latest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            backup_root = root / "backups"
+            backup_root.mkdir()
+
+            def is_symlink(path):
+                return path == backup_root
+
+            with patch.object(monitor.Path, "is_symlink", is_symlink):
+                with self.assertRaisesRegex(
+                    monitor.BackupMonitorError,
+                    "BACKUP_ROOT no puede ser un enlace simbolico",
+                ):
+                    self.verify(backup_root)
+
+    def test_backup_root_parent_symlink_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            backup_root = root / "backups"
+            backup_root.mkdir()
+
+            def is_symlink(path):
+                return path == root
+
+            with patch.object(monitor.Path, "is_symlink", is_symlink):
+                with self.assertRaisesRegex(
+                    monitor.BackupMonitorError,
+                    "BACKUP_ROOT no puede ser un enlace simbolico",
+                ):
+                    self.verify(backup_root)
+
     def test_run_monitor_reports_critical_without_webhook(self):
         with tempfile.TemporaryDirectory() as directory:
             exit_code, event = monitor.run_monitor(

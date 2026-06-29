@@ -231,7 +231,12 @@ def verify_backup(
             "min_free_percent debe estar entre 0 y 100."
         )
 
-    root = Path(backup_root).resolve()
+    root = Path(os.path.abspath(os.fspath(backup_root)))
+
+    if root.is_symlink() or root.parent.is_symlink():
+        raise BackupMonitorError(
+            "BACKUP_ROOT no puede ser un enlace simbolico."
+        )
 
     if not root.is_dir():
         raise BackupMonitorError("BACKUP_ROOT no existe o no es un directorio.")

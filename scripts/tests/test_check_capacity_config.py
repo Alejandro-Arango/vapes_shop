@@ -514,6 +514,23 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_backup_monitor_without_root_symlink_guard_is_rejected(self):
+        monitor_text = (
+            PROJECT_ROOT / "scripts" / "monitor_backups.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = monitor_text.replace(
+            "root.parent.is_symlink()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_backup_monitor(invalid_text)
+
+        self.assertIn(
+            "scripts/monitor_backups.py no contiene root.parent.is_symlink()",
+            findings,
+        )
+
     def test_backup_monitor_config_without_read_only_mount_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8"
