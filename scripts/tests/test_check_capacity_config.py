@@ -860,6 +860,55 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_dependabot_without_docker_directory_is_rejected(self):
+        dependabot_text = (
+            PROJECT_ROOT / ".github" / "dependabot.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = dependabot_text.replace(
+            "  - package-ecosystem: docker\n"
+            "    directory: /docker\n"
+            "    schedule:\n"
+            "      interval: weekly\n"
+            "      day: monday\n"
+            "      time: \"10:30\"\n"
+            "      timezone: America/Bogota\n"
+            "    open-pull-requests-limit: 3\n"
+            "    groups:\n"
+            "      operations-container-images:\n"
+            "        update-types:\n"
+            "          - minor\n"
+            "          - patch\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_dependabot_config(invalid_text)
+
+        self.assertIn(
+            (
+                "dependabot.yml no configura imagenes Docker operativas "
+                "(docker en /docker)"
+            ),
+            findings,
+        )
+
+    def test_dependabot_without_weekly_schedule_is_rejected(self):
+        dependabot_text = (
+            PROJECT_ROOT / ".github" / "dependabot.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = dependabot_text.replace(
+            "      interval: weekly\n",
+            "      interval: monthly\n",
+            1,
+        )
+
+        findings = capacity.validate_dependabot_config(invalid_text)
+
+        self.assertIn(
+            "dependabot.yml no fija interval: weekly para dependencias Python",
+            findings,
+        )
+
     def production_monitor_schedule_inputs(self):
         systemd_root = PROJECT_ROOT / "ops" / "systemd"
         return {

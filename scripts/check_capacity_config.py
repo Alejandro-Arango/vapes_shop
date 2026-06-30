@@ -779,6 +779,62 @@ def validate_official_action_pins(workflow_texts):
     return findings
 
 
+def dependabot_update_block(dependabot_text, ecosystem, directory):
+    pattern = re.compile(
+        rf"(?ms)^  - package-ecosystem: {re.escape(ecosystem)}\n"
+        rf"(?P<block>.*?)(?=^  - package-ecosystem:|\Z)"
+    )
+
+    for match in pattern.finditer(dependabot_text):
+        block = match.group("block")
+
+        if f"    directory: {directory}\n" in block:
+            return block
+
+    return None
+
+
+def validate_dependabot_config(dependabot_text):
+    findings = []
+    required_updates = (
+        ("pip", "/backend", "dependencias Python"),
+        ("docker", "/", "imagenes Docker raiz"),
+        ("docker", "/docker", "imagenes Docker operativas"),
+        ("github-actions", "/", "GitHub Actions"),
+    )
+
+    if "version: 2" not in dependabot_text:
+        findings.append("dependabot.yml no usa version 2")
+
+    for ecosystem, directory, label in required_updates:
+        block = dependabot_update_block(dependabot_text, ecosystem, directory)
+
+        if block is None:
+            findings.append(
+                (
+                    "dependabot.yml no configura "
+                    f"{label} ({ecosystem} en {directory})"
+                )
+            )
+            continue
+
+        required_fragments = (
+            "    schedule:\n",
+            "      interval: weekly\n",
+            "      timezone: America/Bogota\n",
+            "    open-pull-requests-limit:",
+            "    groups:\n",
+        )
+
+        for fragment in required_fragments:
+            if fragment not in block:
+                findings.append(
+                    f"dependabot.yml no fija {fragment.strip()} para {label}"
+                )
+
+    return findings
+
+
 def validate_backup_monitor_config(
     compose_text,
     production_compose_text,
@@ -1811,6 +1867,7 @@ def find_capacity_findings(project_root):
         "publish_workflow": (
             project_root / ".github" / "workflows" / "publish-images.yml"
         ),
+        "dependabot": project_root / ".github" / "dependabot.yml",
         "secret_scan_workflow": (
             project_root / ".github" / "workflows" / "secret-scan.yml"
         ),
@@ -1846,6 +1903,11 @@ def find_capacity_findings(project_root):
     }
 
     findings.extend(validate_official_action_pins(workflow_texts))
+    findings.extend(
+        validate_dependabot_config(
+            paths["dependabot"].read_text(encoding="utf-8")
+        )
+    )
     findings.extend(
         validate_compose(paths["compose"].read_text(encoding="utf-8"))
     )
