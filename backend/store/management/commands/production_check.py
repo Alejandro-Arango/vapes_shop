@@ -54,6 +54,7 @@ class Command(BaseCommand):
         self.check_csrf(errors)
         self.check_https(errors)
         self.check_content_security_policy(errors)
+        self.check_browser_security_headers(errors)
         self.check_database(errors, options["allow_sqlite"])
         self.check_cache(errors)
         self.check_observability(errors)
@@ -158,6 +159,51 @@ class Command(BaseCommand):
         if "'unsafe-eval'" in policy:
             errors.append(
                 "DJANGO_CONTENT_SECURITY_POLICY no debe permitir 'unsafe-eval'."
+            )
+
+    def check_browser_security_headers(self, errors):
+        if not getattr(settings, "SECURE_CONTENT_TYPE_NOSNIFF", False):
+            errors.append("SECURE_CONTENT_TYPE_NOSNIFF debe estar activo.")
+
+        if getattr(settings, "X_FRAME_OPTIONS", "") != "DENY":
+            errors.append("X_FRAME_OPTIONS debe ser DENY.")
+
+        referrer_policy = getattr(settings, "SECURE_REFERRER_POLICY", "")
+
+        if referrer_policy in ("unsafe-url", "no-referrer-when-downgrade"):
+            errors.append(
+                "DJANGO_SECURE_REFERRER_POLICY no debe ser permisiva."
+            )
+
+        if getattr(settings, "SECURE_CROSS_ORIGIN_OPENER_POLICY", "") != (
+            "same-origin"
+        ):
+            errors.append(
+                "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY debe ser same-origin."
+            )
+
+        permissions_policy = getattr(settings, "PERMISSIONS_POLICY", "")
+        required_permissions = (
+            "camera=()",
+            "microphone=()",
+            "geolocation=()",
+            "payment=()",
+        )
+
+        for directive in required_permissions:
+            if directive not in permissions_policy:
+                errors.append(
+                    f"DJANGO_PERMISSIONS_POLICY debe incluir {directive}."
+                )
+
+        required_middleware = {
+            "store.middleware.ContentSecurityPolicyMiddleware",
+            "store.middleware.PermissionsPolicyMiddleware",
+        }
+
+        if not required_middleware.issubset(set(settings.MIDDLEWARE)):
+            errors.append(
+                "La aplicacion debe activar middleware de CSP y Permissions-Policy."
             )
 
     def check_database(self, errors, allow_sqlite):

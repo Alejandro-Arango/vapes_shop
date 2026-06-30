@@ -1282,6 +1282,41 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        SECURE_CONTENT_TYPE_NOSNIFF=False,
+        X_FRAME_OPTIONS="SAMEORIGIN",
+        SECURE_REFERRER_POLICY="unsafe-url",
+        SECURE_CROSS_ORIGIN_OPENER_POLICY="unsafe-none",
+        PERMISSIONS_POLICY="camera=()",
+        MIDDLEWARE=[],
+    )
+    def test_production_check_rejects_degraded_browser_headers(self):
+        errors = []
+
+        ProductionCheckCommand().check_browser_security_headers(errors)
+
+        self.assertIn("SECURE_CONTENT_TYPE_NOSNIFF debe estar activo.", errors)
+        self.assertIn("X_FRAME_OPTIONS debe ser DENY.", errors)
+        self.assertIn(
+            "DJANGO_SECURE_REFERRER_POLICY no debe ser permisiva.",
+            errors,
+        )
+        self.assertIn(
+            (
+                "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY debe ser "
+                "same-origin."
+            ),
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_PERMISSIONS_POLICY debe incluir microphone=().",
+            errors,
+        )
+        self.assertIn(
+            "La aplicacion debe activar middleware de CSP y Permissions-Policy.",
+            errors,
+        )
+
+    @override_settings(
         LOG_FORMAT="simple",
         MIDDLEWARE=[],
     )
