@@ -654,6 +654,40 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_django_ci_without_validate_timeout_is_rejected(self):
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = workflow_text.replace(
+            "    timeout-minutes: 20\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_django_workflow_timeouts(invalid_text)
+
+        self.assertIn(
+            "django-ci.yml no limita validate a 20 minutos",
+            findings,
+        )
+
+    def test_django_ci_without_recovery_timeout_is_rejected(self):
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = workflow_text.replace(
+            "    timeout-minutes: 30\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_django_workflow_timeouts(invalid_text)
+
+        self.assertIn(
+            "django-ci.yml no limita recovery a 30 minutos",
+            findings,
+        )
+
     def production_monitor_schedule_inputs(self):
         systemd_root = PROJECT_ROOT / "ops" / "systemd"
         return {

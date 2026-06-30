@@ -11,6 +11,7 @@ jobs:
   validate:
     name: Validar backend Django
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     defaults:
       run:
@@ -129,6 +130,7 @@ jobs:
   container:
     name: Validar imagen y Compose
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     permissions:
       contents: read
@@ -553,6 +555,7 @@ jobs:
   recovery:
     name: Probar respaldo y restauracion
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     permissions:
       contents: read
