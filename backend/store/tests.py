@@ -1265,6 +1265,27 @@ class StoreApiTests(APITestCase):
             )
 
     @override_settings(
+        ALLOWED_HOSTS=[
+            "localhost",
+            "127.0.0.1:8000",
+            "https://example.com",
+        ],
+    )
+    def test_production_check_rejects_local_or_url_allowed_hosts(self):
+        errors = []
+
+        ProductionCheckCommand().check_hosts(errors)
+
+        self.assertIn(
+            "DJANGO_ALLOWED_HOSTS no debe usar hosts locales en produccion.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_ALLOWED_HOSTS debe contener hostnames, no URLs completas.",
+            errors,
+        )
+
+    @override_settings(
         CONTENT_SECURITY_POLICY="default-src *; script-src 'self' 'unsafe-eval'",
     )
     def test_production_check_rejects_insecure_content_security_policy(self):

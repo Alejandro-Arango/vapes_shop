@@ -20,6 +20,13 @@ LOCAL_ORIGINS = (
     "http://127.0.0.1",
     "http://localhost",
 )
+LOCAL_HOSTS = (
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "::1",
+    "[::1]",
+)
 UNSAFE_EMAIL_BACKENDS = (
     "django.core.mail.backends.console.EmailBackend",
     "django.core.mail.backends.locmem.EmailBackend",
@@ -102,6 +109,30 @@ class Command(BaseCommand):
 
         if "*" in allowed_hosts:
             errors.append("DJANGO_ALLOWED_HOSTS no debe usar '*'.")
+
+        if any(
+            "://" in str(host) or "/" in str(host)
+            for host in allowed_hosts
+        ):
+            errors.append(
+                "DJANGO_ALLOWED_HOSTS debe contener hostnames, no URLs completas."
+            )
+
+        if any(self.is_local_allowed_host(host) for host in allowed_hosts):
+            errors.append(
+                "DJANGO_ALLOWED_HOSTS no debe usar hosts locales en produccion."
+            )
+
+    def is_local_allowed_host(self, host):
+        normalized_host = str(host).strip().lower()
+
+        if normalized_host.startswith("[::1]"):
+            return True
+
+        if normalized_host.count(":") == 1:
+            normalized_host = normalized_host.rsplit(":", 1)[0]
+
+        return normalized_host in LOCAL_HOSTS
 
     def check_csrf(self, errors):
         trusted_origins = getattr(settings, "CSRF_TRUSTED_ORIGINS", [])
