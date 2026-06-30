@@ -597,6 +597,53 @@ def validate_codeowners(codeowners_text):
     ]
 
 
+def workflow_job_has_timeout(workflow_text, job_name, timeout_minutes):
+    marker = f"  {job_name}:\n"
+    start = workflow_text.find(marker)
+
+    if start == -1:
+        return False
+
+    remaining_text = workflow_text[start + len(marker):]
+    next_job = re.search(r"\n  [A-Za-z0-9_-]+:\n", remaining_text)
+    end = next_job.start() if next_job else len(remaining_text)
+    job_block = remaining_text[:end]
+
+    return f"    timeout-minutes: {timeout_minutes}\n" in job_block
+
+
+def validate_security_workflow_timeouts(
+    secret_scan_workflow_text,
+    supply_chain_workflow_text,
+):
+    required_jobs = (
+        (
+            secret_scan_workflow_text,
+            "secret-scan.yml",
+            "gitleaks",
+            15,
+        ),
+        (
+            supply_chain_workflow_text,
+            "supply-chain.yml",
+            "python-dependencies",
+            15,
+        ),
+        (
+            supply_chain_workflow_text,
+            "supply-chain.yml",
+            "container-images",
+            30,
+        ),
+    )
+
+    return [
+        f"{workflow_name} no limita {job_name} a {timeout_minutes} minutos"
+        for workflow_text, workflow_name, job_name, timeout_minutes in required_jobs
+        if not workflow_job_has_timeout(workflow_text, job_name, timeout_minutes)
+    ]
+
+
 def validate_backup_monitor_config(
     compose_text,
     production_compose_text,
@@ -1629,6 +1676,12 @@ def find_capacity_findings(project_root):
         "publish_workflow": (
             project_root / ".github" / "workflows" / "publish-images.yml"
         ),
+        "secret_scan_workflow": (
+            project_root / ".github" / "workflows" / "secret-scan.yml"
+        ),
+        "supply_chain_workflow": (
+            project_root / ".github" / "workflows" / "supply-chain.yml"
+        ),
         "codeowners": project_root / ".github" / "CODEOWNERS",
         "production_monitor_workflow": (
             project_root
@@ -1741,6 +1794,12 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_codeowners(
             paths["codeowners"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_security_workflow_timeouts(
+            paths["secret_scan_workflow"].read_text(encoding="utf-8"),
+            paths["supply_chain_workflow"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

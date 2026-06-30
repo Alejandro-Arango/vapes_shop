@@ -608,6 +608,52 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_secret_scan_without_timeout_is_rejected(self):
+        secret_scan_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "secret-scan.yml"
+        ).read_text(encoding="utf-8")
+        supply_chain_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "supply-chain.yml"
+        ).read_text(encoding="utf-8")
+        invalid_secret_scan = secret_scan_text.replace(
+            "    timeout-minutes: 15\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_security_workflow_timeouts(
+            invalid_secret_scan,
+            supply_chain_text,
+        )
+
+        self.assertIn(
+            "secret-scan.yml no limita gitleaks a 15 minutos",
+            findings,
+        )
+
+    def test_supply_chain_without_image_timeout_is_rejected(self):
+        secret_scan_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "secret-scan.yml"
+        ).read_text(encoding="utf-8")
+        supply_chain_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "supply-chain.yml"
+        ).read_text(encoding="utf-8")
+        invalid_supply_chain = supply_chain_text.replace(
+            "    timeout-minutes: 30\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_security_workflow_timeouts(
+            secret_scan_text,
+            invalid_supply_chain,
+        )
+
+        self.assertIn(
+            "supply-chain.yml no limita container-images a 30 minutos",
+            findings,
+        )
+
     def production_monitor_schedule_inputs(self):
         systemd_root = PROJECT_ROOT / "ops" / "systemd"
         return {
