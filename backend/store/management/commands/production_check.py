@@ -53,6 +53,7 @@ class Command(BaseCommand):
         self.check_hosts(errors)
         self.check_csrf(errors)
         self.check_https(errors)
+        self.check_proxy_headers(errors)
         self.check_content_security_policy(errors)
         self.check_browser_security_headers(errors)
         self.check_database(errors, options["allow_sqlite"])
@@ -135,6 +136,21 @@ class Command(BaseCommand):
 
         if not settings.SECURE_HSTS_PRELOAD:
             errors.append("DJANGO_SECURE_HSTS_PRELOAD debe ser True.")
+
+    def check_proxy_headers(self, errors):
+        expected_proxy_header = ("HTTP_X_FORWARDED_PROTO", "https")
+
+        if getattr(settings, "SECURE_PROXY_SSL_HEADER", None) != (
+            expected_proxy_header
+        ):
+            errors.append(
+                "DJANGO_USE_X_FORWARDED_PROTO debe estar activo tras el proxy."
+            )
+
+        if not getattr(settings, "TRUST_X_FORWARDED_FOR", False):
+            errors.append(
+                "DJANGO_TRUST_X_FORWARDED_FOR debe estar activo tras el proxy confiable."
+            )
 
     def check_content_security_policy(self, errors):
         policy = getattr(settings, "CONTENT_SECURITY_POLICY", "")
@@ -272,11 +288,6 @@ class Command(BaseCommand):
 
         if not settings.ADMIN_ALLOWED_IPS:
             errors.append("DJANGO_ADMIN_ALLOWED_IPS debe restringir el admin por IP.")
-
-        if not getattr(settings, "TRUST_X_FORWARDED_FOR", False):
-            warnings.append(
-                "DJANGO_TRUST_X_FORWARDED_FOR esta desactivado; activalo solo si tu proxy limpia esa cabecera."
-            )
 
         if settings.ADMIN_SESSION_COOKIE_AGE > 3600:
             errors.append(

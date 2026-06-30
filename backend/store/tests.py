@@ -1317,6 +1317,27 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        SECURE_PROXY_SSL_HEADER=None,
+        TRUST_X_FORWARDED_FOR=False,
+    )
+    def test_production_check_rejects_missing_proxy_forwarding(self):
+        errors = []
+
+        ProductionCheckCommand().check_proxy_headers(errors)
+
+        self.assertIn(
+            "DJANGO_USE_X_FORWARDED_PROTO debe estar activo tras el proxy.",
+            errors,
+        )
+        self.assertIn(
+            (
+                "DJANGO_TRUST_X_FORWARDED_FOR debe estar activo tras el "
+                "proxy confiable."
+            ),
+            errors,
+        )
+
+    @override_settings(
         LOG_FORMAT="simple",
         MIDDLEWARE=[],
     )
@@ -1345,6 +1366,7 @@ class StoreApiTests(APITestCase):
         SECURE_HSTS_SECONDS=31536000,
         SECURE_HSTS_INCLUDE_SUBDOMAINS=True,
         SECURE_HSTS_PRELOAD=True,
+        SECURE_PROXY_SSL_HEADER=("HTTP_X_FORWARDED_PROTO", "https"),
         DATABASES={
             "default": {
                 "ENGINE": "django.db.backends.mysql",
