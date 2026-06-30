@@ -48,6 +48,9 @@ class CapacityConfigTests(unittest.TestCase):
         )
 
     def test_production_environment_without_debug_false_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
         local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
             encoding="utf-8",
         )
@@ -61,6 +64,7 @@ class CapacityConfigTests(unittest.TestCase):
         )
 
         findings = capacity.validate_environment_security_defaults(
+            compose_text,
             local_env_text,
             invalid_text,
         )
@@ -76,6 +80,9 @@ class CapacityConfigTests(unittest.TestCase):
     def test_production_environment_without_permissions_policy_is_rejected(
         self,
     ):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
         local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
             encoding="utf-8",
         )
@@ -89,6 +96,7 @@ class CapacityConfigTests(unittest.TestCase):
         )
 
         findings = capacity.validate_environment_security_defaults(
+            compose_text,
             local_env_text,
             invalid_text,
         )
@@ -102,6 +110,9 @@ class CapacityConfigTests(unittest.TestCase):
         )
 
     def test_production_environment_without_json_logs_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
         local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
             encoding="utf-8",
         )
@@ -115,6 +126,7 @@ class CapacityConfigTests(unittest.TestCase):
         )
 
         findings = capacity.validate_environment_security_defaults(
+            compose_text,
             local_env_text,
             invalid_text,
         )
@@ -126,6 +138,30 @@ class CapacityConfigTests(unittest.TestCase):
             ),
             findings,
         )
+
+    def test_compose_without_security_env_propagation_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_compose = compose_text.replace(
+            "  DJANGO_DEBUG: ${DJANGO_DEBUG:-False}\n",
+            '  DJANGO_DEBUG: "False"\n',
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            invalid_compose,
+            local_env_text,
+            production_env_text,
+        )
+
+        self.assertIn("compose.yaml debe propagar DJANGO_DEBUG", findings)
 
     def test_mutable_k6_image_is_rejected(self):
         workflow_text = (

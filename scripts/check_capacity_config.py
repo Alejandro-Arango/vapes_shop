@@ -147,7 +147,11 @@ def validate_env(env_text, env_name):
     ]
 
 
-def validate_environment_security_defaults(local_env_text, production_env_text):
+def validate_environment_security_defaults(
+    compose_text,
+    local_env_text,
+    production_env_text,
+):
     findings = []
     local_values = parse_env_values(local_env_text)
     production_values = parse_env_values(production_env_text)
@@ -169,9 +173,16 @@ def validate_environment_security_defaults(local_env_text, production_env_text):
         "geolocation=()",
         "payment=()",
     )
+    required_compose_keys = tuple(required_production_values) + (
+        "DJANGO_PERMISSIONS_POLICY",
+    )
 
     if local_values.get("DJANGO_DEBUG") != "True":
         findings.append("compose.env.example debe declarar DJANGO_DEBUG=True")
+
+    for key in required_compose_keys:
+        if f"${{{key}:-" not in compose_text:
+            findings.append(f"compose.yaml debe propagar {key}")
 
     for key, expected_value in required_production_values.items():
         if production_values.get(key) != expected_value:
@@ -1850,6 +1861,7 @@ def find_capacity_findings(project_root):
     )
     findings.extend(
         validate_environment_security_defaults(
+            paths["compose"].read_text(encoding="utf-8"),
             paths["local_env"].read_text(encoding="utf-8"),
             paths["production_env"].read_text(encoding="utf-8"),
         )
