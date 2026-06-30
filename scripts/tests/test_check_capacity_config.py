@@ -554,6 +554,23 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_monitor_without_report_error_is_rejected(self):
+        monitor_text = (
+            PROJECT_ROOT / "scripts" / "monitor_production.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = monitor_text.replace(
+            "report_error",
+            "report_failure",
+            1,
+        )
+
+        findings = capacity.validate_production_monitor(invalid_text)
+
+        self.assertIn(
+            "scripts/monitor_production.py no contiene report_error",
+            findings,
+        )
+
     def production_monitor_schedule_inputs(self):
         systemd_root = PROJECT_ROOT / "ops" / "systemd"
         return {

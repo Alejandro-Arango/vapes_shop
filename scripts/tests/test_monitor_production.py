@@ -1,4 +1,5 @@
 import importlib.util
+import io
 import json
 import tempfile
 import threading
@@ -231,6 +232,27 @@ class ProductionMonitorTests(unittest.TestCase):
                             )
 
                     self.assertFalse(report_path.exists())
+
+    def test_configuration_error_is_persisted_to_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "production-monitor.json"
+            arguments = [
+                "monitor_production.py",
+                "--url",
+                "http://example.com/healthz",
+                "--output",
+                str(report_path),
+            ]
+
+            with patch.object(monitor.sys, "argv", arguments):
+                with patch.object(monitor.sys, "stderr", io.StringIO()):
+                    exit_code = monitor.main()
+
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 2)
+        self.assertEqual(report["status"], "configuration_error")
+        self.assertIn("HTTPS", report["error"])
 
 
 if __name__ == "__main__":

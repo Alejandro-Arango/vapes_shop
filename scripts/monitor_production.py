@@ -385,7 +385,6 @@ def main():
             webhook_token=arguments.webhook_token,
             allow_http=arguments.allow_http,
         )
-        write_report(arguments.output, event)
     except (MonitorError, ValueError) as exc:
         event = {
             "event": "production_readiness",
@@ -394,6 +393,13 @@ def main():
             "error": str(exc),
         }
         exit_code = 2
+
+    try:
+        write_report(arguments.output, event)
+    except (MonitorError, ValueError) as exc:
+        event["report_error"] = str(exc)
+        if exit_code == 0:
+            exit_code = 2
 
     output = json.dumps(
         event,
