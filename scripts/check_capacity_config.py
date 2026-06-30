@@ -565,6 +565,38 @@ def validate_production_monitor_schedule(
     ]
 
 
+def validate_codeowners(codeowners_text):
+    required_fragments = (
+        "* @Alejandro-Arango",
+        "/.github/ @Alejandro-Arango",
+        "/ops/ @Alejandro-Arango",
+        "/ops/systemd/ @Alejandro-Arango",
+        "/scripts/backup_operations.py @Alejandro-Arango",
+        "/scripts/external_backup.py @Alejandro-Arango",
+        "/scripts/monitor_backups.py @Alejandro-Arango",
+        "/scripts/deploy_production.py @Alejandro-Arango",
+        "/scripts/recover_production.py @Alejandro-Arango",
+        "/scripts/release_manifest.py @Alejandro-Arango",
+        "/scripts/fetch_release_manifest.py @Alejandro-Arango",
+        "/scripts/check_host_readiness.py @Alejandro-Arango",
+        "/scripts/monitor_production.py @Alejandro-Arango",
+        "/scripts/check_capacity_config.py @Alejandro-Arango",
+        "/scripts/check_secret_files.py @Alejandro-Arango",
+        "/scripts/check_zap_rules.py @Alejandro-Arango",
+        "/backend/mi_tienda/settings.py @Alejandro-Arango",
+        (
+            "/backend/store/management/commands/production_check.py "
+            "@Alejandro-Arango"
+        ),
+    )
+
+    return [
+        f"CODEOWNERS no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in codeowners_text
+    ]
+
+
 def validate_backup_monitor_config(
     compose_text,
     production_compose_text,
@@ -1597,6 +1629,7 @@ def find_capacity_findings(project_root):
         "publish_workflow": (
             project_root / ".github" / "workflows" / "publish-images.yml"
         ),
+        "codeowners": project_root / ".github" / "CODEOWNERS",
         "production_monitor_workflow": (
             project_root
             / ".github"
@@ -1703,6 +1736,11 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_production_monitor(
             paths["production_monitor"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_codeowners(
+            paths["codeowners"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

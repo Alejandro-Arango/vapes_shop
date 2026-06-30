@@ -571,6 +571,43 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_codeowners_without_operations_owner_is_rejected(self):
+        codeowners_text = (
+            PROJECT_ROOT / ".github" / "CODEOWNERS"
+        ).read_text(encoding="utf-8")
+        invalid_text = codeowners_text.replace(
+            "/ops/systemd/ @Alejandro-Arango\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_codeowners(invalid_text)
+
+        self.assertIn(
+            "CODEOWNERS no contiene /ops/systemd/ @Alejandro-Arango",
+            findings,
+        )
+
+    def test_codeowners_without_monitor_owner_is_rejected(self):
+        codeowners_text = (
+            PROJECT_ROOT / ".github" / "CODEOWNERS"
+        ).read_text(encoding="utf-8")
+        invalid_text = codeowners_text.replace(
+            "/scripts/monitor_production.py @Alejandro-Arango\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_codeowners(invalid_text)
+
+        self.assertIn(
+            (
+                "CODEOWNERS no contiene "
+                "/scripts/monitor_production.py @Alejandro-Arango"
+            ),
+            findings,
+        )
+
     def production_monitor_schedule_inputs(self):
         systemd_root = PROJECT_ROOT / "ops" / "systemd"
         return {
