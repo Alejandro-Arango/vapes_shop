@@ -724,6 +724,26 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_official_action_major_tag_is_rejected(self):
+        findings = capacity.validate_official_action_pins(
+            {
+                "ci.yml": (
+                    "steps:\n"
+                    "  - uses: actions/checkout@v4\n"
+                    "  - uses: github/codeql-action/init@v3\n"
+                ),
+            },
+        )
+
+        self.assertIn(
+            "ci.yml usa accion sin SHA: actions/checkout@v4",
+            findings,
+        )
+        self.assertIn(
+            "ci.yml usa accion sin SHA: github/codeql-action/init@v3",
+            findings,
+        )
+
     def production_monitor_schedule_inputs(self):
         systemd_root = PROJECT_ROOT / "ops" / "systemd"
         return {

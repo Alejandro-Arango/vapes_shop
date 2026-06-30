@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Descargar codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Validar version semantica
         working-directory: ${{ github.workspace }}
@@ -47,7 +47,7 @@ jobs:
           fi
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.13"
           cache: "pip"
@@ -89,7 +89,7 @@ jobs:
 
     steps:
       - name: Descargar codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Iniciar sesion en GHCR
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
@@ -119,7 +119,7 @@ jobs:
           labels: ${{ steps.app-meta.outputs.labels }}
 
       - name: Atestiguar aplicacion
-        uses: actions/attest@v4
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.APP_IMAGE_NAME }}
           subject-digest: ${{ steps.app-push.outputs.digest }}
@@ -159,7 +159,7 @@ jobs:
           labels: ${{ steps.backup-meta.outputs.labels }}
 
       - name: Atestiguar operaciones
-        uses: actions/attest@v4
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.BACKUP_IMAGE_NAME }}
           subject-digest: ${{ steps.backup-push.outputs.digest }}
@@ -202,7 +202,7 @@ jobs:
             --expected-tag "$RELEASE_TAG"
 
       - name: Atestiguar manifiesto de recuperacion
-        uses: actions/attest@v4
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
         with:
           subject-path: recovery-manifest.json
 
@@ -216,7 +216,7 @@ jobs:
             recovery-manifest.sha256
 
       - name: Conservar manifiesto como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-recovery-manifest
           path: |

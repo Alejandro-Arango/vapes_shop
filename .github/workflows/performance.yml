@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Descargar codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Seleccionar perfil
         env:
@@ -189,7 +189,7 @@ jobs:
 
       - name: Subir resultados
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: performance-${{ env.LOAD_PROFILE }}
           path: performance-results/
@@ -203,7 +203,7 @@ jobs:
 
     steps:
       - name: Descargar codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Seleccionar presion
         env:
@@ -419,7 +419,7 @@ jobs:
 
       - name: Subir resultados de recuperacion
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: resilience-${{ env.LOAD_PROFILE }}
           path: performance-results/
@@ -474,7 +474,7 @@ jobs:
 
     steps:
       - name: Descargar codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Seleccionar tamano de prueba
         env:
@@ -856,7 +856,7 @@ jobs:
 
       - name: Subir resultados de checkout
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: checkout-performance-${{ env.LOAD_PROFILE }}
           path: performance-results/

@@ -41,6 +41,9 @@ ENV_RESOURCE_KEYS = tuple(
 K6_IMAGE_PATTERN = re.compile(
     r"grafana/k6:2\.0\.0@sha256:[0-9a-f]{64}"
 )
+OFFICIAL_ACTION_MAJOR_TAG_PATTERN = re.compile(
+    r"uses:\s+((?:actions|github/codeql-action)/[A-Za-z0-9_.-]+)@(v\d+)\b"
+)
 
 
 def extract_service_blocks(compose_text):
@@ -518,7 +521,10 @@ def validate_production_monitor_schedule(
         ),
         (
             monitor_workflow_text,
-            "actions/upload-artifact@v4",
+            (
+                "actions/upload-artifact@"
+                "ea165f8d65b6e75b540449e92b4886f43607fa02 # v4"
+            ),
             "production-monitor.yml",
         ),
         (
@@ -679,6 +685,21 @@ def validate_publish_workflow_timeouts(publish_workflow_text):
             timeout_minutes,
         )
     ]
+
+
+def validate_official_action_pins(workflow_texts):
+    findings = []
+
+    for workflow_name, workflow_text in workflow_texts.items():
+        for match in OFFICIAL_ACTION_MAJOR_TAG_PATTERN.finditer(workflow_text):
+            findings.append(
+                (
+                    f"{workflow_name} usa accion sin SHA: "
+                    f"{match.group(1)}@{match.group(2)}"
+                )
+            )
+
+    return findings
 
 
 def validate_backup_monitor_config(
@@ -1134,7 +1155,7 @@ def validate_release_manifest(
         "python scripts/release_manifest.py create",
         'git rev-parse "${RELEASE_TAG}^{commit}"',
         'test "$source_commit" = "$tag_commit"',
-        "actions/attest@v4",
+        "actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4",
         "subject-path: recovery-manifest.json",
         'gh release upload "$RELEASE_TAG"',
         "recovery-manifest.sha256",
@@ -1740,6 +1761,14 @@ def find_capacity_findings(project_root):
         return [f"falta el archivo {path}" for path in missing_paths]
 
     findings = []
+    workflow_texts = {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted(
+            (project_root / ".github" / "workflows").glob("*.yml")
+        )
+    }
+
+    findings.extend(validate_official_action_pins(workflow_texts))
     findings.extend(
         validate_compose(paths["compose"].read_text(encoding="utf-8"))
     )
