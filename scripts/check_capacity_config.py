@@ -122,6 +122,21 @@ def parse_env_keys(env_text):
     return keys
 
 
+def parse_env_values(env_text):
+    values = {}
+
+    for raw_line in env_text.splitlines():
+        line = raw_line.strip()
+
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+
+    return values
+
+
 def validate_env(env_text, env_name):
     keys = parse_env_keys(env_text)
 
@@ -130,6 +145,54 @@ def validate_env(env_text, env_name):
         for key in ENV_RESOURCE_KEYS
         if key not in keys
     ]
+
+
+def validate_environment_security_defaults(local_env_text, production_env_text):
+    findings = []
+    local_values = parse_env_values(local_env_text)
+    production_values = parse_env_values(production_env_text)
+    required_production_values = {
+        "DJANGO_DEBUG": "False",
+        "DJANGO_SESSION_COOKIE_SECURE": "True",
+        "DJANGO_CSRF_COOKIE_SECURE": "True",
+        "DJANGO_SECURE_SSL_REDIRECT": "True",
+        "DJANGO_SECURE_HSTS_SECONDS": "31536000",
+        "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS": "True",
+        "DJANGO_SECURE_HSTS_PRELOAD": "True",
+        "DJANGO_SECURE_REFERRER_POLICY": "same-origin",
+        "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY": "same-origin",
+    }
+    required_permissions = (
+        "camera=()",
+        "microphone=()",
+        "geolocation=()",
+        "payment=()",
+    )
+
+    if local_values.get("DJANGO_DEBUG") != "True":
+        findings.append("compose.env.example debe declarar DJANGO_DEBUG=True")
+
+    for key, expected_value in required_production_values.items():
+        if production_values.get(key) != expected_value:
+            findings.append(
+                (
+                    "compose.production.env.example debe declarar "
+                    f"{key}={expected_value}"
+                )
+            )
+
+    permissions_policy = production_values.get("DJANGO_PERMISSIONS_POLICY", "")
+
+    for directive in required_permissions:
+        if directive not in permissions_policy:
+            findings.append(
+                (
+                    "compose.production.env.example debe restringir "
+                    f"DJANGO_PERMISSIONS_POLICY con {directive}"
+                )
+            )
+
+    return findings
 
 
 def validate_load_script(load_text):
@@ -1782,6 +1845,12 @@ def find_capacity_findings(project_root):
         validate_env(
             paths["production_env"].read_text(encoding="utf-8"),
             "compose.production.env.example",
+        )
+    )
+    findings.extend(
+        validate_environment_security_defaults(
+            paths["local_env"].read_text(encoding="utf-8"),
+            paths["production_env"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(
