@@ -12,6 +12,8 @@ PLACEHOLDER_SECRET_PARTS = (
     "django-insecure",
     "cambia",
     "change-me",
+    "reemplaza",
+    "placeholder",
     "secret-key",
 )
 LOCAL_ORIGINS = (
@@ -339,6 +341,27 @@ class Command(BaseCommand):
             if not getattr(settings, "EMAIL_HOST", ""):
                 errors.append("DJANGO_EMAIL_HOST debe estar configurado para SMTP.")
 
+            email_user = getattr(settings, "EMAIL_HOST_USER", "")
+            email_password = getattr(settings, "EMAIL_HOST_PASSWORD", "")
+
+            if not email_user:
+                errors.append(
+                    "DJANGO_EMAIL_HOST_USER debe estar configurado para SMTP."
+                )
+            elif self.has_placeholder_value(email_user):
+                errors.append(
+                    "DJANGO_EMAIL_HOST_USER no debe usar valores de ejemplo."
+                )
+
+            if not email_password:
+                errors.append(
+                    "DJANGO_EMAIL_HOST_PASSWORD debe estar configurado para SMTP."
+                )
+            elif self.has_placeholder_value(email_password):
+                errors.append(
+                    "DJANGO_EMAIL_HOST_PASSWORD no debe usar valores de ejemplo."
+                )
+
             if settings.EMAIL_USE_TLS and settings.EMAIL_USE_SSL:
                 errors.append(
                     "DJANGO_EMAIL_USE_TLS y DJANGO_EMAIL_USE_SSL no pueden estar activos al mismo tiempo."
@@ -372,6 +395,14 @@ class Command(BaseCommand):
 
         if not inventory_notification_email:
             warnings.append("INVENTORY_NOTIFICATION_EMAIL esta vacio.")
+
+    def has_placeholder_value(self, value):
+        normalized_value = str(value).strip().lower()
+
+        return any(
+            part in normalized_value
+            for part in PLACEHOLDER_SECRET_PARTS
+        )
 
     def check_contact(self, errors):
         whatsapp_number = getattr(settings, "CONTACT_WHATSAPP_NUMBER", "")

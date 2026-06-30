@@ -1356,6 +1356,29 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        EMAIL_HOST="smtp.example.com",
+        EMAIL_HOST_USER="reemplaza-usuario-smtp",
+        EMAIL_HOST_PASSWORD="change-me-password",
+        EMAIL_USE_TLS=True,
+        EMAIL_USE_SSL=False,
+    )
+    def test_production_check_rejects_placeholder_smtp_credentials(self):
+        errors = []
+        warnings = []
+
+        ProductionCheckCommand().check_email(errors, warnings)
+
+        self.assertIn(
+            "DJANGO_EMAIL_HOST_USER no debe usar valores de ejemplo.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_EMAIL_HOST_PASSWORD no debe usar valores de ejemplo.",
+            errors,
+        )
+
+    @override_settings(
         DEBUG=False,
         SECRET_KEY="prod-ready-value-with-more-than-fifty-characters-1234567890",
         ALLOWED_HOSTS=["example.com", "www.example.com"],
@@ -1394,6 +1417,8 @@ class StoreApiTests(APITestCase):
         TRUST_X_FORWARDED_FOR=True,
         EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
         EMAIL_HOST="smtp.example.com",
+        EMAIL_HOST_USER="smtp-user-vapes",
+        EMAIL_HOST_PASSWORD="smtp-credential-value-123",
         EMAIL_USE_TLS=True,
         EMAIL_USE_SSL=False,
         DEFAULT_FROM_EMAIL="Vape Shop <no-reply@example.com>",
