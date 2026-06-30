@@ -20,6 +20,7 @@ jobs:
   validate:
     name: Validar codigo de la release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
 
@@ -77,6 +78,7 @@ jobs:
   publish:
     name: Construir, publicar y atestiguar
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs:
       - validate
     permissions:

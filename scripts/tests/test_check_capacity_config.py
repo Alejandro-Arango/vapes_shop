@@ -688,6 +688,42 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_publish_images_without_release_validation_timeout_is_rejected(
+        self,
+    ):
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "publish-images.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = workflow_text.replace(
+            "    timeout-minutes: 30\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_publish_workflow_timeouts(invalid_text)
+
+        self.assertIn(
+            "publish-images.yml no limita validate a 30 minutos",
+            findings,
+        )
+
+    def test_publish_images_without_publish_timeout_is_rejected(self):
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "publish-images.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = workflow_text.replace(
+            "    timeout-minutes: 45\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_publish_workflow_timeouts(invalid_text)
+
+        self.assertIn(
+            "publish-images.yml no limita publish a 45 minutos",
+            findings,
+        )
+
     def production_monitor_schedule_inputs(self):
         systemd_root = PROJECT_ROOT / "ops" / "systemd"
         return {

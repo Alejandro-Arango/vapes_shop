@@ -664,6 +664,23 @@ def validate_django_workflow_timeouts(django_workflow_text):
     ]
 
 
+def validate_publish_workflow_timeouts(publish_workflow_text):
+    required_jobs = (
+        ("validate", 30),
+        ("publish", 45),
+    )
+
+    return [
+        f"publish-images.yml no limita {job_name} a {timeout_minutes} minutos"
+        for job_name, timeout_minutes in required_jobs
+        if not workflow_job_has_timeout(
+            publish_workflow_text,
+            job_name,
+            timeout_minutes,
+        )
+    ]
+
+
 def validate_backup_monitor_config(
     compose_text,
     production_compose_text,
@@ -1825,6 +1842,11 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_django_workflow_timeouts(
             paths["django_workflow"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_publish_workflow_timeouts(
+            paths["publish_workflow"].read_text(encoding="utf-8")
         )
     )
     findings.extend(
