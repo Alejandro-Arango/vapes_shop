@@ -101,6 +101,32 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_environment_without_json_logs_is_rejected(self):
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_env_text.replace(
+            "DJANGO_LOG_FORMAT=json\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            local_env_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            (
+                "compose.production.env.example debe declarar "
+                "DJANGO_LOG_FORMAT=json"
+            ),
+            findings,
+        )
+
     def test_mutable_k6_image_is_rejected(self):
         workflow_text = (
             PROJECT_ROOT / ".github" / "workflows" / "performance.yml"

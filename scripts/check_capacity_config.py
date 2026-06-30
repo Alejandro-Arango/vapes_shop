@@ -161,6 +161,7 @@ def validate_environment_security_defaults(local_env_text, production_env_text):
         "DJANGO_SECURE_HSTS_PRELOAD": "True",
         "DJANGO_SECURE_REFERRER_POLICY": "same-origin",
         "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY": "same-origin",
+        "DJANGO_LOG_FORMAT": "json",
     }
     required_permissions = (
         "camera=()",
