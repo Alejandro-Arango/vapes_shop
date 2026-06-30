@@ -1338,6 +1338,28 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        SESSION_COOKIE_HTTPONLY=False,
+        SESSION_COOKIE_SAMESITE="None",
+        CSRF_COOKIE_HTTPONLY=False,
+        CSRF_COOKIE_SAMESITE="None",
+        SESSION_COOKIE_SECURE=True,
+        CSRF_COOKIE_SECURE=True,
+        SECURE_SSL_REDIRECT=True,
+        SECURE_HSTS_SECONDS=31536000,
+        SECURE_HSTS_INCLUDE_SUBDOMAINS=True,
+        SECURE_HSTS_PRELOAD=True,
+    )
+    def test_production_check_rejects_degraded_cookie_security(self):
+        errors = []
+
+        ProductionCheckCommand().check_https(errors)
+
+        self.assertIn("SESSION_COOKIE_HTTPONLY debe estar activo.", errors)
+        self.assertIn("SESSION_COOKIE_SAMESITE debe ser Lax o Strict.", errors)
+        self.assertIn("DJANGO_CSRF_COOKIE_HTTPONLY debe ser True.", errors)
+        self.assertIn("CSRF_COOKIE_SAMESITE debe ser Lax o Strict.", errors)
+
+    @override_settings(
         LOG_FORMAT="simple",
         MIDDLEWARE=[],
     )

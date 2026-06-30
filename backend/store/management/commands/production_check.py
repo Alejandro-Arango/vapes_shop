@@ -121,6 +121,20 @@ class Command(BaseCommand):
                 )
 
     def check_https(self, errors):
+        safe_samesite_values = ("Lax", "Strict")
+
+        if not settings.SESSION_COOKIE_HTTPONLY:
+            errors.append("SESSION_COOKIE_HTTPONLY debe estar activo.")
+
+        if settings.SESSION_COOKIE_SAMESITE not in safe_samesite_values:
+            errors.append("SESSION_COOKIE_SAMESITE debe ser Lax o Strict.")
+
+        if not settings.CSRF_COOKIE_HTTPONLY:
+            errors.append("DJANGO_CSRF_COOKIE_HTTPONLY debe ser True.")
+
+        if settings.CSRF_COOKIE_SAMESITE not in safe_samesite_values:
+            errors.append("CSRF_COOKIE_SAMESITE debe ser Lax o Strict.")
+
         if not settings.SESSION_COOKIE_SECURE:
             errors.append("DJANGO_SESSION_COOKIE_SECURE debe ser True.")
 
