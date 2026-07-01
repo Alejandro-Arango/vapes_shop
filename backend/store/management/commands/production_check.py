@@ -542,6 +542,10 @@ class Command(BaseCommand):
                 errors.append(
                     "DJANGO_EMAIL_USE_TLS y DJANGO_EMAIL_USE_SSL no pueden estar activos al mismo tiempo."
                 )
+            elif not settings.EMAIL_USE_TLS and not settings.EMAIL_USE_SSL:
+                errors.append(
+                    "DJANGO_EMAIL_USE_TLS o DJANGO_EMAIL_USE_SSL debe estar activo para SMTP."
+                )
 
         default_from = getattr(settings, "DEFAULT_FROM_EMAIL", "")
         notification_email = getattr(settings, "CONTACT_NOTIFICATION_EMAIL", "")
