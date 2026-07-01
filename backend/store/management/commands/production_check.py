@@ -387,10 +387,25 @@ class Command(BaseCommand):
 
         if "mysql" in engine:
             database_user = str(database.get("USER", "")).strip().lower()
+            database_host = str(database.get("HOST", "")).strip()
 
             if database_user in UNSAFE_DATABASE_USERS:
                 errors.append(
                     "DJANGO_DB_USER no debe usar usuarios administrativos."
+                )
+
+            if not database_host:
+                errors.append("DJANGO_DB_HOST debe estar configurado.")
+            elif self.is_malformed_service_host(database_host):
+                errors.append(
+                    (
+                        "DJANGO_DB_HOST debe contener un hostname sin esquema, "
+                        "ruta ni puerto."
+                    )
+                )
+            elif self.is_local_allowed_host(database_host):
+                errors.append(
+                    "DJANGO_DB_HOST no debe usar hosts locales en produccion."
                 )
 
             if database.get("CONN_MAX_AGE", 0) <= 0:

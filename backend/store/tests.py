@@ -1539,6 +1539,65 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        DATABASES={
+            "default": {
+                "ENGINE": "django.db.backends.mysql",
+                "NAME": "vapes_shop",
+                "USER": "vapes_user",
+                "PASSWORD": "valor-seguro-db-123",
+                "HOST": "127.0.0.1",
+                "PORT": "3306",
+                "CONN_MAX_AGE": 60,
+                "CONN_HEALTH_CHECKS": True,
+                "OPTIONS": {
+                    "connect_timeout": 10,
+                    "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+                },
+            }
+        },
+    )
+    def test_production_check_rejects_local_database_host(self):
+        errors = []
+
+        ProductionCheckCommand().check_database(errors, allow_sqlite=False)
+
+        self.assertIn(
+            "DJANGO_DB_HOST no debe usar hosts locales en produccion.",
+            errors,
+        )
+
+    @override_settings(
+        DATABASES={
+            "default": {
+                "ENGINE": "django.db.backends.mysql",
+                "NAME": "vapes_shop",
+                "USER": "vapes_user",
+                "PASSWORD": "valor-seguro-db-123",
+                "HOST": "mysql://db:3306",
+                "PORT": "3306",
+                "CONN_MAX_AGE": 60,
+                "CONN_HEALTH_CHECKS": True,
+                "OPTIONS": {
+                    "connect_timeout": 10,
+                    "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+                },
+            }
+        },
+    )
+    def test_production_check_rejects_malformed_database_host(self):
+        errors = []
+
+        ProductionCheckCommand().check_database(errors, allow_sqlite=False)
+
+        self.assertIn(
+            (
+                "DJANGO_DB_HOST debe contener un hostname sin esquema, "
+                "ruta ni puerto."
+            ),
+            errors,
+        )
+
+    @override_settings(
         ADMIN_URL_PATH="panel-seguro/",
         ADMIN_ALLOWED_IPS=("127.0.0.1", "192.0.2.10"),
         ADMIN_SESSION_COOKIE_AGE=1800,
@@ -1774,7 +1833,7 @@ class StoreApiTests(APITestCase):
                 "NAME": "vapes_shop",
                 "USER": "vapes_user",
                 "PASSWORD": "valor-seguro-db-123",
-                "HOST": "127.0.0.1",
+                "HOST": "db",
                 "PORT": "3306",
                 "CONN_MAX_AGE": 60,
                 "CONN_HEALTH_CHECKS": True,
