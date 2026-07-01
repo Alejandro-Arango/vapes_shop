@@ -1676,6 +1676,7 @@ def validate_resilience_config(
         "limit_conn_zone $binary_remote_addr",
         "limit_req_status 429;",
         "limit_conn_status 429;",
+        "client_max_body_size 6m;",
         "limit_req zone=per_ip_requests burst=100 nodelay;",
         "limit_conn per_ip_connections 32;",
         "client_header_timeout 10s;",
