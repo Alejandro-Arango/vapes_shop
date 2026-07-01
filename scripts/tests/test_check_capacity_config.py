@@ -34,6 +34,20 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn("db no define mem_limit", findings)
 
+    def test_migrate_without_read_only_filesystem_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = compose_text.replace(
+            "    read_only: true\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_compose(invalid_text)
+
+        self.assertIn("migrate no activa read_only", findings)
+
     def test_environment_without_resource_variable_is_rejected(self):
         env_text = (PROJECT_ROOT / "compose.env.example").read_text(
             encoding="utf-8",

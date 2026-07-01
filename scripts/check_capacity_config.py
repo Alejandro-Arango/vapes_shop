@@ -32,6 +32,16 @@ RESOURCE_POLICY = {
     ),
     "restore": ("RESTORE_MEMORY_LIMIT", "RESTORE_CPU_LIMIT", "pids_limit"),
 }
+READ_ONLY_SERVICES = (
+    "migrate",
+    "web",
+    "proxy",
+    "backup",
+    "backup-monitor",
+    "external-backup",
+    "external-recovery",
+    "restore",
+)
 ENV_RESOURCE_KEYS = tuple(
     value
     for values in RESOURCE_POLICY.values()
@@ -104,6 +114,15 @@ def validate_compose(compose_text):
                 findings.append(
                     f"{service_name} no aplica {required_value}"
                 )
+
+    for service_name in READ_ONLY_SERVICES:
+        block = services.get(service_name, "")
+
+        if "read_only: true" not in block:
+            findings.append(f"{service_name} no activa read_only")
+
+        if "tmpfs:" not in block or "- /tmp" not in block:
+            findings.append(f"{service_name} no monta /tmp como tmpfs")
 
     return findings
 
