@@ -235,6 +235,38 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_environment_without_checkout_throttle_is_rejected(
+        self,
+    ):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_env_text.replace(
+            "CHECKOUT_THROTTLE_RATE=20/min\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            compose_text,
+            local_env_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            (
+                "compose.production.env.example debe declarar "
+                "CHECKOUT_THROTTLE_RATE=20/min"
+            ),
+            findings,
+        )
+
     def test_compose_without_security_env_propagation_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8",

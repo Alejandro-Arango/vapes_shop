@@ -174,6 +174,11 @@ def validate_environment_security_defaults(
         "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY": "same-origin",
         "DJANGO_USE_X_FORWARDED_PROTO": "True",
         "DJANGO_TRUST_X_FORWARDED_FOR": "True",
+        "AUTH_THROTTLE_RATE": "20/min",
+        "AUTH_USER_THROTTLE_RATE": "10/min",
+        "CONTACT_THROTTLE_RATE": "10/hour",
+        "CART_THROTTLE_RATE": "60/min",
+        "CHECKOUT_THROTTLE_RATE": "20/min",
         "DJANGO_LOG_FORMAT": "json",
     }
     required_permissions = (
