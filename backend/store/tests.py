@@ -60,6 +60,7 @@ from mi_tienda.settings import (
     env_ip_list,
     env_lower_choice,
     env_port,
+    env_port_int,
     env_throttle_rate,
 )
 from mi_tienda.admin import StoreOTPAdminSite
@@ -1233,6 +1234,14 @@ class StoreApiTests(APITestCase):
             with patch.dict(os.environ, {"TEST_PORT": invalid_port}):
                 with self.assertRaises(ImproperlyConfigured):
                     env_port("TEST_PORT", "5432")
+
+    def test_env_port_int_validates_tcp_port_as_integer(self):
+        with patch.dict(os.environ, {"TEST_PORT": "587"}):
+            self.assertEqual(env_port_int("TEST_PORT", "25"), 587)
+
+        with patch.dict(os.environ, {"TEST_PORT": "70000"}):
+            with self.assertRaises(ImproperlyConfigured):
+                env_port_int("TEST_PORT", "25")
 
     def test_env_ip_list_rejects_invalid_values(self):
         with patch.dict(os.environ, {"TEST_ALLOWED_IPS": "127.0.0.1,192.0.2.10"}):

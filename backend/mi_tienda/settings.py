@@ -79,6 +79,14 @@ def env_port(name, default):
     return str(value)
 
 
+def env_port_int(name, default):
+    """
+    Nombre: env_port_int
+    Descripcion: Valida un puerto TCP y lo retorna como entero.
+    """
+    return int(env_port(name, default))
+
+
 def env_list(name, default=""):
     """
     Nombre: env_list
@@ -698,7 +706,7 @@ EMAIL_BACKEND = os.environ.get(
     "django.core.mail.backends.console.EmailBackend",
 )
 EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "")
-EMAIL_PORT = env_int("DJANGO_EMAIL_PORT", 587, minimum=1)
+EMAIL_PORT = env_port_int("DJANGO_EMAIL_PORT", 587)
 EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", True)
