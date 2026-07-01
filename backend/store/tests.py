@@ -1261,9 +1261,19 @@ class StoreApiTests(APITestCase):
                 "panel-seguro/",
             )
 
-        with patch.dict(os.environ, {"TEST_ADMIN_PATH": "/"}):
-            with self.assertRaises(ImproperlyConfigured):
-                env_admin_url_path("TEST_ADMIN_PATH", "admin")
+        invalid_paths = (
+            "/",
+            "../admin",
+            "http://admin",
+            "panel seguro",
+            "panel//seguro",
+            ".admin",
+        )
+
+        for invalid_path in invalid_paths:
+            with patch.dict(os.environ, {"TEST_ADMIN_PATH": invalid_path}):
+                with self.assertRaises(ImproperlyConfigured):
+                    env_admin_url_path("TEST_ADMIN_PATH", "admin")
 
     def test_production_check_rejects_insecure_configuration(self):
         with self.assertRaises(CommandError):

@@ -5,6 +5,7 @@ Dependencias: os, pathlib, Django, WhiteNoise, Django REST Framework y aplicacio
 """
 
 import os
+import re
 from ipaddress import ip_address
 from pathlib import Path
 
@@ -230,6 +231,14 @@ def env_admin_url_path(name, default):
 
     if not value:
         raise ImproperlyConfigured(f"{name} no puede estar vacia.")
+
+    if not re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9_-]*(/[A-Za-z0-9][A-Za-z0-9_-]*)*",
+        value,
+    ):
+        raise ImproperlyConfigured(
+            f"{name} debe ser una ruta relativa con segmentos seguros."
+        )
 
     return f"{value}/"
 
