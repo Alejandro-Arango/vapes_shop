@@ -4,10 +4,13 @@ Descripcion: Comando para validar configuracion minima antes de desplegar en pro
 Dependencias: Django settings y BaseCommand
 """
 
+from email.utils import parseaddr
 from urllib.parse import urlparse
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
+from django.core.validators import validate_email
 
 
 PLACEHOLDER_SECRET_PARTS = (
@@ -476,6 +479,15 @@ class Command(BaseCommand):
         if not inventory_notification_email:
             errors.append("INVENTORY_NOTIFICATION_EMAIL debe estar configurado.")
 
+        for value, label in (
+            (default_from, "DEFAULT_FROM_EMAIL"),
+            (notification_email, "CONTACT_NOTIFICATION_EMAIL"),
+            (order_notification_email, "ORDER_NOTIFICATION_EMAIL"),
+            (inventory_notification_email, "INVENTORY_NOTIFICATION_EMAIL"),
+        ):
+            if value and not self.has_valid_email_address(value):
+                errors.append(f"{label} debe contener un correo valido.")
+
     def has_placeholder_value(self, value):
         normalized_value = str(value).strip().lower()
 
@@ -483,6 +495,19 @@ class Command(BaseCommand):
             part in normalized_value
             for part in PLACEHOLDER_SECRET_PARTS
         )
+
+    def has_valid_email_address(self, value):
+        _, address = parseaddr(str(value))
+
+        if not address:
+            return False
+
+        try:
+            validate_email(address)
+        except ValidationError:
+            return False
+
+        return True
 
     def check_contact(self, errors):
         whatsapp_number = getattr(settings, "CONTACT_WHATSAPP_NUMBER", "")

@@ -1472,6 +1472,33 @@ class StoreApiTests(APITestCase):
         self.assertEqual(warnings, [])
 
     @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        EMAIL_HOST="smtp.example.com",
+        EMAIL_HOST_USER="smtp-user-vapes",
+        EMAIL_HOST_PASSWORD="smtp-credential-value-123",
+        EMAIL_USE_TLS=True,
+        EMAIL_USE_SSL=False,
+        DEFAULT_FROM_EMAIL="Vape Shop sin correo valido",
+        CONTACT_NOTIFICATION_EMAIL="contacto-invalido",
+        ORDER_NOTIFICATION_EMAIL="orders@example.com",
+        INVENTORY_NOTIFICATION_EMAIL="inventory@example.com",
+    )
+    def test_production_check_rejects_invalid_operational_emails(self):
+        errors = []
+        warnings = []
+
+        ProductionCheckCommand().check_email(errors, warnings)
+
+        self.assertIn(
+            "DEFAULT_FROM_EMAIL debe contener un correo valido.",
+            errors,
+        )
+        self.assertIn(
+            "CONTACT_NOTIFICATION_EMAIL debe contener un correo valido.",
+            errors,
+        )
+
+    @override_settings(
         DEBUG=False,
         SECRET_KEY="prod-ready-value-with-more-than-fifty-characters-1234567890",
         ALLOWED_HOSTS=["example.com", "www.example.com"],
