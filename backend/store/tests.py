@@ -1119,6 +1119,15 @@ class StoreApiTests(APITestCase):
             minimum_length_validator["OPTIONS"]["min_length"],
             12,
         )
+        unsafe_password_hashers = {
+            "django.contrib.auth.hashers.MD5PasswordHasher",
+            "django.contrib.auth.hashers.UnsaltedMD5PasswordHasher",
+            "django.contrib.auth.hashers.UnsaltedSHA1PasswordHasher",
+            "django.contrib.auth.hashers.CryptPasswordHasher",
+        }
+        self.assertTrue(
+            set(settings.PASSWORD_HASHERS).isdisjoint(unsafe_password_hashers)
+        )
 
     def test_whitenoise_staticfiles_configuration_is_active(self):
         self.assertEqual(
@@ -1571,6 +1580,22 @@ class StoreApiTests(APITestCase):
         )
         self.assertIn(
             "DJANGO_PASSWORD_MIN_LENGTH debe ser al menos 12 en produccion.",
+            errors,
+        )
+
+    @override_settings(
+        PASSWORD_HASHERS=[
+            "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+            "django.contrib.auth.hashers.MD5PasswordHasher",
+        ],
+    )
+    def test_production_check_rejects_weak_password_hashers(self):
+        errors = []
+
+        ProductionCheckCommand().check_password_policy(errors)
+
+        self.assertIn(
+            "PASSWORD_HASHERS no debe incluir hashers debiles o sin sal.",
             errors,
         )
 

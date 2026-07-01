@@ -227,6 +227,33 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn("compose.yaml debe propagar DJANGO_DEBUG", findings)
 
+    def test_production_check_without_password_hasher_guard_is_rejected(
+        self,
+    ):
+        production_check_text = (
+            PROJECT_ROOT
+            / "backend"
+            / "store"
+            / "management"
+            / "commands"
+            / "production_check.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_check_text.replace(
+            "PASSWORD_HASHERS no debe incluir hashers debiles o sin sal.",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_production_check_security(invalid_text)
+
+        self.assertIn(
+            (
+                "production_check.py no contiene PASSWORD_HASHERS no debe "
+                "incluir hashers debiles o sin sal."
+            ),
+            findings,
+        )
+
     def test_mutable_k6_image_is_rejected(self):
         workflow_text = (
             PROJECT_ROOT / ".github" / "workflows" / "performance.yml"

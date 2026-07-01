@@ -212,6 +212,22 @@ def validate_environment_security_defaults(
     return findings
 
 
+def validate_production_check_security(production_check_text):
+    required_fragments = (
+        "PASSWORD_HASHERS",
+        "MD5PasswordHasher",
+        "UnsaltedMD5PasswordHasher",
+        "UnsaltedSHA1PasswordHasher",
+        "PASSWORD_HASHERS no debe incluir hashers debiles o sin sal.",
+    )
+
+    return [
+        f"production_check.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in production_check_text
+    ]
+
+
 def validate_load_script(load_text):
     required_fragments = (
         "smoke:",
@@ -1858,6 +1874,14 @@ def find_capacity_findings(project_root):
         "host_readiness": (
             project_root / "scripts" / "check_host_readiness.py"
         ),
+        "production_check": (
+            project_root
+            / "backend"
+            / "store"
+            / "management"
+            / "commands"
+            / "production_check.py"
+        ),
         "production_monitor": (
             project_root / "scripts" / "monitor_production.py"
         ),
@@ -1937,6 +1961,11 @@ def find_capacity_findings(project_root):
             paths["compose"].read_text(encoding="utf-8"),
             paths["local_env"].read_text(encoding="utf-8"),
             paths["production_env"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_production_check_security(
+            paths["production_check"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

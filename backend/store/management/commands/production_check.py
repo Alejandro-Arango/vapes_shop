@@ -60,6 +60,12 @@ UNSAFE_CACHE_BACKENDS = (
 MAX_SESSION_COOKIE_AGE = 604800
 MAX_PASSWORD_RESET_TIMEOUT = 3600
 MIN_PASSWORD_LENGTH = 12
+UNSAFE_PASSWORD_HASHERS = (
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+    "django.contrib.auth.hashers.UnsaltedMD5PasswordHasher",
+    "django.contrib.auth.hashers.UnsaltedSHA1PasswordHasher",
+    "django.contrib.auth.hashers.CryptPasswordHasher",
+)
 MIN_DATABASE_PASSWORD_LENGTH = 16
 UNSAFE_DATABASE_USERS = (
     "admin",
@@ -526,6 +532,7 @@ class Command(BaseCommand):
 
     def check_password_policy(self, errors):
         validators = getattr(settings, "AUTH_PASSWORD_VALIDATORS", [])
+        password_hashers = set(getattr(settings, "PASSWORD_HASHERS", []))
         validator_names = {
             validator.get("NAME", "")
             for validator in validators
@@ -557,6 +564,15 @@ class Command(BaseCommand):
                     )
 
                 break
+
+        if not password_hashers:
+            errors.append(
+                "PASSWORD_HASHERS debe incluir al menos un hasher seguro."
+            )
+        elif password_hashers.intersection(UNSAFE_PASSWORD_HASHERS):
+            errors.append(
+                "PASSWORD_HASHERS no debe incluir hashers debiles o sin sal."
+            )
 
     def check_admin(self, errors, warnings):
         if settings.ADMIN_URL_PATH == "admin/":
