@@ -103,6 +103,13 @@ En produccion, `APP_BIND_ADDRESS=127.0.0.1` impide que Docker publique Nginx
 en todas las interfaces. El futuro proxy TLS del host accedera localmente a
 `127.0.0.1:8080`.
 
+El proxy TLS publico debe reemplazar las cabeceras `X-Forwarded-For` y
+`X-Forwarded-Proto`, no anexarlas. El Nginx interno no debe aceptar cadenas
+`X-Forwarded-For` arbitrarias del cliente. Si la allowlist administrativa debe
+usar la IP real del visitante, configura esa confianza en el proxy publico
+mediante una fuente explicita y conserva el bloqueo administrativo tambien en
+ese proxy.
+
 Esta vinculacion es obligatoria aunque UFW este activo: los puertos publicados
 por Docker se procesan mediante sus propias reglas de red y no deben protegerse
 unicamente con el firewall del host.
