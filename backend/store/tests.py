@@ -1398,6 +1398,34 @@ class StoreApiTests(APITestCase):
         self.assertIn("CSRF_COOKIE_SAMESITE debe ser Lax o Strict.", errors)
 
     @override_settings(
+        SESSION_COOKIE_AGE=1209600,
+        PASSWORD_RESET_TIMEOUT=86400,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        CSRF_COOKIE_HTTPONLY=True,
+        CSRF_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=True,
+        CSRF_COOKIE_SECURE=True,
+        SECURE_SSL_REDIRECT=True,
+        SECURE_HSTS_SECONDS=31536000,
+        SECURE_HSTS_INCLUDE_SUBDOMAINS=True,
+        SECURE_HSTS_PRELOAD=True,
+    )
+    def test_production_check_rejects_long_session_and_reset_windows(self):
+        errors = []
+
+        ProductionCheckCommand().check_https(errors)
+
+        self.assertIn(
+            "DJANGO_SESSION_COOKIE_AGE no debe superar 604800 segundos.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_PASSWORD_RESET_TIMEOUT no debe superar 3600 segundos.",
+            errors,
+        )
+
+    @override_settings(
         LOG_FORMAT="simple",
         MIDDLEWARE=[],
     )
@@ -1503,6 +1531,8 @@ class StoreApiTests(APITestCase):
         SECRET_KEY="prod-ready-value-with-more-than-fifty-characters-1234567890",
         ALLOWED_HOSTS=["example.com", "www.example.com"],
         CSRF_TRUSTED_ORIGINS=["https://example.com", "https://www.example.com"],
+        SESSION_COOKIE_AGE=604800,
+        PASSWORD_RESET_TIMEOUT=3600,
         SESSION_COOKIE_SECURE=True,
         CSRF_COOKIE_SECURE=True,
         SECURE_SSL_REDIRECT=True,

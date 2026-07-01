@@ -41,6 +41,8 @@ UNSAFE_CACHE_BACKENDS = (
     "django.core.cache.backends.locmem.LocMemCache",
     "django.core.cache.backends.dummy.DummyCache",
 )
+MAX_SESSION_COOKIE_AGE = 604800
+MAX_PASSWORD_RESET_TIMEOUT = 3600
 
 
 class Command(BaseCommand):
@@ -191,6 +193,16 @@ class Command(BaseCommand):
 
     def check_https(self, errors):
         safe_samesite_values = ("Lax", "Strict")
+
+        if settings.SESSION_COOKIE_AGE > MAX_SESSION_COOKIE_AGE:
+            errors.append(
+                "DJANGO_SESSION_COOKIE_AGE no debe superar 604800 segundos."
+            )
+
+        if settings.PASSWORD_RESET_TIMEOUT > MAX_PASSWORD_RESET_TIMEOUT:
+            errors.append(
+                "DJANGO_PASSWORD_RESET_TIMEOUT no debe superar 3600 segundos."
+            )
 
         if not settings.SESSION_COOKIE_HTTPONLY:
             errors.append("SESSION_COOKIE_HTTPONLY debe estar activo.")
