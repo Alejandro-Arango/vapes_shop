@@ -157,6 +157,7 @@ def validate_environment_security_defaults(
     production_values = parse_env_values(production_env_text)
     required_production_values = {
         "DJANGO_DEBUG": "False",
+        "DJANGO_PASSWORD_MIN_LENGTH": "12",
         "DJANGO_SESSION_COOKIE_AGE": "604800",
         "DJANGO_PASSWORD_RESET_TIMEOUT": "3600",
         "DJANGO_SESSION_COOKIE_SECURE": "True",

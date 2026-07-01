@@ -171,6 +171,38 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_environment_without_password_minimum_is_rejected(
+        self,
+    ):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_env_text.replace(
+            "DJANGO_PASSWORD_MIN_LENGTH=12\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            compose_text,
+            local_env_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            (
+                "compose.production.env.example debe declarar "
+                "DJANGO_PASSWORD_MIN_LENGTH=12"
+            ),
+            findings,
+        )
+
     def test_compose_without_security_env_propagation_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8",

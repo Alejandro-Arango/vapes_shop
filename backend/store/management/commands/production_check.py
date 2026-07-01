@@ -59,6 +59,7 @@ UNSAFE_CACHE_BACKENDS = (
 )
 MAX_SESSION_COOKIE_AGE = 604800
 MAX_PASSWORD_RESET_TIMEOUT = 3600
+MIN_PASSWORD_LENGTH = 12
 MIN_DATABASE_PASSWORD_LENGTH = 16
 UNSAFE_DATABASE_USERS = (
     "admin",
@@ -97,6 +98,7 @@ class Command(BaseCommand):
         self.check_database(errors, options["allow_sqlite"])
         self.check_cache(errors)
         self.check_observability(errors)
+        self.check_password_policy(errors)
         self.check_admin(errors, warnings)
         self.check_email(errors, warnings)
         self.check_contact(errors)
@@ -521,6 +523,40 @@ class Command(BaseCommand):
             errors.append(
                 "La aplicacion debe activar middleware de correlacion de solicitudes."
             )
+
+    def check_password_policy(self, errors):
+        validators = getattr(settings, "AUTH_PASSWORD_VALIDATORS", [])
+        validator_names = {
+            validator.get("NAME", "")
+            for validator in validators
+        }
+        required_validators = {
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+            "django.contrib.auth.password_validation.MinimumLengthValidator",
+            "django.contrib.auth.password_validation.CommonPasswordValidator",
+            "django.contrib.auth.password_validation.NumericPasswordValidator",
+        }
+
+        if not required_validators.issubset(validator_names):
+            errors.append(
+                "AUTH_PASSWORD_VALIDATORS debe incluir validadores minimos de Django."
+            )
+
+        for validator in validators:
+            if validator.get("NAME") == (
+                "django.contrib.auth.password_validation.MinimumLengthValidator"
+            ):
+                minimum_length = validator.get("OPTIONS", {}).get("min_length", 0)
+
+                if minimum_length < MIN_PASSWORD_LENGTH:
+                    errors.append(
+                        (
+                            "DJANGO_PASSWORD_MIN_LENGTH debe ser al menos "
+                            "12 en produccion."
+                        )
+                    )
+
+                break
 
     def check_admin(self, errors, warnings):
         if settings.ADMIN_URL_PATH == "admin/":

@@ -1110,6 +1110,15 @@ class StoreApiTests(APITestCase):
         self.assertGreaterEqual(settings.SESSION_COOKIE_AGE, 300)
         self.assertGreaterEqual(settings.EMAIL_TIMEOUT, 1)
         self.assertGreaterEqual(settings.PASSWORD_RESET_TIMEOUT, 300)
+        minimum_length_validator = next(
+            validator
+            for validator in settings.AUTH_PASSWORD_VALIDATORS
+            if validator["NAME"].endswith("MinimumLengthValidator")
+        )
+        self.assertGreaterEqual(
+            minimum_length_validator["OPTIONS"]["min_length"],
+            12,
+        )
 
     def test_whitenoise_staticfiles_configuration_is_active(self):
         self.assertEqual(
@@ -1531,6 +1540,37 @@ class StoreApiTests(APITestCase):
         )
         self.assertIn(
             "La aplicacion debe activar middleware de correlacion de solicitudes.",
+            errors,
+        )
+
+    @override_settings(
+        AUTH_PASSWORD_VALIDATORS=[
+            {
+                "NAME": (
+                    "django.contrib.auth.password_validation."
+                    "MinimumLengthValidator"
+                ),
+                "OPTIONS": {"min_length": 8},
+            },
+            {
+                "NAME": (
+                    "django.contrib.auth.password_validation."
+                    "NumericPasswordValidator"
+                ),
+            },
+        ],
+    )
+    def test_production_check_rejects_weak_password_policy(self):
+        errors = []
+
+        ProductionCheckCommand().check_password_policy(errors)
+
+        self.assertIn(
+            "AUTH_PASSWORD_VALIDATORS debe incluir validadores minimos de Django.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_PASSWORD_MIN_LENGTH debe ser al menos 12 en produccion.",
             errors,
         )
 
