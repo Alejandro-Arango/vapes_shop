@@ -1636,13 +1636,30 @@ def validate_resilience_config(
         "GUNICORN_BACKLOG",
         "GUNICORN_GRACEFUL_TIMEOUT",
         "GUNICORN_KEEP_ALIVE",
+        "GUNICORN_LIMIT_REQUEST_LINE",
+        "GUNICORN_LIMIT_REQUEST_FIELDS",
+        "GUNICORN_LIMIT_REQUEST_FIELD_SIZE",
         "GUNICORN_MAX_REQUESTS",
         "GUNICORN_MAX_REQUESTS_JITTER",
+    )
+    required_gunicorn_flags = (
+        '--limit-request-line "${GUNICORN_LIMIT_REQUEST_LINE:-4094}"',
+        '--limit-request-fields "${GUNICORN_LIMIT_REQUEST_FIELDS:-100}"',
+        (
+            '--limit-request-field_size '
+            '"${GUNICORN_LIMIT_REQUEST_FIELD_SIZE:-8190}"'
+        ),
     )
     findings = []
 
     if '--backlog "${GUNICORN_BACKLOG:-256}"' not in start_text:
         findings.append("docker/start.sh no configura backlog de Gunicorn")
+
+    for fragment in required_gunicorn_flags:
+        if fragment not in start_text:
+            findings.append(
+                f"docker/start.sh no contiene {fragment}"
+            )
 
     for key in required_gunicorn_keys:
         if key not in compose_text:
