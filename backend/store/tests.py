@@ -1338,7 +1338,10 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
-        CONTENT_SECURITY_POLICY="default-src *; script-src 'self' 'unsafe-eval'",
+        CONTENT_SECURITY_POLICY=(
+            "default-src *; "
+            "script-src 'self' 'unsafe-eval' http:"
+        ),
     )
     def test_production_check_rejects_insecure_content_security_policy(self):
         errors = []
@@ -1351,6 +1354,14 @@ class StoreApiTests(APITestCase):
         )
         self.assertIn(
             "DJANGO_CONTENT_SECURITY_POLICY no debe permitir 'unsafe-eval'.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_CONTENT_SECURITY_POLICY no debe permitir comodines.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_CONTENT_SECURITY_POLICY no debe permitir fuentes http:.",
             errors,
         )
 

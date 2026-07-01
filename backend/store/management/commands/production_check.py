@@ -317,6 +317,27 @@ class Command(BaseCommand):
                 "DJANGO_CONTENT_SECURITY_POLICY no debe permitir 'unsafe-eval'."
             )
 
+        if "*" in self.get_csp_sources(policy):
+            errors.append(
+                "DJANGO_CONTENT_SECURITY_POLICY no debe permitir comodines."
+            )
+
+        if "http:" in self.get_csp_sources(policy):
+            errors.append(
+                "DJANGO_CONTENT_SECURITY_POLICY no debe permitir fuentes http:."
+            )
+
+    def get_csp_sources(self, policy):
+        sources = []
+
+        for directive in policy.split(";"):
+            tokens = directive.strip().split()
+
+            if len(tokens) > 1:
+                sources.extend(tokens[1:])
+
+        return sources
+
     def check_browser_security_headers(self, errors):
         if not getattr(settings, "SECURE_CONTENT_TYPE_NOSNIFF", False):
             errors.append("SECURE_CONTENT_TYPE_NOSNIFF debe estar activo.")
