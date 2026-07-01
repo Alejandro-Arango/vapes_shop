@@ -1353,6 +1353,10 @@ class StoreApiTests(APITestCase):
             errors,
         )
         self.assertIn(
+            "DJANGO_CONTENT_SECURITY_POLICY debe incluir form-action 'self'.",
+            errors,
+        )
+        self.assertIn(
             "DJANGO_CONTENT_SECURITY_POLICY no debe permitir 'unsafe-eval'.",
             errors,
         )

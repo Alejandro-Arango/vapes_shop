@@ -299,7 +299,13 @@ class Command(BaseCommand):
             "base-uri 'self'",
             "object-src 'none'",
             "frame-ancestors 'none'",
+            "form-action 'self'",
             "script-src 'self'",
+            "img-src 'self'",
+            "font-src 'self'",
+            "connect-src 'self'",
+            "media-src 'self'",
+            "worker-src 'self'",
         )
 
         if not policy:
