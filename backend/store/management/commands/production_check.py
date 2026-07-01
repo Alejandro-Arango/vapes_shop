@@ -728,6 +728,19 @@ class Command(BaseCommand):
         if not getattr(settings, "OTP_ADMIN_HIDE_SENSITIVE_DATA", False):
             errors.append("OTP_ADMIN_HIDE_SENSITIVE_DATA debe estar activo.")
 
+        if not getattr(settings, "OTP_TOTP_ISSUER", "").strip():
+            errors.append("DJANGO_OTP_TOTP_ISSUER debe estar configurado.")
+
+        if getattr(settings, "OTP_TOTP_THROTTLE_FACTOR", 0) < 1:
+            errors.append(
+                "DJANGO_OTP_TOTP_THROTTLE_FACTOR debe ser al menos 1."
+            )
+
+        if getattr(settings, "OTP_STATIC_THROTTLE_FACTOR", 0) < 1:
+            errors.append(
+                "DJANGO_OTP_STATIC_THROTTLE_FACTOR debe ser al menos 1."
+            )
+
         required_apps = {
             "django_otp",
             "django_otp.plugins.otp_totp",

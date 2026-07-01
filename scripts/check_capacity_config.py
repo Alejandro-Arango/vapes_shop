@@ -157,6 +157,9 @@ def validate_environment_security_defaults(
     production_values = parse_env_values(production_env_text)
     required_production_values = {
         "DJANGO_DEBUG": "False",
+        "DJANGO_OTP_TOTP_ISSUER": "Vape Shop Admin",
+        "DJANGO_OTP_TOTP_THROTTLE_FACTOR": "1",
+        "DJANGO_OTP_STATIC_THROTTLE_FACTOR": "1",
         "DJANGO_PASSWORD_MIN_LENGTH": "12",
         "DJANGO_SESSION_COOKIE_AGE": "604800",
         "DJANGO_PASSWORD_RESET_TIMEOUT": "3600",
@@ -233,6 +236,9 @@ def validate_production_check_security(production_check_text):
         'f"{env_name} no debe superar {maximum_rate}."',
         "is_rate_at_most",
         "CHECKOUT_THROTTLE_RATE",
+        "DJANGO_OTP_TOTP_ISSUER debe estar configurado.",
+        "DJANGO_OTP_TOTP_THROTTLE_FACTOR debe ser al menos 1.",
+        "DJANGO_OTP_STATIC_THROTTLE_FACTOR debe ser al menos 1.",
         "PASSWORD_HASHERS",
         "MD5PasswordHasher",
         "UnsaltedMD5PasswordHasher",

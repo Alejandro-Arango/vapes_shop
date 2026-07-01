@@ -1128,6 +1128,9 @@ class StoreApiTests(APITestCase):
         self.assertGreaterEqual(settings.SESSION_COOKIE_AGE, 300)
         self.assertGreaterEqual(settings.EMAIL_TIMEOUT, 1)
         self.assertGreaterEqual(settings.PASSWORD_RESET_TIMEOUT, 300)
+        self.assertTrue(settings.OTP_TOTP_ISSUER)
+        self.assertGreaterEqual(settings.OTP_TOTP_THROTTLE_FACTOR, 1)
+        self.assertGreaterEqual(settings.OTP_STATIC_THROTTLE_FACTOR, 1)
         minimum_length_validator = next(
             validator
             for validator in settings.AUTH_PASSWORD_VALIDATORS
@@ -1827,6 +1830,36 @@ class StoreApiTests(APITestCase):
                 "DJANGO_ADMIN_ALLOWED_IPS no debe usar IPs locales, "
                 "reservadas o de documentacion."
             ),
+            errors,
+        )
+
+    @override_settings(
+        ADMIN_URL_PATH="panel-seguro/",
+        ADMIN_ALLOWED_IPS=("10.8.0.10",),
+        ADMIN_SESSION_COOKIE_AGE=1800,
+        ADMIN_LOGIN_MAX_ATTEMPTS=5,
+        ADMIN_LOGIN_LOCKOUT_SECONDS=900,
+        OTP_ADMIN_HIDE_SENSITIVE_DATA=True,
+        OTP_TOTP_ISSUER="",
+        OTP_TOTP_THROTTLE_FACTOR=0,
+        OTP_STATIC_THROTTLE_FACTOR=0,
+    )
+    def test_production_check_rejects_weak_admin_otp_settings(self):
+        errors = []
+        warnings = []
+
+        ProductionCheckCommand().check_admin(errors, warnings)
+
+        self.assertIn(
+            "DJANGO_OTP_TOTP_ISSUER debe estar configurado.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_OTP_TOTP_THROTTLE_FACTOR debe ser al menos 1.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_OTP_STATIC_THROTTLE_FACTOR debe ser al menos 1.",
             errors,
         )
 

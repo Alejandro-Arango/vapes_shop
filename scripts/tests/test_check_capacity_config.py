@@ -267,6 +267,36 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_environment_without_otp_throttle_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_env_text.replace(
+            "DJANGO_OTP_TOTP_THROTTLE_FACTOR=1\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            compose_text,
+            local_env_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            (
+                "compose.production.env.example debe declarar "
+                "DJANGO_OTP_TOTP_THROTTLE_FACTOR=1"
+            ),
+            findings,
+        )
+
     def test_compose_without_security_env_propagation_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8",
@@ -361,6 +391,31 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "production_check.py no contiene "
                 'f"{env_name} no debe superar {maximum_rate}."'
+            ),
+            findings,
+        )
+
+    def test_production_check_without_otp_guard_is_rejected(self):
+        production_check_text = (
+            PROJECT_ROOT
+            / "backend"
+            / "store"
+            / "management"
+            / "commands"
+            / "production_check.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_check_text.replace(
+            "DJANGO_OTP_TOTP_THROTTLE_FACTOR debe ser al menos 1.",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_production_check_security(invalid_text)
+
+        self.assertIn(
+            (
+                "production_check.py no contiene "
+                "DJANGO_OTP_TOTP_THROTTLE_FACTOR debe ser al menos 1."
             ),
             findings,
         )
