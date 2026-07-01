@@ -1286,6 +1286,22 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        ALLOWED_HOSTS=["tienda.example", "example.com"],
+    )
+    def test_production_check_rejects_reserved_allowed_hosts(self):
+        errors = []
+
+        ProductionCheckCommand().check_hosts(errors)
+
+        self.assertIn(
+            (
+                "DJANGO_ALLOWED_HOSTS no debe usar dominios reservados "
+                "o de ejemplo."
+            ),
+            errors,
+        )
+
+    @override_settings(
         ALLOWED_HOSTS=["example.com"],
         CSRF_TRUSTED_ORIGINS=["https://checkout.example.net"],
     )
@@ -1529,8 +1545,11 @@ class StoreApiTests(APITestCase):
     @override_settings(
         DEBUG=False,
         SECRET_KEY="prod-ready-value-with-more-than-fifty-characters-1234567890",
-        ALLOWED_HOSTS=["example.com", "www.example.com"],
-        CSRF_TRUSTED_ORIGINS=["https://example.com", "https://www.example.com"],
+        ALLOWED_HOSTS=["tienda-vapes.com", "www.tienda-vapes.com"],
+        CSRF_TRUSTED_ORIGINS=[
+            "https://tienda-vapes.com",
+            "https://www.tienda-vapes.com",
+        ],
         SESSION_COOKIE_AGE=604800,
         PASSWORD_RESET_TIMEOUT=3600,
         SESSION_COOKIE_SECURE=True,
@@ -1571,10 +1590,10 @@ class StoreApiTests(APITestCase):
         EMAIL_HOST_PASSWORD="smtp-credential-value-123",
         EMAIL_USE_TLS=True,
         EMAIL_USE_SSL=False,
-        DEFAULT_FROM_EMAIL="Vape Shop <no-reply@example.com>",
-        CONTACT_NOTIFICATION_EMAIL="admin@example.com",
-        ORDER_NOTIFICATION_EMAIL="orders@example.com",
-        INVENTORY_NOTIFICATION_EMAIL="inventory@example.com",
+        DEFAULT_FROM_EMAIL="Vape Shop <no-reply@tienda-vapes.com>",
+        CONTACT_NOTIFICATION_EMAIL="admin@tienda-vapes.com",
+        ORDER_NOTIFICATION_EMAIL="orders@tienda-vapes.com",
+        INVENTORY_NOTIFICATION_EMAIL="inventory@tienda-vapes.com",
         CONTACT_WHATSAPP_NUMBER="573016604375",
         LOG_FORMAT="json",
     )

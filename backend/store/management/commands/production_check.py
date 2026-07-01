@@ -32,6 +32,17 @@ LOCAL_HOSTS = (
     "::1",
     "[::1]",
 )
+RESERVED_HOSTS = (
+    "example.com",
+    "example.net",
+    "example.org",
+)
+RESERVED_HOST_SUFFIXES = (
+    ".example",
+    ".invalid",
+    ".localhost",
+    ".test",
+)
 UNSAFE_EMAIL_BACKENDS = (
     "django.core.mail.backends.console.EmailBackend",
     "django.core.mail.backends.locmem.EmailBackend",
@@ -130,6 +141,11 @@ class Command(BaseCommand):
                 "DJANGO_ALLOWED_HOSTS no debe usar hosts locales en produccion."
             )
 
+        if any(self.is_reserved_allowed_host(host) for host in allowed_hosts):
+            errors.append(
+                "DJANGO_ALLOWED_HOSTS no debe usar dominios reservados o de ejemplo."
+            )
+
     def is_local_allowed_host(self, host):
         normalized_host = str(host).strip().lower()
 
@@ -140,6 +156,18 @@ class Command(BaseCommand):
             normalized_host = normalized_host.rsplit(":", 1)[0]
 
         return normalized_host in LOCAL_HOSTS
+
+    def is_reserved_allowed_host(self, host):
+        normalized_host = str(host).strip().lower().lstrip(".").rstrip(".")
+
+        return (
+            any(
+                normalized_host == reserved_host
+                or normalized_host.endswith(f".{reserved_host}")
+                for reserved_host in RESERVED_HOSTS
+            )
+            or normalized_host.endswith(RESERVED_HOST_SUFFIXES)
+        )
 
     def check_csrf(self, errors):
         trusted_origins = getattr(settings, "CSRF_TRUSTED_ORIGINS", [])
