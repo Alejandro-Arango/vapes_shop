@@ -59,6 +59,10 @@ UNSAFE_CACHE_BACKENDS = (
 )
 MAX_SESSION_COOKIE_AGE = 604800
 MAX_PASSWORD_RESET_TIMEOUT = 3600
+MAX_DATA_UPLOAD_MEMORY_SIZE = 2 * 1024 * 1024
+MAX_FILE_UPLOAD_MEMORY_SIZE = 2 * 1024 * 1024
+MAX_DATA_UPLOAD_NUMBER_FIELDS = 1000
+MAX_DATA_UPLOAD_NUMBER_FILES = 20
 MIN_PASSWORD_LENGTH = 12
 UNSAFE_PASSWORD_HASHERS = (
     "django.contrib.auth.hashers.MD5PasswordHasher",
@@ -103,6 +107,7 @@ class Command(BaseCommand):
         self.check_browser_security_headers(errors)
         self.check_database(errors, options["allow_sqlite"])
         self.check_cache(errors)
+        self.check_upload_limits(errors)
         self.check_observability(errors)
         self.check_password_policy(errors)
         self.check_admin(errors, warnings)
@@ -516,6 +521,44 @@ class Command(BaseCommand):
             errors.append(
                 "El cache por defecto no debe ser LocMem/Dummy en produccion."
             )
+
+    def check_upload_limits(self, errors):
+        limits = (
+            (
+                "DATA_UPLOAD_MAX_MEMORY_SIZE",
+                MAX_DATA_UPLOAD_MEMORY_SIZE,
+                "DJANGO_DATA_UPLOAD_MAX_MEMORY_SIZE",
+                "bytes",
+            ),
+            (
+                "FILE_UPLOAD_MAX_MEMORY_SIZE",
+                MAX_FILE_UPLOAD_MEMORY_SIZE,
+                "DJANGO_FILE_UPLOAD_MAX_MEMORY_SIZE",
+                "bytes",
+            ),
+            (
+                "DATA_UPLOAD_MAX_NUMBER_FIELDS",
+                MAX_DATA_UPLOAD_NUMBER_FIELDS,
+                "DJANGO_DATA_UPLOAD_MAX_NUMBER_FIELDS",
+                "campos",
+            ),
+            (
+                "DATA_UPLOAD_MAX_NUMBER_FILES",
+                MAX_DATA_UPLOAD_NUMBER_FILES,
+                "DJANGO_DATA_UPLOAD_MAX_NUMBER_FILES",
+                "archivos",
+            ),
+        )
+
+        for setting_name, maximum, env_name, unit_name in limits:
+            value = getattr(settings, setting_name, None)
+
+            if type(value) is not int or value <= 0:
+                errors.append(f"{env_name} debe definir un limite positivo.")
+            elif value > maximum:
+                errors.append(
+                    f"{env_name} no debe superar {maximum} {unit_name}."
+                )
 
     def check_observability(self, errors):
         if getattr(settings, "LOG_FORMAT", "simple") != "json":

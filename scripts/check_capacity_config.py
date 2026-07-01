@@ -160,6 +160,10 @@ def validate_environment_security_defaults(
         "DJANGO_PASSWORD_MIN_LENGTH": "12",
         "DJANGO_SESSION_COOKIE_AGE": "604800",
         "DJANGO_PASSWORD_RESET_TIMEOUT": "3600",
+        "DJANGO_DATA_UPLOAD_MAX_MEMORY_SIZE": "1048576",
+        "DJANGO_FILE_UPLOAD_MAX_MEMORY_SIZE": "1048576",
+        "DJANGO_DATA_UPLOAD_MAX_NUMBER_FIELDS": "1000",
+        "DJANGO_DATA_UPLOAD_MAX_NUMBER_FILES": "20",
         "DJANGO_SESSION_COOKIE_SECURE": "True",
         "DJANGO_CSRF_COOKIE_SECURE": "True",
         "DJANGO_SECURE_SSL_REDIRECT": "True",
@@ -214,6 +218,11 @@ def validate_environment_security_defaults(
 
 def validate_production_check_security(production_check_text):
     required_fragments = (
+        "check_upload_limits",
+        "DJANGO_DATA_UPLOAD_MAX_MEMORY_SIZE",
+        "DJANGO_FILE_UPLOAD_MAX_MEMORY_SIZE",
+        "debe definir un limite positivo.",
+        "no debe superar",
         "PASSWORD_HASHERS",
         "MD5PasswordHasher",
         "UnsaltedMD5PasswordHasher",

@@ -1107,6 +1107,16 @@ class StoreApiTests(APITestCase):
         self.assertGreater(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, 0)
         self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FIELDS, 0)
         self.assertGreater(settings.DATA_UPLOAD_MAX_NUMBER_FILES, 0)
+        self.assertLessEqual(
+            settings.DATA_UPLOAD_MAX_MEMORY_SIZE,
+            2 * 1024 * 1024,
+        )
+        self.assertLessEqual(
+            settings.FILE_UPLOAD_MAX_MEMORY_SIZE,
+            2 * 1024 * 1024,
+        )
+        self.assertLessEqual(settings.DATA_UPLOAD_MAX_NUMBER_FIELDS, 1000)
+        self.assertLessEqual(settings.DATA_UPLOAD_MAX_NUMBER_FILES, 20)
         self.assertGreaterEqual(settings.SESSION_COOKIE_AGE, 300)
         self.assertGreaterEqual(settings.EMAIL_TIMEOUT, 1)
         self.assertGreaterEqual(settings.PASSWORD_RESET_TIMEOUT, 300)
@@ -1531,6 +1541,34 @@ class StoreApiTests(APITestCase):
         )
         self.assertIn(
             "DJANGO_PASSWORD_RESET_TIMEOUT no debe superar 3600 segundos.",
+            errors,
+        )
+
+    @override_settings(
+        DATA_UPLOAD_MAX_MEMORY_SIZE=None,
+        FILE_UPLOAD_MAX_MEMORY_SIZE=10 * 1024 * 1024,
+        DATA_UPLOAD_MAX_NUMBER_FIELDS=5000,
+        DATA_UPLOAD_MAX_NUMBER_FILES=200,
+    )
+    def test_production_check_rejects_unbounded_upload_limits(self):
+        errors = []
+
+        ProductionCheckCommand().check_upload_limits(errors)
+
+        self.assertIn(
+            "DJANGO_DATA_UPLOAD_MAX_MEMORY_SIZE debe definir un limite positivo.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_FILE_UPLOAD_MAX_MEMORY_SIZE no debe superar 2097152 bytes.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_DATA_UPLOAD_MAX_NUMBER_FIELDS no debe superar 1000 campos.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_DATA_UPLOAD_MAX_NUMBER_FILES no debe superar 20 archivos.",
             errors,
         )
 
