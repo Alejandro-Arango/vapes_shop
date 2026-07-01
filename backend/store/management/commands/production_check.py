@@ -63,6 +63,29 @@ MAX_DATA_UPLOAD_MEMORY_SIZE = 2 * 1024 * 1024
 MAX_FILE_UPLOAD_MEMORY_SIZE = 2 * 1024 * 1024
 MAX_DATA_UPLOAD_NUMBER_FIELDS = 1000
 MAX_DATA_UPLOAD_NUMBER_FILES = 20
+MAX_THROTTLE_RATES = {
+    "auth_anon": ("AUTH_THROTTLE_RATE", "20/min"),
+    "auth_user": ("AUTH_USER_THROTTLE_RATE", "10/min"),
+    "contact_anon": ("CONTACT_THROTTLE_RATE", "10/hour"),
+    "cart": ("CART_THROTTLE_RATE", "60/min"),
+    "checkout_user": ("CHECKOUT_THROTTLE_RATE", "20/min"),
+}
+THROTTLE_PERIOD_SECONDS = {
+    "s": 1,
+    "sec": 1,
+    "second": 1,
+    "seconds": 1,
+    "m": 60,
+    "min": 60,
+    "minute": 60,
+    "minutes": 60,
+    "h": 3600,
+    "hour": 3600,
+    "hours": 3600,
+    "d": 86400,
+    "day": 86400,
+    "days": 86400,
+}
 MIN_PASSWORD_LENGTH = 12
 UNSAFE_PASSWORD_HASHERS = (
     "django.contrib.auth.hashers.MD5PasswordHasher",
@@ -108,6 +131,7 @@ class Command(BaseCommand):
         self.check_database(errors, options["allow_sqlite"])
         self.check_cache(errors)
         self.check_upload_limits(errors)
+        self.check_throttle_rates(errors)
         self.check_observability(errors)
         self.check_password_policy(errors)
         self.check_admin(errors, warnings)
@@ -559,6 +583,58 @@ class Command(BaseCommand):
                 errors.append(
                     f"{env_name} no debe superar {maximum} {unit_name}."
                 )
+
+    def check_throttle_rates(self, errors):
+        throttle_rates = getattr(settings, "REST_FRAMEWORK", {}).get(
+            "DEFAULT_THROTTLE_RATES",
+            {},
+        )
+
+        for scope, (env_name, maximum_rate) in MAX_THROTTLE_RATES.items():
+            configured_rate = throttle_rates.get(scope)
+
+            if not configured_rate:
+                errors.append(
+                    f"{env_name} debe estar configurado en REST_FRAMEWORK."
+                )
+                continue
+
+            if not self.is_rate_at_most(configured_rate, maximum_rate):
+                errors.append(
+                    f"{env_name} no debe superar {maximum_rate}."
+                )
+
+    def is_rate_at_most(self, configured_rate, maximum_rate):
+        configured = self.parse_throttle_rate(configured_rate)
+        maximum = self.parse_throttle_rate(maximum_rate)
+
+        if configured is None or maximum is None:
+            return False
+
+        configured_quantity, configured_seconds = configured
+        maximum_quantity, maximum_seconds = maximum
+
+        return (
+            configured_quantity * maximum_seconds
+            <= maximum_quantity * configured_seconds
+        )
+
+    def parse_throttle_rate(self, rate):
+        if not isinstance(rate, str) or "/" not in rate:
+            return None
+
+        quantity, period = rate.strip().lower().split("/", 1)
+
+        if not quantity.isdigit():
+            return None
+
+        quantity = int(quantity)
+        period_seconds = THROTTLE_PERIOD_SECONDS.get(period)
+
+        if quantity <= 0 or period_seconds is None:
+            return None
+
+        return quantity, period_seconds
 
     def check_observability(self, errors):
         if getattr(settings, "LOG_FORMAT", "simple") != "json":

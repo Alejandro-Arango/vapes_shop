@@ -1117,6 +1117,14 @@ class StoreApiTests(APITestCase):
         )
         self.assertLessEqual(settings.DATA_UPLOAD_MAX_NUMBER_FIELDS, 1000)
         self.assertLessEqual(settings.DATA_UPLOAD_MAX_NUMBER_FILES, 20)
+        self.assertEqual(
+            settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth_anon"],
+            "20/min",
+        )
+        self.assertEqual(
+            settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["checkout_user"],
+            "20/min",
+        )
         self.assertGreaterEqual(settings.SESSION_COOKIE_AGE, 300)
         self.assertGreaterEqual(settings.EMAIL_TIMEOUT, 1)
         self.assertGreaterEqual(settings.PASSWORD_RESET_TIMEOUT, 300)
@@ -1569,6 +1577,51 @@ class StoreApiTests(APITestCase):
         )
         self.assertIn(
             "DJANGO_DATA_UPLOAD_MAX_NUMBER_FILES no debe superar 20 archivos.",
+            errors,
+        )
+
+    @override_settings(
+        REST_FRAMEWORK={
+            "DEFAULT_THROTTLE_RATES": {
+                "auth_anon": "120/min",
+                "auth_user": "10/min",
+                "contact_anon": "10/hour",
+                "cart": "60/min",
+                "checkout_user": "1/sec",
+            },
+        },
+    )
+    def test_production_check_rejects_permissive_throttle_rates(self):
+        errors = []
+
+        ProductionCheckCommand().check_throttle_rates(errors)
+
+        self.assertIn(
+            "AUTH_THROTTLE_RATE no debe superar 20/min.",
+            errors,
+        )
+        self.assertIn(
+            "CHECKOUT_THROTTLE_RATE no debe superar 20/min.",
+            errors,
+        )
+
+    @override_settings(
+        REST_FRAMEWORK={
+            "DEFAULT_THROTTLE_RATES": {
+                "auth_anon": "20/min",
+                "contact_anon": "10/hour",
+                "cart": "60/min",
+                "checkout_user": "20/min",
+            },
+        },
+    )
+    def test_production_check_rejects_missing_throttle_scope(self):
+        errors = []
+
+        ProductionCheckCommand().check_throttle_rates(errors)
+
+        self.assertIn(
+            "AUTH_USER_THROTTLE_RATE debe estar configurado en REST_FRAMEWORK.",
             errors,
         )
 
