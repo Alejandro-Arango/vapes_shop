@@ -1286,6 +1286,23 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        ALLOWED_HOSTS=["example.com"],
+        CSRF_TRUSTED_ORIGINS=["https://checkout.example.net"],
+    )
+    def test_production_check_rejects_csrf_origin_outside_allowed_hosts(self):
+        errors = []
+
+        ProductionCheckCommand().check_csrf(errors)
+
+        self.assertIn(
+            (
+                "DJANGO_CSRF_TRUSTED_ORIGINS debe corresponder a "
+                "DJANGO_ALLOWED_HOSTS."
+            ),
+            errors,
+        )
+
+    @override_settings(
         CONTENT_SECURITY_POLICY="default-src *; script-src 'self' 'unsafe-eval'",
     )
     def test_production_check_rejects_insecure_content_security_policy(self):

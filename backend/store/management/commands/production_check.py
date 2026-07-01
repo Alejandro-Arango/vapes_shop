@@ -4,6 +4,8 @@ Descripcion: Comando para validar configuracion minima antes de desplegar en pro
 Dependencias: Django settings y BaseCommand
 """
 
+from urllib.parse import urlparse
+
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
@@ -136,6 +138,7 @@ class Command(BaseCommand):
 
     def check_csrf(self, errors):
         trusted_origins = getattr(settings, "CSRF_TRUSTED_ORIGINS", [])
+        allowed_hosts = getattr(settings, "ALLOWED_HOSTS", [])
 
         if not trusted_origins:
             errors.append("DJANGO_CSRF_TRUSTED_ORIGINS debe estar configurado.")
@@ -150,6 +153,38 @@ class Command(BaseCommand):
                 errors.append(
                     "DJANGO_CSRF_TRUSTED_ORIGINS debe usar origenes https."
                 )
+
+            if not self.csrf_origin_matches_allowed_hosts(origin, allowed_hosts):
+                errors.append(
+                    (
+                        "DJANGO_CSRF_TRUSTED_ORIGINS debe corresponder a "
+                        "DJANGO_ALLOWED_HOSTS."
+                    )
+                )
+
+    def csrf_origin_matches_allowed_hosts(self, origin, allowed_hosts):
+        parsed_origin = urlparse(origin)
+        origin_host = (parsed_origin.hostname or "").lower()
+
+        if not origin_host:
+            return False
+
+        for host in allowed_hosts:
+            normalized_host = str(host).strip().lower()
+
+            if normalized_host.startswith("."):
+                base_domain = normalized_host[1:]
+
+                if (
+                    origin_host == base_domain
+                    or origin_host.endswith(f".{base_domain}")
+                ):
+                    return True
+
+            if origin_host == normalized_host:
+                return True
+
+        return False
 
     def check_https(self, errors):
         safe_samesite_values = ("Lax", "Strict")
