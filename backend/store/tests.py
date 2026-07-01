@@ -1460,6 +1460,27 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        ADMIN_URL_PATH="panel-seguro/",
+        ADMIN_ALLOWED_IPS=("127.0.0.1", "192.0.2.10"),
+        ADMIN_SESSION_COOKIE_AGE=1800,
+        ADMIN_LOGIN_MAX_ATTEMPTS=5,
+        ADMIN_LOGIN_LOCKOUT_SECONDS=900,
+    )
+    def test_production_check_rejects_unsafe_admin_allowed_ips(self):
+        errors = []
+        warnings = []
+
+        ProductionCheckCommand().check_admin(errors, warnings)
+
+        self.assertIn(
+            (
+                "DJANGO_ADMIN_ALLOWED_IPS no debe usar IPs locales, "
+                "reservadas o de documentacion."
+            ),
+            errors,
+        )
+
+    @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
         EMAIL_HOST="smtp.example.com",
         EMAIL_HOST_USER="reemplaza-usuario-smtp",
@@ -1616,7 +1637,7 @@ class StoreApiTests(APITestCase):
             }
         },
         ADMIN_URL_PATH="panel-seguro/",
-        ADMIN_ALLOWED_IPS=("127.0.0.1",),
+        ADMIN_ALLOWED_IPS=("10.8.0.10",),
         TRUST_X_FORWARDED_FOR=True,
         EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
         EMAIL_HOST="smtp.tienda-vapes.com",

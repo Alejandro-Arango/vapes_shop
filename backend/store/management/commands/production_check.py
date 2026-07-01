@@ -5,6 +5,7 @@ Dependencias: Django settings y BaseCommand
 """
 
 from email.utils import parseaddr
+from ipaddress import ip_address, ip_network
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -42,6 +43,14 @@ RESERVED_HOST_SUFFIXES = (
     ".invalid",
     ".localhost",
     ".test",
+)
+DOCUMENTATION_IP_NETWORKS = tuple(
+    ip_network(network)
+    for network in (
+        "192.0.2.0/24",
+        "198.51.100.0/24",
+        "203.0.113.0/24",
+    )
 )
 UNSAFE_EMAIL_BACKENDS = (
     "django.core.mail.backends.console.EmailBackend",
@@ -414,6 +423,16 @@ class Command(BaseCommand):
         if not settings.ADMIN_ALLOWED_IPS:
             errors.append("DJANGO_ADMIN_ALLOWED_IPS debe restringir el admin por IP.")
 
+        for allowed_ip in settings.ADMIN_ALLOWED_IPS:
+            if self.is_unsafe_admin_allowed_ip(allowed_ip):
+                errors.append(
+                    (
+                        "DJANGO_ADMIN_ALLOWED_IPS no debe usar IPs locales, "
+                        "reservadas o de documentacion."
+                    )
+                )
+                break
+
         if settings.ADMIN_SESSION_COOKIE_AGE > 3600:
             errors.append(
                 "DJANGO_ADMIN_SESSION_COOKIE_AGE no debe superar 3600 segundos."
@@ -453,6 +472,23 @@ class Command(BaseCommand):
             errors.append(
                 "El admin debe tener middleware OTP, sesion corta y bloqueo de intentos."
             )
+
+    def is_unsafe_admin_allowed_ip(self, value):
+        try:
+            parsed_ip = ip_address(str(value).strip())
+        except ValueError:
+            return True
+
+        return (
+            parsed_ip.is_loopback
+            or parsed_ip.is_unspecified
+            or parsed_ip.is_multicast
+            or parsed_ip.is_link_local
+            or any(
+                parsed_ip in documentation_network
+                for documentation_network in DOCUMENTATION_IP_NETWORKS
+            )
+        )
 
     def check_email(self, errors, warnings):
         email_backend = getattr(settings, "EMAIL_BACKEND", "")
