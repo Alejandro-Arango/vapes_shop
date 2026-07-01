@@ -461,8 +461,14 @@ class Command(BaseCommand):
             errors.append("DJANGO_EMAIL_BACKEND debe ser un backend real de correo.")
 
         if email_backend == "django.core.mail.backends.smtp.EmailBackend":
-            if not getattr(settings, "EMAIL_HOST", ""):
+            email_host = getattr(settings, "EMAIL_HOST", "")
+
+            if not email_host:
                 errors.append("DJANGO_EMAIL_HOST debe estar configurado para SMTP.")
+            elif self.is_reserved_allowed_host(email_host):
+                errors.append(
+                    "DJANGO_EMAIL_HOST no debe usar dominios reservados o de ejemplo."
+                )
 
             email_user = getattr(settings, "EMAIL_HOST_USER", "")
             email_password = getattr(settings, "EMAIL_HOST_PASSWORD", "")
@@ -525,8 +531,17 @@ class Command(BaseCommand):
             (order_notification_email, "ORDER_NOTIFICATION_EMAIL"),
             (inventory_notification_email, "INVENTORY_NOTIFICATION_EMAIL"),
         ):
-            if value and not self.has_valid_email_address(value):
+            if not value:
+                continue
+
+            if not self.has_valid_email_address(value):
                 errors.append(f"{label} debe contener un correo valido.")
+                continue
+
+            if self.has_reserved_email_domain(value):
+                errors.append(
+                    f"{label} no debe usar dominios reservados o de ejemplo."
+                )
 
     def has_placeholder_value(self, value):
         normalized_value = str(value).strip().lower()
@@ -548,6 +563,12 @@ class Command(BaseCommand):
             return False
 
         return True
+
+    def has_reserved_email_domain(self, value):
+        _, address = parseaddr(str(value))
+        _, domain = address.rsplit("@", 1)
+
+        return self.is_reserved_allowed_host(domain)
 
     def check_contact(self, errors):
         whatsapp_number = getattr(settings, "CONTACT_WHATSAPP_NUMBER", "")

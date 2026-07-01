@@ -1543,6 +1543,40 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        EMAIL_HOST="smtp.example.com",
+        EMAIL_HOST_USER="smtp-user-vapes",
+        EMAIL_HOST_PASSWORD="smtp-credential-value-123",
+        EMAIL_USE_TLS=True,
+        EMAIL_USE_SSL=False,
+        DEFAULT_FROM_EMAIL="Vape Shop <no-reply@example.com>",
+        CONTACT_NOTIFICATION_EMAIL="admin@tienda.example",
+        ORDER_NOTIFICATION_EMAIL="orders@tienda-vapes.com",
+        INVENTORY_NOTIFICATION_EMAIL="inventory@tienda-vapes.com",
+    )
+    def test_production_check_rejects_reserved_email_domains(self):
+        errors = []
+        warnings = []
+
+        ProductionCheckCommand().check_email(errors, warnings)
+
+        self.assertIn(
+            "DJANGO_EMAIL_HOST no debe usar dominios reservados o de ejemplo.",
+            errors,
+        )
+        self.assertIn(
+            "DEFAULT_FROM_EMAIL no debe usar dominios reservados o de ejemplo.",
+            errors,
+        )
+        self.assertIn(
+            (
+                "CONTACT_NOTIFICATION_EMAIL no debe usar dominios reservados "
+                "o de ejemplo."
+            ),
+            errors,
+        )
+
+    @override_settings(
         DEBUG=False,
         SECRET_KEY="prod-ready-value-with-more-than-fifty-characters-1234567890",
         ALLOWED_HOSTS=["tienda-vapes.com", "www.tienda-vapes.com"],
@@ -1585,7 +1619,7 @@ class StoreApiTests(APITestCase):
         ADMIN_ALLOWED_IPS=("127.0.0.1",),
         TRUST_X_FORWARDED_FOR=True,
         EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
-        EMAIL_HOST="smtp.example.com",
+        EMAIL_HOST="smtp.tienda-vapes.com",
         EMAIL_HOST_USER="smtp-user-vapes",
         EMAIL_HOST_PASSWORD="smtp-credential-value-123",
         EMAIL_USE_TLS=True,
