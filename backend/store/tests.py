@@ -1479,6 +1479,66 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        DATABASES={
+            "default": {
+                "ENGINE": "django.db.backends.mysql",
+                "NAME": "vapes_shop",
+                "USER": "root",
+                "PASSWORD": "change-me-password",
+                "HOST": "127.0.0.1",
+                "PORT": "3306",
+                "CONN_MAX_AGE": 60,
+                "CONN_HEALTH_CHECKS": True,
+                "OPTIONS": {
+                    "connect_timeout": 10,
+                    "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+                },
+            }
+        },
+    )
+    def test_production_check_rejects_weak_database_credentials(self):
+        errors = []
+
+        ProductionCheckCommand().check_database(errors, allow_sqlite=False)
+
+        self.assertIn(
+            "DJANGO_DB_PASSWORD no debe usar valores de ejemplo.",
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_DB_USER no debe usar usuarios administrativos.",
+            errors,
+        )
+
+    @override_settings(
+        DATABASES={
+            "default": {
+                "ENGINE": "django.db.backends.mysql",
+                "NAME": "vapes_shop",
+                "USER": "vapes_user",
+                "PASSWORD": "corta",
+                "HOST": "127.0.0.1",
+                "PORT": "3306",
+                "CONN_MAX_AGE": 60,
+                "CONN_HEALTH_CHECKS": True,
+                "OPTIONS": {
+                    "connect_timeout": 10,
+                    "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+                },
+            }
+        },
+    )
+    def test_production_check_rejects_short_database_password(self):
+        errors = []
+
+        ProductionCheckCommand().check_database(errors, allow_sqlite=False)
+
+        self.assertIn(
+            "DJANGO_DB_PASSWORD debe tener al menos 16 caracteres.",
+            errors,
+        )
+
+    @override_settings(
         ADMIN_URL_PATH="panel-seguro/",
         ADMIN_ALLOWED_IPS=("127.0.0.1", "192.0.2.10"),
         ADMIN_SESSION_COOKIE_AGE=1800,

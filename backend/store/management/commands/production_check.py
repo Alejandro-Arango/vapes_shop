@@ -63,6 +63,12 @@ UNSAFE_CACHE_BACKENDS = (
 )
 MAX_SESSION_COOKIE_AGE = 604800
 MAX_PASSWORD_RESET_TIMEOUT = 3600
+MIN_DATABASE_PASSWORD_LENGTH = 16
+UNSAFE_DATABASE_USERS = (
+    "admin",
+    "mysql",
+    "root",
+)
 
 
 class Command(BaseCommand):
@@ -367,12 +373,26 @@ class Command(BaseCommand):
 
         password = str(database.get("PASSWORD", ""))
 
-        if "sqlite3" not in engine and (
-            not password or any(part in password.lower() for part in ("cambia", "password"))
-        ):
-            errors.append("La base de datos productiva debe tener una contrasena real.")
+        if "sqlite3" not in engine:
+            if not password:
+                errors.append("DJANGO_DB_PASSWORD debe estar configurado.")
+            elif len(password) < MIN_DATABASE_PASSWORD_LENGTH:
+                errors.append(
+                    "DJANGO_DB_PASSWORD debe tener al menos 16 caracteres."
+                )
+            elif self.has_insecure_database_password(password):
+                errors.append(
+                    "DJANGO_DB_PASSWORD no debe usar valores de ejemplo."
+                )
 
         if "mysql" in engine:
+            database_user = str(database.get("USER", "")).strip().lower()
+
+            if database_user in UNSAFE_DATABASE_USERS:
+                errors.append(
+                    "DJANGO_DB_USER no debe usar usuarios administrativos."
+                )
+
             if database.get("CONN_MAX_AGE", 0) <= 0:
                 errors.append(
                     "DJANGO_DB_CONN_MAX_AGE debe reutilizar conexiones MySQL."
@@ -394,6 +414,14 @@ class Command(BaseCommand):
                 errors.append(
                     "MySQL debe usar STRICT_TRANS_TABLES para evitar truncamientos."
                 )
+
+    def has_insecure_database_password(self, password):
+        normalized_password = str(password).strip().lower()
+
+        return (
+            self.has_placeholder_value(normalized_password)
+            or "password" in normalized_password
+        )
 
     def check_cache(self, errors):
         cache_backend = settings.CACHES["default"]["BACKEND"]
