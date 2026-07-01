@@ -1636,11 +1636,17 @@ def validate_resilience_config(
         "proxy_connect_timeout 5s;",
         "proxy_send_timeout 30s;",
         "proxy_read_timeout 65s;",
+        "proxy_set_header X-Forwarded-For $remote_addr;",
     )
 
     for fragment in nginx_fragments:
         if fragment not in nginx_text:
             findings.append(f"docker/nginx.conf no contiene {fragment}")
+
+    if "$proxy_add_x_forwarded_for" in nginx_text:
+        findings.append(
+            "docker/nginx.conf no debe propagar X-Forwarded-For del cliente"
+        )
 
     return findings
 
