@@ -465,16 +465,16 @@ class Command(BaseCommand):
             errors.append("INVENTORY_NOTIFICATION_EMAIL no debe usar vape-shop.local.")
 
         if not default_from:
-            warnings.append("DEFAULT_FROM_EMAIL esta vacio.")
+            errors.append("DEFAULT_FROM_EMAIL debe estar configurado.")
 
         if not notification_email:
-            warnings.append("CONTACT_NOTIFICATION_EMAIL esta vacio.")
+            errors.append("CONTACT_NOTIFICATION_EMAIL debe estar configurado.")
 
         if not order_notification_email:
-            warnings.append("ORDER_NOTIFICATION_EMAIL esta vacio.")
+            errors.append("ORDER_NOTIFICATION_EMAIL debe estar configurado.")
 
         if not inventory_notification_email:
-            warnings.append("INVENTORY_NOTIFICATION_EMAIL esta vacio.")
+            errors.append("INVENTORY_NOTIFICATION_EMAIL debe estar configurado.")
 
     def has_placeholder_value(self, value):
         normalized_value = str(value).strip().lower()

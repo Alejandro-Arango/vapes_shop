@@ -1439,6 +1439,39 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        EMAIL_HOST="smtp.example.com",
+        EMAIL_HOST_USER="smtp-user-vapes",
+        EMAIL_HOST_PASSWORD="smtp-credential-value-123",
+        EMAIL_USE_TLS=True,
+        EMAIL_USE_SSL=False,
+        DEFAULT_FROM_EMAIL="",
+        CONTACT_NOTIFICATION_EMAIL="",
+        ORDER_NOTIFICATION_EMAIL="",
+        INVENTORY_NOTIFICATION_EMAIL="",
+    )
+    def test_production_check_rejects_missing_operational_emails(self):
+        errors = []
+        warnings = []
+
+        ProductionCheckCommand().check_email(errors, warnings)
+
+        self.assertIn("DEFAULT_FROM_EMAIL debe estar configurado.", errors)
+        self.assertIn(
+            "CONTACT_NOTIFICATION_EMAIL debe estar configurado.",
+            errors,
+        )
+        self.assertIn(
+            "ORDER_NOTIFICATION_EMAIL debe estar configurado.",
+            errors,
+        )
+        self.assertIn(
+            "INVENTORY_NOTIFICATION_EMAIL debe estar configurado.",
+            errors,
+        )
+        self.assertEqual(warnings, [])
+
+    @override_settings(
         DEBUG=False,
         SECRET_KEY="prod-ready-value-with-more-than-fifty-characters-1234567890",
         ALLOWED_HOSTS=["example.com", "www.example.com"],
