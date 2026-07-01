@@ -211,6 +211,16 @@ class Command(BaseCommand):
                     "DJANGO_CSRF_TRUSTED_ORIGINS no debe usar localhost en produccion."
                 )
 
+            if parsed_origin.hostname and self.is_reserved_allowed_host(
+                parsed_origin.hostname
+            ):
+                errors.append(
+                    (
+                        "DJANGO_CSRF_TRUSTED_ORIGINS no debe usar dominios "
+                        "reservados o de ejemplo."
+                    )
+                )
+
             if parsed_origin.scheme != "https":
                 errors.append(
                     "DJANGO_CSRF_TRUSTED_ORIGINS debe usar origenes https."
