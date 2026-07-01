@@ -501,6 +501,17 @@ class Command(BaseCommand):
 
             if not email_host:
                 errors.append("DJANGO_EMAIL_HOST debe estar configurado para SMTP.")
+            elif self.is_malformed_service_host(email_host):
+                errors.append(
+                    (
+                        "DJANGO_EMAIL_HOST debe contener un hostname sin "
+                        "esquema, ruta ni puerto."
+                    )
+                )
+            elif self.is_local_allowed_host(email_host):
+                errors.append(
+                    "DJANGO_EMAIL_HOST no debe usar hosts locales en produccion."
+                )
             elif self.is_reserved_allowed_host(email_host):
                 errors.append(
                     "DJANGO_EMAIL_HOST no debe usar dominios reservados o de ejemplo."
@@ -585,6 +596,18 @@ class Command(BaseCommand):
         return any(
             part in normalized_value
             for part in PLACEHOLDER_SECRET_PARTS
+        )
+
+    def is_malformed_service_host(self, value):
+        normalized_value = str(value).strip()
+
+        return (
+            not normalized_value
+            or "://" in normalized_value
+            or "/" in normalized_value
+            or ":" in normalized_value
+            or "@" in normalized_value
+            or any(char.isspace() for char in normalized_value)
         )
 
     def has_valid_email_address(self, value):
