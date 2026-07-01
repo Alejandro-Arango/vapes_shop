@@ -22,10 +22,6 @@ PLACEHOLDER_SECRET_PARTS = (
     "placeholder",
     "secret-key",
 )
-LOCAL_ORIGINS = (
-    "http://127.0.0.1",
-    "http://localhost",
-)
 LOCAL_HOSTS = (
     "localhost",
     "127.0.0.1",
@@ -192,12 +188,30 @@ class Command(BaseCommand):
             errors.append("DJANGO_CSRF_TRUSTED_ORIGINS debe estar configurado.")
 
         for origin in trusted_origins:
-            if origin.startswith(LOCAL_ORIGINS):
+            parsed_origin = urlparse(origin)
+
+            if "*" in origin:
+                errors.append(
+                    "DJANGO_CSRF_TRUSTED_ORIGINS no debe usar comodines."
+                )
+
+            if not self.is_clean_csrf_origin(parsed_origin):
+                errors.append(
+                    (
+                        "DJANGO_CSRF_TRUSTED_ORIGINS debe usar origenes "
+                        "sin ruta, credenciales, query ni fragmento."
+                    )
+                )
+
+            if (parsed_origin.scheme, parsed_origin.hostname) in (
+                ("http", "127.0.0.1"),
+                ("http", "localhost"),
+            ):
                 errors.append(
                     "DJANGO_CSRF_TRUSTED_ORIGINS no debe usar localhost en produccion."
                 )
 
-            if not origin.startswith("https://"):
+            if parsed_origin.scheme != "https":
                 errors.append(
                     "DJANGO_CSRF_TRUSTED_ORIGINS debe usar origenes https."
                 )
@@ -209,6 +223,18 @@ class Command(BaseCommand):
                         "DJANGO_ALLOWED_HOSTS."
                     )
                 )
+
+    def is_clean_csrf_origin(self, parsed_origin):
+        return (
+            parsed_origin.scheme
+            and parsed_origin.hostname
+            and not parsed_origin.username
+            and not parsed_origin.password
+            and not parsed_origin.path
+            and not parsed_origin.params
+            and not parsed_origin.query
+            and not parsed_origin.fragment
+        )
 
     def csrf_origin_matches_allowed_hosts(self, origin, allowed_hosts):
         parsed_origin = urlparse(origin)

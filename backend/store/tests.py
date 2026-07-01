@@ -1338,6 +1338,30 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        ALLOWED_HOSTS=["tienda-vapes.com"],
+        CSRF_TRUSTED_ORIGINS=[
+            "https://usuario:clave@tienda-vapes.com/ruta?token=1#frag",
+            "https://*.tienda-vapes.com",
+        ],
+    )
+    def test_production_check_rejects_malformed_csrf_origins(self):
+        errors = []
+
+        ProductionCheckCommand().check_csrf(errors)
+
+        self.assertIn(
+            (
+                "DJANGO_CSRF_TRUSTED_ORIGINS debe usar origenes sin ruta, "
+                "credenciales, query ni fragmento."
+            ),
+            errors,
+        )
+        self.assertIn(
+            "DJANGO_CSRF_TRUSTED_ORIGINS no debe usar comodines.",
+            errors,
+        )
+
+    @override_settings(
         CONTENT_SECURITY_POLICY=(
             "default-src *; "
             "script-src 'self' 'unsafe-eval' http:"
