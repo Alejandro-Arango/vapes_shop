@@ -1518,6 +1518,7 @@ def validate_disaster_recovery(
         "rev-parse",
         "--porcelain=v1",
         "--untracked-files=no",
+        "parse_env_value",
         "no coincide con source_commit",
         "contiene cambios rastreados",
         "external-recovery",
@@ -1585,6 +1586,26 @@ def validate_disaster_recovery(
             deploy_text,
             "X-Forwarded-Proto: https",
             "deploy_production.py",
+        ),
+        (
+            deploy_text,
+            "def parse_env_value",
+            "deploy_production.py",
+        ),
+        (
+            deploy_text,
+            "allowed_hosts = parse_env_value(value)",
+            "deploy_production.py",
+        ),
+        (
+            recovery_text,
+            "parse_env_value",
+            "recover_production.py",
+        ),
+        (
+            recovery_text,
+            "raw_value = parse_env_value(value)",
+            "recover_production.py",
         ),
         (
             disaster_docs_text,

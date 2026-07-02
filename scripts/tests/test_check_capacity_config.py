@@ -2427,6 +2427,24 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_disaster_recovery_without_safe_env_parser_is_rejected(self):
+        inputs = self.disaster_recovery_inputs()
+        inputs["deploy_text"] = inputs["deploy_text"].replace(
+            "allowed_hosts = parse_env_value(value)",
+            "allowed_hosts = value.strip().strip('\"').strip(\"'\")",
+            1,
+        )
+
+        findings = capacity.validate_disaster_recovery(**inputs)
+
+        self.assertIn(
+            (
+                "deploy_production.py no contiene "
+                "allowed_hosts = parse_env_value(value)"
+            ),
+            findings,
+        )
+
     def test_recovery_state_parent_symlink_guard_is_rejected(self):
         inputs = self.disaster_recovery_inputs()
         inputs["recovery_text"] = inputs["recovery_text"].replace(

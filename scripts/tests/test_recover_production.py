@@ -610,6 +610,19 @@ class ProductionRecoveryTests(unittest.TestCase):
 
         self.assertEqual(objective, 2400.0)
 
+    def test_rto_objective_accepts_quoted_environment_value(self):
+        self.env_file.write_text(
+            (
+                "DJANGO_ALLOWED_HOSTS=shop.example\n"
+                'DISASTER_RECOVERY_RTO_SECONDS="2400"\n'
+            ),
+            encoding="utf-8",
+        )
+
+        objective = recovery.load_rto_objective(self.env_file)
+
+        self.assertEqual(objective, 2400.0)
+
     def test_verified_release_manifest_supplies_images_and_identity(self):
         manifest_path = self.root / "recovery-manifest.json"
         checksum_path = self.root / "recovery-manifest.sha256"

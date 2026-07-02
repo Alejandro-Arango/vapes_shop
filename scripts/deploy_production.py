@@ -46,6 +46,19 @@ def validate_image_reference(value, label):
     return value
 
 
+def parse_env_value(value):
+    value = value.strip()
+
+    if (
+        len(value) >= 2
+        and value[0] == value[-1]
+        and value[0] in ("'", '"')
+    ):
+        return value[1:-1]
+
+    return value
+
+
 def load_health_host(env_file):
     try:
         lines = Path(env_file).read_text(encoding="utf-8").splitlines()
@@ -70,7 +83,7 @@ def load_health_host(env_file):
         key, value = line.split("=", 1)
 
         if key == "DJANGO_ALLOWED_HOSTS":
-            allowed_hosts = value.strip().strip('"').strip("'")
+            allowed_hosts = parse_env_value(value)
             break
 
     for candidate in allowed_hosts.split(","):

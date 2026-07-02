@@ -68,6 +68,24 @@ class DeploymentControllerTests(unittest.TestCase):
             wait_timeout=30,
         )
 
+    def test_parse_env_value_preserves_inner_quotes(self):
+        value = deploy.parse_env_value(
+            '"worker-src \'self\'"'
+        )
+
+        self.assertEqual(value, "worker-src 'self'")
+
+    def test_health_host_is_loaded_from_quoted_environment(self):
+        (self.root / "compose.env").write_text(
+            'DJANGO_ALLOWED_HOSTS="shop.example,www.shop.example"\n',
+            encoding="utf-8",
+        )
+
+        self.assertEqual(
+            deploy.load_health_host(self.root / "compose.env"),
+            "shop.example",
+        )
+
     def test_state_directory_symlink_is_rejected_before_lock(self):
         runner = FakeRunner()
 

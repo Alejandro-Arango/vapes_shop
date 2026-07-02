@@ -16,7 +16,11 @@ SCRIPT_DIRECTORY = Path(__file__).resolve().parent
 if str(SCRIPT_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIRECTORY))
 
-from deploy_production import load_health_host, validate_image_reference
+from deploy_production import (
+    load_health_host,
+    parse_env_value,
+    validate_image_reference,
+)
 from monitor_backups import (
     BackupMonitorError,
     send_webhook,
@@ -89,7 +93,7 @@ def load_rto_objective(env_file, default=1800.0):
         key, value = line.split("=", 1)
 
         if key == "DISASTER_RECOVERY_RTO_SECONDS":
-            raw_value = value.strip().strip('"').strip("'")
+            raw_value = parse_env_value(value)
             break
 
     if not raw_value:
