@@ -1945,6 +1945,7 @@ def validate_resilience_config(
         "GUNICORN_MAX_REQUESTS_JITTER",
     )
     required_gunicorn_flags = (
+        "--worker-tmp-dir /tmp",
         '--limit-request-line "${GUNICORN_LIMIT_REQUEST_LINE:-4094}"',
         '--limit-request-fields "${GUNICORN_LIMIT_REQUEST_FIELDS:-100}"',
         (

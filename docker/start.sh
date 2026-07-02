@@ -11,6 +11,7 @@ exec gunicorn mi_tienda.wsgi:application \
     --timeout "${GUNICORN_TIMEOUT:-60}" \
     --graceful-timeout "${GUNICORN_GRACEFUL_TIMEOUT:-30}" \
     --keep-alive "${GUNICORN_KEEP_ALIVE:-5}" \
+    --worker-tmp-dir /tmp \
     --limit-request-line "${GUNICORN_LIMIT_REQUEST_LINE:-4094}" \
     --limit-request-fields "${GUNICORN_LIMIT_REQUEST_FIELDS:-100}" \
     --limit-request-field_size "${GUNICORN_LIMIT_REQUEST_FIELD_SIZE:-8190}" \
