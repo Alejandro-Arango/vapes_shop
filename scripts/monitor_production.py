@@ -72,6 +72,16 @@ def validate_url(value, label, allow_http=False):
     return value
 
 
+def validate_health_url(value, label, allow_http=False):
+    value = validate_url(value, label, allow_http=allow_http)
+    parsed = urlsplit(value)
+
+    if parsed.path != "/healthz":
+        raise MonitorError(f"{label} debe apuntar a /healthz.")
+
+    return value
+
+
 def safe_url(value):
     parsed = urlsplit(value)
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
@@ -243,7 +253,7 @@ def run_monitor(
     if timeout < 1:
         raise MonitorError("timeout debe ser mayor o igual a 1.")
 
-    target_url = validate_url(
+    target_url = validate_health_url(
         target_url,
         "PRODUCTION_HEALTH_URL",
         allow_http=allow_http,

@@ -155,16 +155,24 @@ class ProductionMonitorTests(unittest.TestCase):
                 attempts=1,
             )
 
-    def test_redirect_is_not_followed(self):
-        exit_code, event = monitor.run_monitor(
-            f"{self.base_url}/redirect",
-            attempts=1,
-            retry_delay=0,
-            allow_http=True,
-        )
+    def test_health_url_must_point_to_healthz(self):
+        with self.assertRaisesRegex(
+            monitor.MonitorError,
+            "debe apuntar a /healthz",
+        ):
+            monitor.run_monitor(
+                f"{self.base_url}/",
+                attempts=1,
+                allow_http=True,
+            )
 
-        self.assertEqual(exit_code, 1)
-        self.assertIn("HTTP 302", event["error"])
+    def test_redirect_is_not_followed(self):
+        with self.assertRaisesRegex(monitor.MonitorError, "HTTP 302"):
+            monitor.check_readiness(
+                f"{self.base_url}/redirect",
+                timeout=10,
+            )
+
         self.assertEqual(MonitorHandler.readiness_requests, 1)
 
     def test_urls_with_credentials_or_query_are_rejected(self):

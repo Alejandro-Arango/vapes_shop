@@ -1144,6 +1144,25 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_monitor_without_health_path_guard_is_rejected(self):
+        monitor_text = (
+            PROJECT_ROOT / "scripts" / "monitor_production.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = monitor_text.replace(
+            "validate_health_url",
+            "validate_url",
+        )
+
+        findings = capacity.validate_production_monitor(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/monitor_production.py no contiene "
+                "validate_health_url"
+            ),
+            findings,
+        )
+
     def test_production_monitor_without_report_guard_is_rejected(self):
         monitor_text = (
             PROJECT_ROOT / "scripts" / "monitor_production.py"
