@@ -42,6 +42,8 @@ READ_ONLY_SERVICES = (
     "external-recovery",
     "restore",
 )
+NO_NEW_PRIVILEGES_SERVICES = tuple(RESOURCE_POLICY)
+CAP_DROP_SERVICES = READ_ONLY_SERVICES
 ENV_RESOURCE_KEYS = tuple(
     value
     for values in RESOURCE_POLICY.values()
@@ -123,6 +125,23 @@ def validate_compose(compose_text):
 
         if "tmpfs:" not in block or "- /tmp" not in block:
             findings.append(f"{service_name} no monta /tmp como tmpfs")
+
+    for service_name in NO_NEW_PRIVILEGES_SERVICES:
+        block = services.get(service_name, "")
+
+        if (
+            "security_opt:" not in block
+            or "- no-new-privileges:true" not in block
+        ):
+            findings.append(
+                f"{service_name} no activa no-new-privileges"
+            )
+
+    for service_name in CAP_DROP_SERVICES:
+        block = services.get(service_name, "")
+
+        if "cap_drop:" not in block or "- ALL" not in block:
+            findings.append(f"{service_name} no descarta capacidades Linux")
 
     return findings
 

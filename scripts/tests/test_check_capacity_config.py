@@ -48,6 +48,34 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn("migrate no activa read_only", findings)
 
+    def test_db_without_no_new_privileges_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = compose_text.replace(
+            "    security_opt:\n      - no-new-privileges:true\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_compose(invalid_text)
+
+        self.assertIn("db no activa no-new-privileges", findings)
+
+    def test_migrate_without_cap_drop_all_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = compose_text.replace(
+            "    cap_drop:\n      - ALL\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_compose(invalid_text)
+
+        self.assertIn("migrate no descarta capacidades Linux", findings)
+
     def test_environment_without_resource_variable_is_rejected(self):
         env_text = (PROJECT_ROOT / "compose.env.example").read_text(
             encoding="utf-8",
