@@ -126,6 +126,52 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn("web no debe agregar capacidades Linux", findings)
 
+    def test_web_image_without_liveness_healthcheck_is_rejected(self):
+        dockerfile_text = (PROJECT_ROOT / "Dockerfile").read_text(
+            encoding="utf-8",
+        )
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = dockerfile_text.replace(
+            "http://127.0.0.1:8000/api/live/",
+            "http://127.0.0.1:8000/",
+            1,
+        )
+
+        findings = capacity.validate_web_image_healthcheck(
+            invalid_text,
+            compose_text,
+        )
+
+        self.assertIn(
+            "Dockerfile no contiene http://127.0.0.1:8000/api/live/",
+            findings,
+        )
+
+    def test_proxy_without_web_health_dependency_is_rejected(self):
+        dockerfile_text = (PROJECT_ROOT / "Dockerfile").read_text(
+            encoding="utf-8",
+        )
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = compose_text.replace(
+            "      web:\n        condition: service_healthy",
+            "      web:\n        condition: service_started",
+            1,
+        )
+
+        findings = capacity.validate_web_image_healthcheck(
+            dockerfile_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            "proxy no espera healthcheck saludable de web",
+            findings,
+        )
+
     def test_environment_without_resource_variable_is_rejected(self):
         env_text = (PROJECT_ROOT / "compose.env.example").read_text(
             encoding="utf-8",

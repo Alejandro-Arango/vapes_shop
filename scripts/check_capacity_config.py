@@ -206,6 +206,33 @@ def validate_compose(compose_text):
     return findings
 
 
+def validate_web_image_healthcheck(dockerfile_text, compose_text):
+    findings = []
+    required_fragments = (
+        "HEALTHCHECK --interval=30s --timeout=5s --start-period=20s "
+        "--retries=3",
+        "http://127.0.0.1:8000/api/live/",
+        "X-Forwarded-Proto': 'https'",
+        "raise SystemExit(0 if response.status == 200 else 1)",
+    )
+
+    for fragment in required_fragments:
+        if fragment not in dockerfile_text:
+            findings.append(f"Dockerfile no contiene {fragment}")
+
+    services = extract_service_blocks(compose_text)
+    web_block = services.get("web", "")
+    proxy_block = services.get("proxy", "")
+
+    if "healthcheck:" in web_block and "disable: true" in web_block:
+        findings.append("web no debe desactivar el HEALTHCHECK de imagen")
+
+    if "condition: service_healthy" not in proxy_block:
+        findings.append("proxy no espera healthcheck saludable de web")
+
+    return findings
+
+
 def parse_env_keys(env_text):
     keys = set()
 
@@ -2122,6 +2149,7 @@ def find_capacity_findings(project_root):
         "backup_operations": (
             project_root / "scripts" / "backup_operations.py"
         ),
+        "web_dockerfile": project_root / "Dockerfile",
         "backup_dockerfile": project_root / "docker" / "backup.Dockerfile",
         "backup_shell": project_root / "docker" / "backup.sh",
         "restore_shell": project_root / "docker" / "restore.sh",
@@ -2253,6 +2281,12 @@ def find_capacity_findings(project_root):
     )
     findings.extend(
         validate_compose(paths["compose"].read_text(encoding="utf-8"))
+    )
+    findings.extend(
+        validate_web_image_healthcheck(
+            paths["web_dockerfile"].read_text(encoding="utf-8"),
+            paths["compose"].read_text(encoding="utf-8"),
+        )
     )
     findings.extend(
         validate_env(
