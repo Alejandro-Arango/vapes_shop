@@ -2320,6 +2320,23 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_host_readiness_without_firewall_default_deny_is_rejected(self):
+        inputs = self.host_provisioning_inputs()
+        inputs["readiness_text"] = inputs["readiness_text"].replace(
+            "firewall_default_deny_enabled",
+            "firewall_is_active",
+        )
+
+        findings = capacity.validate_host_provisioning(**inputs)
+
+        self.assertIn(
+            (
+                "check_host_readiness.py no contiene "
+                "firewall_default_deny_enabled"
+            ),
+            findings,
+        )
+
     def test_production_host_exposed_on_all_interfaces_is_rejected(self):
         inputs = self.host_provisioning_inputs()
         inputs["production_env_text"] = inputs[

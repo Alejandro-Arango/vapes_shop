@@ -1736,6 +1736,8 @@ def validate_host_provisioning(
         "os.replace(temporary_path, output_path)",
         "output_path.is_symlink()",
         "temporary_path.is_symlink()",
+        "firewall_default_deny_enabled",
+        '["ufw", "status", "verbose"]',
         '"source_checkout"',
         '"source_clean"',
         '"--untracked-files=no"',

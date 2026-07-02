@@ -146,6 +146,22 @@ class HostReadinessTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "critical")
 
+    def test_firewall_default_deny_is_accepted(self):
+        self.assertTrue(
+            readiness.firewall_default_deny_enabled(
+                "Status: active\n"
+                "Default: deny (incoming), allow (outgoing), disabled (routed)"
+            )
+        )
+
+    def test_firewall_default_allow_is_rejected(self):
+        self.assertFalse(
+            readiness.firewall_default_deny_enabled(
+                "Status: active\n"
+                "Default: allow (incoming), allow (outgoing), disabled (routed)"
+            )
+        )
+
     def test_dirty_source_checkout_is_critical(self):
         runner = FakeRunner(
             {

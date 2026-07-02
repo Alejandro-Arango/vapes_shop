@@ -155,6 +155,25 @@ def command_check(runner, name, command, predicate=None):
     }
 
 
+def firewall_default_deny_enabled(output):
+    normalized_output = output.lower()
+    active_markers = (
+        "status: active",
+        "estado: activo",
+    )
+    deny_incoming_markers = (
+        "deny (incoming)",
+        "deny (entrante)",
+        "denegar (entrante)",
+    )
+
+    return any(
+        marker in normalized_output for marker in active_markers
+    ) and any(
+        marker in normalized_output for marker in deny_incoming_markers
+    )
+
+
 def resolve_identity(user_name):
     import grp
     import pwd
@@ -253,11 +272,8 @@ def audit_host(
             command_check(
                 runner,
                 "firewall",
-                ["ufw", "status"],
-                lambda value: (
-                    "status: active" in value.lower()
-                    or "estado: activo" in value.lower()
-                ),
+                ["ufw", "status", "verbose"],
+                firewall_default_deny_enabled,
             ),
         )
     )
