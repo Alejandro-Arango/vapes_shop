@@ -1831,6 +1831,29 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_checkout_without_disabled_persisted_credentials_is_rejected(self):
+        findings = capacity.validate_checkout_credentials(
+            {
+                "ci.yml": (
+                    "steps:\n"
+                    "      - name: Descargar codigo\n"
+                    "        uses: actions/checkout@"
+                    "34e114876b0b11c390a56381ad16ebd13914f8d5 # v4\n"
+                    "\n"
+                    "      - name: Probar\n"
+                    "        run: python -m unittest\n"
+                ),
+            },
+        )
+
+        self.assertIn(
+            (
+                "ci.yml:3 usa checkout sin "
+                "persist-credentials: false"
+            ),
+            findings,
+        )
+
     def test_dependabot_without_docker_directory_is_rejected(self):
         dependabot_text = (
             PROJECT_ROOT / ".github" / "dependabot.yml"

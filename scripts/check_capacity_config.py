@@ -1153,6 +1153,43 @@ def validate_official_action_pins(workflow_texts):
     return findings
 
 
+def validate_checkout_credentials(workflow_texts):
+    findings = []
+    checkout_marker = "uses: actions/checkout@"
+
+    for workflow_name, workflow_text in workflow_texts.items():
+        search_start = 0
+
+        while True:
+            checkout_index = workflow_text.find(checkout_marker, search_start)
+
+            if checkout_index == -1:
+                break
+
+            next_step_index = workflow_text.find(
+                "\n      - ",
+                checkout_index + len(checkout_marker),
+            )
+            checkout_block = (
+                workflow_text[checkout_index:]
+                if next_step_index == -1
+                else workflow_text[checkout_index:next_step_index]
+            )
+
+            if "persist-credentials: false" not in checkout_block:
+                line_number = workflow_text.count("\n", 0, checkout_index) + 1
+                findings.append(
+                    (
+                        f"{workflow_name}:{line_number} usa checkout "
+                        "sin persist-credentials: false"
+                    )
+                )
+
+            search_start = checkout_index + len(checkout_marker)
+
+    return findings
+
+
 def dependabot_update_block(dependabot_text, ecosystem, directory):
     pattern = re.compile(
         rf"(?ms)^  - package-ecosystem: {re.escape(ecosystem)}\n"
@@ -2497,6 +2534,7 @@ def find_capacity_findings(project_root):
     }
 
     findings.extend(validate_official_action_pins(workflow_texts))
+    findings.extend(validate_checkout_credentials(workflow_texts))
     findings.extend(
         validate_dependabot_config(
             paths["dependabot"].read_text(encoding="utf-8")

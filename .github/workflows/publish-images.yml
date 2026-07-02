@@ -37,6 +37,8 @@ jobs:
     steps:
       - name: Descargar codigo
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Validar version semantica
         working-directory: ${{ github.workspace }}
@@ -90,6 +92,8 @@ jobs:
     steps:
       - name: Descargar codigo
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Iniciar sesion en GHCR
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
