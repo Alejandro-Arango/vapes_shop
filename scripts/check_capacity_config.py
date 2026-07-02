@@ -1664,6 +1664,36 @@ def validate_backup_schedule(
             "vapes-shop-backup.service",
         ),
         (
+            backup_service_text,
+            "PrivateDevices=true",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "ProtectSystem=full",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "ProtectHome=true",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "CapabilityBoundingSet=",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "RestrictSUIDSGID=true",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "LockPersonality=true",
+            "vapes-shop-backup.service",
+        ),
+        (
             backup_timer_text,
             "OnCalendar=*-*-* 02:15:00 America/Bogota",
             "vapes-shop-backup.timer",
@@ -1681,6 +1711,36 @@ def validate_backup_schedule(
         (
             drill_service_text,
             "StateDirectoryMode=0750",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "PrivateDevices=true",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "ProtectSystem=full",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "ProtectHome=true",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "CapabilityBoundingSet=",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "RestrictSUIDSGID=true",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "LockPersonality=true",
             "vapes-shop-recovery-drill.service",
         ),
         (

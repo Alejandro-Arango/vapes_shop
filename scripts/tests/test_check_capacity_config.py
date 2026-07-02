@@ -2246,6 +2246,107 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_backup_schedule_without_systemd_sandbox_is_rejected(self):
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        systemd_root = PROJECT_ROOT / "ops" / "systemd"
+        backup_service_text = (
+            systemd_root / "vapes-shop-backup.service"
+        ).read_text(encoding="utf-8")
+        backup_timer_text = (
+            systemd_root / "vapes-shop-backup.timer"
+        ).read_text(encoding="utf-8")
+        drill_service_text = (
+            systemd_root / "vapes-shop-recovery-drill.service"
+        ).read_text(encoding="utf-8")
+        drill_timer_text = (
+            systemd_root / "vapes-shop-recovery-drill.timer"
+        ).read_text(encoding="utf-8")
+        schedule_env_text = (
+            systemd_root / "backup-operations.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_service = backup_service_text.replace(
+            "ProtectSystem=full",
+            "ProtectSystem=false",
+            1,
+        )
+
+        findings = capacity.validate_backup_schedule(
+            local_env_text,
+            production_env_text,
+            workflow_text,
+            invalid_service,
+            backup_timer_text,
+            drill_service_text,
+            drill_timer_text,
+            schedule_env_text,
+        )
+
+        self.assertIn(
+            "vapes-shop-backup.service no contiene ProtectSystem=full",
+            findings,
+        )
+
+    def test_recovery_drill_schedule_without_systemd_sandbox_is_rejected(
+        self,
+    ):
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        systemd_root = PROJECT_ROOT / "ops" / "systemd"
+        backup_service_text = (
+            systemd_root / "vapes-shop-backup.service"
+        ).read_text(encoding="utf-8")
+        backup_timer_text = (
+            systemd_root / "vapes-shop-backup.timer"
+        ).read_text(encoding="utf-8")
+        drill_service_text = (
+            systemd_root / "vapes-shop-recovery-drill.service"
+        ).read_text(encoding="utf-8")
+        drill_timer_text = (
+            systemd_root / "vapes-shop-recovery-drill.timer"
+        ).read_text(encoding="utf-8")
+        schedule_env_text = (
+            systemd_root / "backup-operations.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_service = drill_service_text.replace(
+            "ProtectSystem=full",
+            "ProtectSystem=false",
+            1,
+        )
+
+        findings = capacity.validate_backup_schedule(
+            local_env_text,
+            production_env_text,
+            workflow_text,
+            backup_service_text,
+            backup_timer_text,
+            invalid_service,
+            drill_timer_text,
+            schedule_env_text,
+        )
+
+        self.assertIn(
+            (
+                "vapes-shop-recovery-drill.service no contiene "
+                "ProtectSystem=full"
+            ),
+            findings,
+        )
+
     def test_backup_schedule_without_rto_objective_is_rejected(self):
         local_env_text = (
             PROJECT_ROOT / "compose.env.example"
