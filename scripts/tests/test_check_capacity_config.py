@@ -981,6 +981,41 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_nginx_without_server_tokens_off_is_rejected(self):
+        start_text = (
+            PROJECT_ROOT / "docker" / "start.sh"
+        ).read_text(encoding="utf-8")
+        nginx_text = (
+            PROJECT_ROOT / "docker" / "nginx.conf"
+        ).read_text(encoding="utf-8")
+        compose_text = (
+            PROJECT_ROOT / "compose.yaml"
+        ).read_text(encoding="utf-8")
+        local_env_text = (
+            PROJECT_ROOT / "compose.env.example"
+        ).read_text(encoding="utf-8")
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_nginx = nginx_text.replace(
+            "        server_tokens off;\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_resilience_config(
+            start_text,
+            invalid_nginx,
+            compose_text,
+            local_env_text,
+            production_env_text,
+        )
+
+        self.assertIn(
+            "docker/nginx.conf no contiene server_tokens off;",
+            findings,
+        )
+
     def test_nginx_without_body_size_limit_is_rejected(self):
         start_text = (
             PROJECT_ROOT / "docker" / "start.sh"

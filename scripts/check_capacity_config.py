@@ -1976,6 +1976,7 @@ def validate_resilience_config(
             findings.append(f"compose.production.env.example no define {key}")
 
     nginx_fragments = (
+        "server_tokens off;",
         "limit_req_zone $binary_remote_addr",
         "limit_conn_zone $binary_remote_addr",
         "limit_req_status 429;",
