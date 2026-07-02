@@ -246,6 +246,47 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_root_env_without_json_logging_is_rejected(self):
+        root_env_text = (PROJECT_ROOT / ".env.example").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = root_env_text.replace(
+            "DJANGO_LOG_FORMAT=json",
+            "DJANGO_LOG_FORMAT=simple",
+            1,
+        )
+
+        findings = capacity.validate_root_env_example(invalid_text)
+
+        self.assertIn(
+            ".env.example no contiene DJANGO_LOG_FORMAT=json",
+            findings,
+        )
+
+    def test_root_env_without_permissions_policy_is_rejected(self):
+        root_env_text = (PROJECT_ROOT / ".env.example").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = root_env_text.replace(
+            (
+                "DJANGO_PERMISSIONS_POLICY=camera=(), microphone=(), "
+                "geolocation=(), payment=(), usb=()\n"
+            ),
+            "",
+            1,
+        )
+
+        findings = capacity.validate_root_env_example(invalid_text)
+
+        self.assertIn(
+            (
+                ".env.example no contiene "
+                "DJANGO_PERMISSIONS_POLICY=camera=(), microphone=(), "
+                "geolocation=(), payment=(), usb=()"
+            ),
+            findings,
+        )
+
     def test_production_environment_without_debug_false_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8",

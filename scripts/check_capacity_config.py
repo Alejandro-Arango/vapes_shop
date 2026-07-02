@@ -402,6 +402,8 @@ def validate_root_env_example(root_env_text):
     findings = []
     required_fragments = (
         "DJANGO_SESSION_COOKIE_AGE=604800",
+        "DJANGO_LOG_FORMAT=json",
+        "DJANGO_PERMISSIONS_POLICY=camera=(), microphone=(), geolocation=(), payment=(), usb=()",
         'DJANGO_CONTENT_SECURITY_POLICY="default-src \'self\';',
         'DEFAULT_FROM_EMAIL="Vape Shop <no-reply@tu-dominio.com>"',
     )
