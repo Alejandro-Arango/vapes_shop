@@ -1728,6 +1728,7 @@ def validate_host_provisioning(
         "EXTERNAL_BACKUP_ENABLED debe ser true",
         "BACKUP_REQUIRE_EXTERNAL debe ser true",
         "apt-daily-upgrade.timer",
+        '["systemctl", "is-active", "apt-daily-upgrade.timer"]',
         "vapes-shop-backup.timer",
         "vapes-shop-production-monitor.timer",
         "vapes-shop-recovery-drill.timer",

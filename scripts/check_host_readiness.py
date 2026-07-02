@@ -271,6 +271,12 @@ def audit_host(
             ),
             command_check(
                 runner,
+                "security_updates_active",
+                ["systemctl", "is-active", "apt-daily-upgrade.timer"],
+                lambda value: value == "active",
+            ),
+            command_check(
+                runner,
                 "firewall",
                 ["ufw", "status", "verbose"],
                 firewall_default_deny_enabled,
