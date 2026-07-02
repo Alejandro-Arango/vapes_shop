@@ -1548,6 +1548,58 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_container_backup_without_media_symlink_guard_is_rejected(self):
+        backup_text = (PROJECT_ROOT / "docker" / "backup.sh").read_text(
+            encoding="utf-8",
+        )
+        restore_text = (PROJECT_ROOT / "docker" / "restore.sh").read_text(
+            encoding="utf-8",
+        )
+        invalid_backup = backup_text.replace(
+            "El respaldo de media no permite enlaces simbolicos.",
+            "El respaldo acepta enlaces simbolicos.",
+            1,
+        )
+
+        findings = capacity.validate_container_backup_scripts(
+            invalid_backup,
+            restore_text,
+        )
+
+        self.assertIn(
+            (
+                "docker/backup.sh no contiene "
+                "El respaldo de media no permite enlaces simbolicos."
+            ),
+            findings,
+        )
+
+    def test_container_restore_without_archive_symlink_guard_is_rejected(self):
+        backup_text = (PROJECT_ROOT / "docker" / "backup.sh").read_text(
+            encoding="utf-8",
+        )
+        restore_text = (PROJECT_ROOT / "docker" / "restore.sh").read_text(
+            encoding="utf-8",
+        )
+        invalid_restore = restore_text.replace(
+            "El archivo de media contiene enlaces simbolicos.",
+            "El archivo de media acepta enlaces simbolicos.",
+            1,
+        )
+
+        findings = capacity.validate_container_backup_scripts(
+            backup_text,
+            invalid_restore,
+        )
+
+        self.assertIn(
+            (
+                "docker/restore.sh no contiene "
+                "El archivo de media contiene enlaces simbolicos."
+            ),
+            findings,
+        )
+
     def test_backup_monitor_config_without_read_only_mount_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8"

@@ -8,12 +8,49 @@ readonly BACKUP_ROOT="${BACKUP_ROOT:-/backups}"
 readonly MEDIA_SOURCE="${MEDIA_SOURCE:-/source/media}"
 readonly RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
 
+fail() {
+    echo "$1" >&2
+    exit 1
+}
+
 require_variable() {
     local variable_name="$1"
 
     if [[ -z "${!variable_name:-}" ]]; then
-        echo "Falta la variable obligatoria ${variable_name}." >&2
-        exit 1
+        fail "Falta la variable obligatoria ${variable_name}."
+    fi
+}
+
+validate_directory_target() {
+    local path="$1"
+    local label="$2"
+    local parent
+
+    parent="$(dirname -- "${path}")"
+
+    if [[ -L "${path}" ]]; then
+        fail "${label} no puede ser un enlace simbolico."
+    fi
+
+    if [[ -e "${path}" && ! -d "${path}" ]]; then
+        fail "${label} debe ser un directorio regular."
+    fi
+
+    if [[ -L "${parent}" ]]; then
+        fail "El directorio padre de ${label} no puede ser un enlace simbolico."
+    fi
+}
+
+require_regular_directory() {
+    local path="$1"
+    local label="$2"
+
+    if [[ -L "${path}" ]]; then
+        fail "${label} no puede ser un enlace simbolico."
+    fi
+
+    if [[ ! -d "${path}" ]]; then
+        fail "${label} debe ser un directorio regular."
     fi
 }
 
@@ -22,15 +59,16 @@ for variable_name in MYSQL_HOST MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD; do
 done
 
 if [[ ! "${RETENTION_DAYS}" =~ ^[0-9]+$ ]]; then
-    echo "BACKUP_RETENTION_DAYS debe ser un entero mayor o igual a cero." >&2
-    exit 1
+    fail "BACKUP_RETENTION_DAYS debe ser un entero mayor o igual a cero."
 fi
 
-mkdir -p "${BACKUP_ROOT}"
+validate_directory_target "${BACKUP_ROOT}" "BACKUP_ROOT"
+mkdir -p -- "${BACKUP_ROOT}"
+require_regular_directory "${BACKUP_ROOT}" "BACKUP_ROOT"
+require_regular_directory "${MEDIA_SOURCE}" "MEDIA_SOURCE"
 
-if [[ ! -d "${MEDIA_SOURCE}" ]]; then
-    echo "No existe el directorio de media ${MEDIA_SOURCE}." >&2
-    exit 1
+if find "${MEDIA_SOURCE}" -type l -print -quit | grep -q .; then
+    fail "El respaldo de media no permite enlaces simbolicos."
 fi
 
 export MYSQL_PWD="${MYSQL_PASSWORD}"
@@ -56,7 +94,7 @@ while true; do
     backup_id="$(date -u +%Y%m%dT%H%M%SZ)"
     final_directory="${BACKUP_ROOT}/${backup_id}"
 
-    if [[ ! -e "${final_directory}" ]]; then
+    if [[ ! -e "${final_directory}" && ! -L "${final_directory}" ]]; then
         break
     fi
 
@@ -70,7 +108,12 @@ cleanup() {
 }
 
 trap cleanup EXIT
-mkdir -p "${temporary_directory}"
+
+if [[ -e "${temporary_directory}" || -L "${temporary_directory}" ]]; then
+    fail "El directorio temporal de respaldo ya existe."
+fi
+
+mkdir -- "${temporary_directory}"
 
 echo "Creando respaldo ${backup_id}..."
 
@@ -110,8 +153,14 @@ EOF
 )
 
 mv -- "${temporary_directory}" "${final_directory}"
-printf '%s\n' "${backup_id}" > "${BACKUP_ROOT}/.latest.tmp"
-mv -- "${BACKUP_ROOT}/.latest.tmp" "${BACKUP_ROOT}/latest.txt"
+latest_temporary="${BACKUP_ROOT}/.latest.tmp"
+
+if [[ -L "${latest_temporary}" ]]; then
+    fail ".latest.tmp no puede ser un enlace simbolico."
+fi
+
+printf '%s\n' "${backup_id}" > "${latest_temporary}"
+mv -- "${latest_temporary}" "${BACKUP_ROOT}/latest.txt"
 trap - EXIT
 
 if [[ "${RETENTION_DAYS}" -gt 0 ]]; then

@@ -17,6 +17,32 @@ fail() {
     exit 1
 }
 
+require_regular_directory() {
+    local path="$1"
+    local label="$2"
+
+    if [[ -L "${path}" ]]; then
+        fail "${label} no puede ser un enlace simbolico."
+    fi
+
+    if [[ ! -d "${path}" ]]; then
+        fail "${label} debe ser un directorio regular."
+    fi
+}
+
+require_regular_file() {
+    local path="$1"
+    local label="$2"
+
+    if [[ -L "${path}" ]]; then
+        fail "${label} no puede ser un enlace simbolico."
+    fi
+
+    if [[ ! -f "${path}" ]]; then
+        fail "El respaldo no contiene ${label}."
+    fi
+}
+
 for variable_name in MYSQL_HOST MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD; do
     if [[ -z "${!variable_name:-}" ]]; then
         fail "Falta la variable obligatoria ${variable_name}."
@@ -41,10 +67,12 @@ fi
 
 readonly BACKUP_DIRECTORY="${BACKUP_ROOT}/${BACKUP_ID}"
 
+require_regular_directory "${BACKUP_ROOT}" "BACKUP_ROOT"
+require_regular_directory "${MEDIA_SOURCE}" "MEDIA_SOURCE"
+require_regular_directory "${BACKUP_DIRECTORY}" "BACKUP_DIRECTORY"
+
 for required_file in database.sql.gz media.tar.gz metadata.txt manifest.sha256; do
-    if [[ ! -f "${BACKUP_DIRECTORY}/${required_file}" ]]; then
-        fail "El respaldo no contiene ${required_file}."
-    fi
+    require_regular_file "${BACKUP_DIRECTORY}/${required_file}" "${required_file}"
 done
 
 (
@@ -101,6 +129,10 @@ tar \
     --directory="${temporary_directory}/media" \
     --no-same-owner
 
+if find "${temporary_directory}/media" -type l -print -quit | grep -q .; then
+    fail "El archivo de media contiene enlaces simbolicos."
+fi
+
 if [[ "${SAFETY_BACKUP}" == "true" ]]; then
     echo "Creando respaldo de seguridad previo a la restauracion..."
     /usr/local/bin/backup.sh
@@ -121,7 +153,12 @@ restore_work_directory="${MEDIA_SOURCE}/.restore-${BACKUP_ID}-$$"
 readonly previous_media="${restore_work_directory}/previous"
 readonly staged_media="${restore_work_directory}/staged"
 
-mkdir -p "${previous_media}" "${staged_media}"
+if [[ -e "${restore_work_directory}" || -L "${restore_work_directory}" ]]; then
+    fail "El directorio temporal de restauracion ya existe."
+fi
+
+mkdir -- "${restore_work_directory}"
+mkdir -- "${previous_media}" "${staged_media}"
 cp --archive "${temporary_directory}/media/." "${staged_media}/"
 chown --recursive "${MEDIA_UID}:${MEDIA_GID}" "${staged_media}"
 

@@ -638,6 +638,62 @@ def validate_backup_monitor(monitor_text):
     ]
 
 
+def validate_container_backup_scripts(backup_text, restore_text):
+    required_fragments = (
+        (
+            backup_text,
+            'validate_directory_target "${BACKUP_ROOT}" "BACKUP_ROOT"',
+            "docker/backup.sh",
+        ),
+        (
+            backup_text,
+            'require_regular_directory "${MEDIA_SOURCE}" "MEDIA_SOURCE"',
+            "docker/backup.sh",
+        ),
+        (
+            backup_text,
+            "El respaldo de media no permite enlaces simbolicos.",
+            "docker/backup.sh",
+        ),
+        (
+            backup_text,
+            "El directorio temporal de respaldo ya existe.",
+            "docker/backup.sh",
+        ),
+        (
+            backup_text,
+            ".latest.tmp no puede ser un enlace simbolico.",
+            "docker/backup.sh",
+        ),
+        (
+            restore_text,
+            'require_regular_directory "${BACKUP_DIRECTORY}" "BACKUP_DIRECTORY"',
+            "docker/restore.sh",
+        ),
+        (
+            restore_text,
+            "require_regular_file",
+            "docker/restore.sh",
+        ),
+        (
+            restore_text,
+            "El archivo de media contiene enlaces simbolicos.",
+            "docker/restore.sh",
+        ),
+        (
+            restore_text,
+            "El directorio temporal de restauracion ya existe.",
+            "docker/restore.sh",
+        ),
+    )
+
+    return [
+        f"{label} no contiene {fragment}"
+        for text, fragment, label in required_fragments
+        if fragment not in text
+    ]
+
+
 def validate_production_monitor(monitor_text):
     required_fragments = (
         "MAX_RESPONSE_BYTES",
@@ -1965,6 +2021,8 @@ def find_capacity_findings(project_root):
             project_root / "scripts" / "backup_operations.py"
         ),
         "backup_dockerfile": project_root / "docker" / "backup.Dockerfile",
+        "backup_shell": project_root / "docker" / "backup.sh",
+        "restore_shell": project_root / "docker" / "restore.sh",
         "start": project_root / "docker" / "start.sh",
         "nginx": project_root / "docker" / "nginx.conf",
         "workflow": project_root / ".github" / "workflows" / "performance.yml",
@@ -2184,6 +2242,12 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_backup_monitor(
             paths["backup_monitor"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_container_backup_scripts(
+            paths["backup_shell"].read_text(encoding="utf-8"),
+            paths["restore_shell"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(
