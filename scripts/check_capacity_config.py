@@ -401,6 +401,7 @@ def validate_environment_security_defaults(
 def validate_root_env_example(root_env_text):
     findings = []
     required_fragments = (
+        "DJANGO_SESSION_COOKIE_AGE=604800",
         'DJANGO_CONTENT_SECURITY_POLICY="default-src \'self\';',
         'DEFAULT_FROM_EMAIL="Vape Shop <no-reply@tu-dominio.com>"',
     )

@@ -229,6 +229,23 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_root_env_without_session_age_limit_is_rejected(self):
+        root_env_text = (PROJECT_ROOT / ".env.example").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = root_env_text.replace(
+            "DJANGO_SESSION_COOKIE_AGE=604800",
+            "DJANGO_SESSION_COOKIE_AGE=1209600",
+            1,
+        )
+
+        findings = capacity.validate_root_env_example(invalid_text)
+
+        self.assertIn(
+            ".env.example no contiene DJANGO_SESSION_COOKIE_AGE=604800",
+            findings,
+        )
+
     def test_production_environment_without_debug_false_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8",
