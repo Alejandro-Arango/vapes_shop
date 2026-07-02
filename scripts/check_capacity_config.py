@@ -1951,6 +1951,7 @@ def validate_resilience_config(
             '--limit-request-field_size '
             '"${GUNICORN_LIMIT_REQUEST_FIELD_SIZE:-8190}"'
         ),
+        "--access-logfile -",
     )
     findings = []
 

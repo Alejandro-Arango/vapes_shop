@@ -16,4 +16,5 @@ exec gunicorn mi_tienda.wsgi:application \
     --limit-request-field_size "${GUNICORN_LIMIT_REQUEST_FIELD_SIZE:-8190}" \
     --max-requests "${GUNICORN_MAX_REQUESTS:-1000}" \
     --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER:-100}" \
+    --access-logfile - \
     --error-logfile -
