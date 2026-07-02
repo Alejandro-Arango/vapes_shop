@@ -1437,6 +1437,10 @@ class StoreApiTests(APITestCase):
             errors,
         )
         self.assertIn(
+            "DJANGO_CONTENT_SECURITY_POLICY debe incluir style-src 'self'.",
+            errors,
+        )
+        self.assertIn(
             "DJANGO_CONTENT_SECURITY_POLICY no debe permitir 'unsafe-eval'.",
             errors,
         )
@@ -1446,6 +1450,35 @@ class StoreApiTests(APITestCase):
         )
         self.assertIn(
             "DJANGO_CONTENT_SECURITY_POLICY no debe permitir fuentes http:.",
+            errors,
+        )
+
+    @override_settings(
+        CONTENT_SECURITY_POLICY=(
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'none'; "
+            "form-action 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self'; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "media-src 'self'; "
+            "worker-src 'self'"
+        ),
+    )
+    def test_production_check_rejects_inline_script_csp(self):
+        errors = []
+
+        ProductionCheckCommand().check_content_security_policy(errors)
+
+        self.assertIn(
+            (
+                "DJANGO_CONTENT_SECURITY_POLICY no debe permitir "
+                "'unsafe-inline' en script-src."
+            ),
             errors,
         )
 

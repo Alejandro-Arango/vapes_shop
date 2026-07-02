@@ -374,6 +374,7 @@ class Command(BaseCommand):
             "frame-ancestors 'none'",
             "form-action 'self'",
             "script-src 'self'",
+            "style-src 'self'",
             "img-src 'self'",
             "font-src 'self'",
             "connect-src 'self'",
@@ -396,6 +397,14 @@ class Command(BaseCommand):
                 "DJANGO_CONTENT_SECURITY_POLICY no debe permitir 'unsafe-eval'."
             )
 
+        if "'unsafe-inline'" in self.get_csp_directive_sources(
+            policy,
+            "script-src",
+        ):
+            errors.append(
+                "DJANGO_CONTENT_SECURITY_POLICY no debe permitir 'unsafe-inline' en script-src."
+            )
+
         if "*" in self.get_csp_sources(policy):
             errors.append(
                 "DJANGO_CONTENT_SECURITY_POLICY no debe permitir comodines."
@@ -416,6 +425,15 @@ class Command(BaseCommand):
                 sources.extend(tokens[1:])
 
         return sources
+
+    def get_csp_directive_sources(self, policy, directive_name):
+        for directive in policy.split(";"):
+            tokens = directive.strip().split()
+
+            if tokens and tokens[0] == directive_name:
+                return tokens[1:]
+
+        return []
 
     def check_browser_security_headers(self, errors):
         if not getattr(settings, "SECURE_CONTENT_TYPE_NOSNIFF", False):
