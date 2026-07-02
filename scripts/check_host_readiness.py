@@ -265,13 +265,25 @@ def audit_host(
             ),
             command_check(
                 runner,
-                "security_updates",
+                "security_update_lists",
+                ["systemctl", "is-enabled", "apt-daily.timer"],
+                lambda value: value == "enabled",
+            ),
+            command_check(
+                runner,
+                "security_update_lists_active",
+                ["systemctl", "is-active", "apt-daily.timer"],
+                lambda value: value == "active",
+            ),
+            command_check(
+                runner,
+                "security_upgrades",
                 ["systemctl", "is-enabled", "apt-daily-upgrade.timer"],
                 lambda value: value == "enabled",
             ),
             command_check(
                 runner,
-                "security_updates_active",
+                "security_upgrades_active",
                 ["systemctl", "is-active", "apt-daily-upgrade.timer"],
                 lambda value: value == "active",
             ),

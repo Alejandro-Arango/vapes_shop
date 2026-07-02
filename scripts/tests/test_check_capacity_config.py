@@ -2373,6 +2373,44 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_host_readiness_without_package_list_timer_is_rejected(self):
+        inputs = self.host_provisioning_inputs()
+        inputs["readiness_text"] = inputs["readiness_text"].replace(
+            '["systemctl", "is-enabled", "apt-daily.timer"]',
+            '["systemctl", "is-enabled", "apt-daily-upgrade.timer"]',
+            1,
+        )
+
+        findings = capacity.validate_host_provisioning(**inputs)
+
+        self.assertIn(
+            (
+                "check_host_readiness.py no contiene "
+                '["systemctl", "is-enabled", "apt-daily.timer"]'
+            ),
+            findings,
+        )
+
+    def test_host_readiness_without_active_package_list_timer_is_rejected(
+        self,
+    ):
+        inputs = self.host_provisioning_inputs()
+        inputs["readiness_text"] = inputs["readiness_text"].replace(
+            '["systemctl", "is-active", "apt-daily.timer"]',
+            '["systemctl", "is-enabled", "apt-daily.timer"]',
+            1,
+        )
+
+        findings = capacity.validate_host_provisioning(**inputs)
+
+        self.assertIn(
+            (
+                "check_host_readiness.py no contiene "
+                '["systemctl", "is-active", "apt-daily.timer"]'
+            ),
+            findings,
+        )
+
     def test_production_host_exposed_on_all_interfaces_is_rejected(self):
         inputs = self.host_provisioning_inputs()
         inputs["production_env_text"] = inputs[
