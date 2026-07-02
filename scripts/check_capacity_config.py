@@ -1066,16 +1066,51 @@ def dependabot_update_block(dependabot_text, ecosystem, directory):
 def validate_dependabot_config(dependabot_text):
     findings = []
     required_updates = (
-        ("pip", "/backend", "dependencias Python"),
-        ("docker", "/", "imagenes Docker raiz"),
-        ("docker", "/docker", "imagenes Docker operativas"),
-        ("github-actions", "/", "GitHub Actions"),
+        (
+            "pip",
+            "/backend",
+            "dependencias Python",
+            "10:00",
+            "5",
+            "python-minor-patch",
+        ),
+        (
+            "docker",
+            "/",
+            "imagenes Docker raiz",
+            "10:15",
+            "3",
+            "root-container-images",
+        ),
+        (
+            "docker",
+            "/docker",
+            "imagenes Docker operativas",
+            "10:30",
+            "3",
+            "operations-container-images",
+        ),
+        (
+            "github-actions",
+            "/",
+            "GitHub Actions",
+            "10:45",
+            "5",
+            "github-actions-minor-patch",
+        ),
     )
 
     if "version: 2" not in dependabot_text:
         findings.append("dependabot.yml no usa version 2")
 
-    for ecosystem, directory, label in required_updates:
+    for (
+        ecosystem,
+        directory,
+        label,
+        expected_time,
+        expected_limit,
+        expected_group,
+    ) in required_updates:
         block = dependabot_update_block(dependabot_text, ecosystem, directory)
 
         if block is None:
@@ -1090,9 +1125,15 @@ def validate_dependabot_config(dependabot_text):
         required_fragments = (
             "    schedule:\n",
             "      interval: weekly\n",
+            "      day: monday\n",
+            f"      time: \"{expected_time}\"\n",
             "      timezone: America/Bogota\n",
-            "    open-pull-requests-limit:",
+            f"    open-pull-requests-limit: {expected_limit}\n",
             "    groups:\n",
+            f"      {expected_group}:\n",
+            "        update-types:\n",
+            "          - minor\n",
+            "          - patch\n",
         )
 
         for fragment in required_fragments:

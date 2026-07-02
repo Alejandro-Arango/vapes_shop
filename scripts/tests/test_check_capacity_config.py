@@ -1606,6 +1606,63 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_dependabot_without_expected_pr_limit_is_rejected(self):
+        dependabot_text = (
+            PROJECT_ROOT / ".github" / "dependabot.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = dependabot_text.replace(
+            "    open-pull-requests-limit: 5\n",
+            "    open-pull-requests-limit: 10\n",
+            1,
+        )
+
+        findings = capacity.validate_dependabot_config(invalid_text)
+
+        self.assertIn(
+            (
+                "dependabot.yml no fija open-pull-requests-limit: 5 "
+                "para dependencias Python"
+            ),
+            findings,
+        )
+
+    def test_dependabot_without_expected_actions_time_is_rejected(self):
+        dependabot_text = (
+            PROJECT_ROOT / ".github" / "dependabot.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = dependabot_text.replace(
+            "      time: \"10:45\"\n",
+            "      time: \"11:45\"\n",
+            1,
+        )
+
+        findings = capacity.validate_dependabot_config(invalid_text)
+
+        self.assertIn(
+            'dependabot.yml no fija time: "10:45" para GitHub Actions',
+            findings,
+        )
+
+    def test_dependabot_without_actions_group_is_rejected(self):
+        dependabot_text = (
+            PROJECT_ROOT / ".github" / "dependabot.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = dependabot_text.replace(
+            "      github-actions-minor-patch:\n",
+            "      github-actions-updates:\n",
+            1,
+        )
+
+        findings = capacity.validate_dependabot_config(invalid_text)
+
+        self.assertIn(
+            (
+                "dependabot.yml no fija github-actions-minor-patch: "
+                "para GitHub Actions"
+            ),
+            findings,
+        )
+
     def production_monitor_schedule_inputs(self):
         systemd_root = PROJECT_ROOT / "ops" / "systemd"
         return {
