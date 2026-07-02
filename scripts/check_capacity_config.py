@@ -211,7 +211,7 @@ def validate_web_image_healthcheck(dockerfile_text, compose_text):
     required_fragments = (
         "HEALTHCHECK --interval=30s --timeout=5s --start-period=20s "
         "--retries=3",
-        "http://127.0.0.1:8000/api/live/",
+        "http://127.0.0.1:8000/api/health/",
         "X-Forwarded-Proto': 'https'",
         "raise SystemExit(0 if response.status == 200 else 1)",
     )

@@ -126,7 +126,7 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn("web no debe agregar capacidades Linux", findings)
 
-    def test_web_image_without_liveness_healthcheck_is_rejected(self):
+    def test_web_image_without_readiness_healthcheck_is_rejected(self):
         dockerfile_text = (PROJECT_ROOT / "Dockerfile").read_text(
             encoding="utf-8",
         )
@@ -134,7 +134,7 @@ class CapacityConfigTests(unittest.TestCase):
             encoding="utf-8",
         )
         invalid_text = dockerfile_text.replace(
-            "http://127.0.0.1:8000/api/live/",
+            "http://127.0.0.1:8000/api/health/",
             "http://127.0.0.1:8000/",
             1,
         )
@@ -145,7 +145,7 @@ class CapacityConfigTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "Dockerfile no contiene http://127.0.0.1:8000/api/live/",
+            "Dockerfile no contiene http://127.0.0.1:8000/api/health/",
             findings,
         )
 

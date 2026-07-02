@@ -55,6 +55,6 @@ RUN DJANGO_DEBUG=True \
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD python -c "from urllib.request import Request, urlopen; request=Request('http://127.0.0.1:8000/api/live/', headers={'X-Forwarded-Proto': 'https'}); response=urlopen(request, timeout=3); raise SystemExit(0 if response.status == 200 else 1)"
+    CMD python -c "from urllib.request import Request, urlopen; request=Request('http://127.0.0.1:8000/api/health/', headers={'X-Forwarded-Proto': 'https'}); response=urlopen(request, timeout=3); raise SystemExit(0 if response.status == 200 else 1)"
 
 CMD ["/app/docker/start.sh"]
