@@ -975,7 +975,7 @@ def validate_production_monitor_schedule(
         ),
         (
             monitor_env_text,
-            "PRODUCTION_HEALTH_URL=",
+            "PRODUCTION_HEALTH_URL=https://tienda.tu-dominio.com/healthz",
             "production-monitor.env.example",
         ),
         (

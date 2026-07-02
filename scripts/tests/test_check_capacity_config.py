@@ -2429,6 +2429,26 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_monitor_schedule_without_domain_placeholder_is_rejected(
+        self,
+    ):
+        inputs = self.production_monitor_schedule_inputs()
+        inputs["monitor_env_text"] = inputs["monitor_env_text"].replace(
+            "PRODUCTION_HEALTH_URL=https://tienda.tu-dominio.com/healthz",
+            "PRODUCTION_HEALTH_URL=https://example.com/healthz",
+            1,
+        )
+
+        findings = capacity.validate_production_monitor_schedule(**inputs)
+
+        self.assertIn(
+            (
+                "production-monitor.env.example no contiene "
+                "PRODUCTION_HEALTH_URL=https://tienda.tu-dominio.com/healthz"
+            ),
+            findings,
+        )
+
     def test_production_monitor_schedule_without_sandbox_is_rejected(self):
         inputs = self.production_monitor_schedule_inputs()
         inputs["monitor_service_text"] = inputs[
