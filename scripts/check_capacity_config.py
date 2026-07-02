@@ -259,7 +259,16 @@ def parse_env_values(env_text):
             continue
 
         key, value = line.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
+        value = value.strip()
+
+        if (
+            len(value) >= 2
+            and value[0] == value[-1]
+            and value[0] in ("'", '"')
+        ):
+            value = value[1:-1]
+
+        values[key.strip()] = value
 
     return values
 
@@ -317,8 +326,23 @@ def validate_environment_security_defaults(
         "geolocation=()",
         "payment=()",
     )
+    required_content_security_policy = (
+        "default-src 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        "script-src 'self'",
+        "style-src 'self'",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "media-src 'self'",
+        "worker-src 'self'",
+    )
     required_compose_keys = tuple(required_production_values) + (
         "DJANGO_PERMISSIONS_POLICY",
+        "DJANGO_CONTENT_SECURITY_POLICY",
     )
 
     if local_values.get("DJANGO_DEBUG") != "True":
@@ -345,6 +369,29 @@ def validate_environment_security_defaults(
                 (
                     "compose.production.env.example debe restringir "
                     f"DJANGO_PERMISSIONS_POLICY con {directive}"
+                )
+            )
+
+    content_security_policy = production_values.get(
+        "DJANGO_CONTENT_SECURITY_POLICY",
+        "",
+    )
+
+    for directive in required_content_security_policy:
+        if directive not in content_security_policy:
+            findings.append(
+                (
+                    "compose.production.env.example debe restringir "
+                    f"DJANGO_CONTENT_SECURITY_POLICY con {directive}"
+                )
+            )
+
+    for unsafe_source in ("'unsafe-eval'", "http:", "*"):
+        if unsafe_source in content_security_policy:
+            findings.append(
+                (
+                    "compose.production.env.example no debe permitir "
+                    f"{unsafe_source} en DJANGO_CONTENT_SECURITY_POLICY"
                 )
             )
 

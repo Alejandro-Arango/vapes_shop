@@ -185,6 +185,16 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_parse_env_values_preserves_csp_quotes(self):
+        values = capacity.parse_env_values(
+            'DJANGO_CONTENT_SECURITY_POLICY="worker-src \'self\'"\n'
+        )
+
+        self.assertEqual(
+            values["DJANGO_CONTENT_SECURITY_POLICY"],
+            "worker-src 'self'",
+        )
+
     def test_production_environment_without_debug_false_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8",
@@ -243,6 +253,97 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "compose.production.env.example debe restringir "
                 "DJANGO_PERMISSIONS_POLICY con microphone=()"
+            ),
+            findings,
+        )
+
+    def test_production_environment_without_csp_propagation_is_rejected(
+        self,
+    ):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_compose = compose_text.replace(
+            "${DJANGO_CONTENT_SECURITY_POLICY:-",
+            "${DJANGO_UNSAFE_CONTENT_SECURITY_POLICY:-",
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            invalid_compose,
+            local_env_text,
+            production_env_text,
+        )
+
+        self.assertIn(
+            "compose.yaml debe propagar DJANGO_CONTENT_SECURITY_POLICY",
+            findings,
+        )
+
+    def test_production_environment_without_csp_script_src_is_rejected(
+        self,
+    ):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_env_text.replace(
+            "script-src 'self'; ",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            compose_text,
+            local_env_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            (
+                "compose.production.env.example debe restringir "
+                "DJANGO_CONTENT_SECURITY_POLICY con script-src 'self'"
+            ),
+            findings,
+        )
+
+    def test_production_environment_with_unsafe_eval_csp_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_env_text.replace(
+            "script-src 'self';",
+            "script-src 'self' 'unsafe-eval';",
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            compose_text,
+            local_env_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            (
+                "compose.production.env.example no debe permitir "
+                "'unsafe-eval' en DJANGO_CONTENT_SECURITY_POLICY"
             ),
             findings,
         )
