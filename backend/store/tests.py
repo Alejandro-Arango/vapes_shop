@@ -211,6 +211,7 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.headers["Referrer-Policy"], "same-origin")
         self.assertEqual(response.headers["Cross-Origin-Opener-Policy"], "same-origin")
+        self.assertEqual(response.headers["Cross-Origin-Resource-Policy"], "same-origin")
         self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertEqual(
@@ -1487,6 +1488,7 @@ class StoreApiTests(APITestCase):
         X_FRAME_OPTIONS="SAMEORIGIN",
         SECURE_REFERRER_POLICY="unsafe-url",
         SECURE_CROSS_ORIGIN_OPENER_POLICY="unsafe-none",
+        CROSS_ORIGIN_RESOURCE_POLICY="cross-origin",
         PERMISSIONS_POLICY="camera=()",
         MIDDLEWARE=[],
     )
@@ -1509,11 +1511,18 @@ class StoreApiTests(APITestCase):
             errors,
         )
         self.assertIn(
+            "DJANGO_CROSS_ORIGIN_RESOURCE_POLICY debe ser same-origin.",
+            errors,
+        )
+        self.assertIn(
             "DJANGO_PERMISSIONS_POLICY debe incluir microphone=().",
             errors,
         )
         self.assertIn(
-            "La aplicacion debe activar middleware de CSP y Permissions-Policy.",
+            (
+                "La aplicacion debe activar middleware de CSP, "
+                "Permissions-Policy y Cross-Origin-Resource-Policy."
+            ),
             errors,
         )
 

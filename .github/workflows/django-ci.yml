@@ -117,6 +117,7 @@ jobs:
           DJANGO_SECURE_HSTS_PRELOAD: "True"
           DJANGO_SECURE_REFERRER_POLICY: "same-origin"
           DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY: "same-origin"
+          DJANGO_CROSS_ORIGIN_RESOURCE_POLICY: "same-origin"
           DJANGO_USE_X_FORWARDED_PROTO: "True"
           DJANGO_TRUST_X_FORWARDED_FOR: "True"
           DJANGO_LOG_FORMAT: "json"

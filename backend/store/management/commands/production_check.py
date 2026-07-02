@@ -456,6 +456,11 @@ class Command(BaseCommand):
                 "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY debe ser same-origin."
             )
 
+        if getattr(settings, "CROSS_ORIGIN_RESOURCE_POLICY", "") != "same-origin":
+            errors.append(
+                "DJANGO_CROSS_ORIGIN_RESOURCE_POLICY debe ser same-origin."
+            )
+
         permissions_policy = getattr(settings, "PERMISSIONS_POLICY", "")
         required_permissions = (
             "camera=()",
@@ -473,11 +478,15 @@ class Command(BaseCommand):
         required_middleware = {
             "store.middleware.ContentSecurityPolicyMiddleware",
             "store.middleware.PermissionsPolicyMiddleware",
+            "store.middleware.CrossOriginResourcePolicyMiddleware",
         }
 
         if not required_middleware.issubset(set(settings.MIDDLEWARE)):
             errors.append(
-                "La aplicacion debe activar middleware de CSP y Permissions-Policy."
+                (
+                    "La aplicacion debe activar middleware de CSP, "
+                    "Permissions-Policy y Cross-Origin-Resource-Policy."
+                )
             )
 
     def check_database(self, errors, allow_sqlite):

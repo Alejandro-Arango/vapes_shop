@@ -397,6 +397,7 @@ MIDDLEWARE = [
     "store.middleware.AdminAccessMiddleware",
     "store.middleware.PermissionsPolicyMiddleware",
     "store.middleware.ContentSecurityPolicyMiddleware",
+    "store.middleware.CrossOriginResourcePolicyMiddleware",
     "store.middleware.ApiCacheControlMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -648,6 +649,11 @@ CROSS_ORIGIN_OPENER_POLICY_CHOICES = (
     "same-origin-allow-popups",
     "unsafe-none",
 )
+RESOURCE_POLICY_CHOICES = (
+    "same-origin",
+    "same-site",
+    "cross-origin",
+)
 SECURE_REFERRER_POLICY = env_lower_choice(
     "DJANGO_SECURE_REFERRER_POLICY",
     "same-origin",
@@ -657,6 +663,11 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = env_lower_choice(
     "DJANGO_SECURE_CROSS_ORIGIN_OPENER_POLICY",
     "same-origin",
     CROSS_ORIGIN_OPENER_POLICY_CHOICES,
+)
+CROSS_ORIGIN_RESOURCE_POLICY = env_lower_choice(
+    "DJANGO_CROSS_ORIGIN_RESOURCE_POLICY",
+    "same-origin",
+    RESOURCE_POLICY_CHOICES,
 )
 PERMISSIONS_POLICY = os.environ.get(
     "DJANGO_PERMISSIONS_POLICY",
