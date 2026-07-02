@@ -1530,6 +1530,9 @@ class CapacityConfigTests(unittest.TestCase):
                     "steps:\n"
                     "  - uses: actions/checkout@v4\n"
                     "  - uses: github/codeql-action/init@v3\n"
+                    "  - uses: docker/login-action@v3\n"
+                    "  - uses: actions/upload-artifact@"
+                    "ea165f8d65b6e75b540449e92b4886f43607fa02\n"
                 ),
             },
         )
@@ -1540,6 +1543,17 @@ class CapacityConfigTests(unittest.TestCase):
         )
         self.assertIn(
             "ci.yml usa accion sin SHA: github/codeql-action/init@v3",
+            findings,
+        )
+        self.assertIn(
+            "ci.yml usa accion sin SHA: docker/login-action@v3",
+            findings,
+        )
+        self.assertNotIn(
+            (
+                "ci.yml usa accion sin SHA: actions/upload-artifact@"
+                "ea165f8d65b6e75b540449e92b4886f43607fa02"
+            ),
             findings,
         )
 

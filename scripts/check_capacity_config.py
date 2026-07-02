@@ -57,9 +57,11 @@ ENV_RESOURCE_KEYS = tuple(
 K6_IMAGE_PATTERN = re.compile(
     r"grafana/k6:2\.0\.0@sha256:[0-9a-f]{64}"
 )
-OFFICIAL_ACTION_MAJOR_TAG_PATTERN = re.compile(
-    r"uses:\s+((?:actions|github/codeql-action)/[A-Za-z0-9_.-]+)@(v\d+)\b"
+WORKFLOW_ACTION_PATTERN = re.compile(
+    r"uses:\s+(?P<action>[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+)@"
+    r"(?P<ref>[^\s#]+)"
 )
+GIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 def extract_service_blocks(compose_text):
@@ -1031,11 +1033,15 @@ def validate_official_action_pins(workflow_texts):
     findings = []
 
     for workflow_name, workflow_text in workflow_texts.items():
-        for match in OFFICIAL_ACTION_MAJOR_TAG_PATTERN.finditer(workflow_text):
+        for match in WORKFLOW_ACTION_PATTERN.finditer(workflow_text):
+            action_ref = match.group("ref")
+            if GIT_SHA_PATTERN.fullmatch(action_ref):
+                continue
+
             findings.append(
                 (
                     f"{workflow_name} usa accion sin SHA: "
-                    f"{match.group(1)}@{match.group(2)}"
+                    f"{match.group('action')}@{action_ref}"
                 )
             )
 
