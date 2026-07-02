@@ -287,6 +287,40 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_root_env_without_safe_admin_ip_is_rejected(self):
+        root_env_text = (PROJECT_ROOT / ".env.example").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = root_env_text.replace(
+            "DJANGO_ADMIN_ALLOWED_IPS=10.0.0.10",
+            "DJANGO_ADMIN_ALLOWED_IPS=127.0.0.1,203.0.113.10",
+            1,
+        )
+
+        findings = capacity.validate_root_env_example(invalid_text)
+
+        self.assertIn(
+            ".env.example no contiene DJANGO_ADMIN_ALLOWED_IPS=10.0.0.10",
+            findings,
+        )
+
+    def test_root_env_without_compose_database_host_is_rejected(self):
+        root_env_text = (PROJECT_ROOT / ".env.example").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = root_env_text.replace(
+            "DJANGO_DB_HOST=db",
+            "DJANGO_DB_HOST=127.0.0.1",
+            1,
+        )
+
+        findings = capacity.validate_root_env_example(invalid_text)
+
+        self.assertIn(
+            ".env.example no contiene DJANGO_DB_HOST=db",
+            findings,
+        )
+
     def test_production_environment_without_debug_false_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8",
@@ -313,6 +347,36 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "compose.production.env.example debe declarar "
                 "DJANGO_DEBUG=False"
+            ),
+            findings,
+        )
+
+    def test_production_environment_without_safe_admin_ip_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_env_text.replace(
+            "DJANGO_ADMIN_ALLOWED_IPS=10.0.0.10",
+            "DJANGO_ADMIN_ALLOWED_IPS=192.0.2.10",
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            compose_text,
+            local_env_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            (
+                "compose.production.env.example debe declarar "
+                "DJANGO_ADMIN_ALLOWED_IPS=10.0.0.10"
             ),
             findings,
         )
@@ -1799,6 +1863,28 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn(
             "django-ci.yml no contiene concurrency:",
+            findings,
+        )
+
+    def test_django_ci_with_local_production_db_host_is_rejected(self):
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = workflow_text.replace(
+            'DJANGO_DB_HOST: "db-ci.internal"',
+            'DJANGO_DB_HOST: "127.0.0.1"',
+            1,
+        )
+
+        findings = capacity.validate_django_workflow_production_fixture(
+            invalid_text
+        )
+
+        self.assertIn(
+            (
+                "django-ci.yml no contiene fixture productivo "
+                'DJANGO_DB_HOST: "db-ci.internal"'
+            ),
             findings,
         )
 

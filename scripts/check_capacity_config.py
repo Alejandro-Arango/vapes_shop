@@ -293,6 +293,13 @@ def validate_environment_security_defaults(
     production_values = parse_env_values(production_env_text)
     required_production_values = {
         "DJANGO_DEBUG": "False",
+        "DJANGO_ALLOWED_HOSTS": (
+            "tienda.tu-dominio.com,www.tienda.tu-dominio.com"
+        ),
+        "DJANGO_CSRF_TRUSTED_ORIGINS": (
+            "https://tienda.tu-dominio.com,https://www.tienda.tu-dominio.com"
+        ),
+        "DJANGO_ADMIN_ALLOWED_IPS": "10.0.0.10",
         "DJANGO_OTP_TOTP_ISSUER": "Vape Shop Admin",
         "DJANGO_OTP_TOTP_THROTTLE_FACTOR": "1",
         "DJANGO_OTP_STATIC_THROTTLE_FACTOR": "1",
@@ -319,6 +326,11 @@ def validate_environment_security_defaults(
         "CART_THROTTLE_RATE": "60/min",
         "CHECKOUT_THROTTLE_RATE": "20/min",
         "DJANGO_LOG_FORMAT": "json",
+        "DJANGO_EMAIL_HOST": "smtp.tu-proveedor.com",
+        "DEFAULT_FROM_EMAIL": "Vape Shop <no-reply@tu-dominio.com>",
+        "CONTACT_NOTIFICATION_EMAIL": "contacto@tu-dominio.com",
+        "ORDER_NOTIFICATION_EMAIL": "pedidos@tu-dominio.com",
+        "INVENTORY_NOTIFICATION_EMAIL": "inventario@tu-dominio.com",
     }
     required_permissions = (
         "camera=()",
@@ -340,7 +352,18 @@ def validate_environment_security_defaults(
         "media-src 'self'",
         "worker-src 'self'",
     )
-    required_compose_keys = tuple(required_production_values) + (
+    production_compose_only_keys = (
+        "DJANGO_EMAIL_HOST",
+        "DEFAULT_FROM_EMAIL",
+        "CONTACT_NOTIFICATION_EMAIL",
+        "ORDER_NOTIFICATION_EMAIL",
+        "INVENTORY_NOTIFICATION_EMAIL",
+    )
+    required_compose_keys = tuple(
+        key
+        for key in required_production_values
+        if key not in production_compose_only_keys
+    ) + (
         "DJANGO_PERMISSIONS_POLICY",
         "DJANGO_CONTENT_SECURITY_POLICY",
     )
@@ -401,6 +424,8 @@ def validate_environment_security_defaults(
 def validate_root_env_example(root_env_text):
     findings = []
     required_fragments = (
+        "DJANGO_ADMIN_ALLOWED_IPS=10.0.0.10",
+        "DJANGO_DB_HOST=db",
         "DJANGO_SESSION_COOKIE_AGE=604800",
         "DJANGO_LOG_FORMAT=json",
         "DJANGO_PERMISSIONS_POLICY=camera=(), microphone=(), geolocation=(), payment=(), usb=()",
@@ -1114,6 +1139,28 @@ def validate_django_workflow_concurrency(django_workflow_text):
 
     return [
         f"django-ci.yml no contiene {fragment.strip()}"
+        for fragment in required_fragments
+        if fragment not in django_workflow_text
+    ]
+
+
+def validate_django_workflow_production_fixture(django_workflow_text):
+    required_fragments = (
+        'DJANGO_ALLOWED_HOSTS: "ci.tienda-vape.co,www.ci.tienda-vape.co"',
+        (
+            'DJANGO_CSRF_TRUSTED_ORIGINS: "https://ci.tienda-vape.co,'
+            'https://www.ci.tienda-vape.co"'
+        ),
+        'DJANGO_ADMIN_ALLOWED_IPS: "10.0.0.10"',
+        'DJANGO_DB_HOST: "db-ci.internal"',
+        'DJANGO_SESSION_COOKIE_AGE: "604800"',
+        'DJANGO_EMAIL_HOST: "smtp.ci.tienda-vape.co"',
+        'DEFAULT_FROM_EMAIL: "Vape Shop <no-reply@ci.tienda-vape.co>"',
+        'CONTACT_NOTIFICATION_EMAIL: "admin@ci.tienda-vape.co"',
+    )
+
+    return [
+        f"django-ci.yml no contiene fixture productivo {fragment}"
         for fragment in required_fragments
         if fragment not in django_workflow_text
     ]
@@ -2677,6 +2724,11 @@ def find_capacity_findings(project_root):
     )
     findings.extend(
         validate_django_workflow_concurrency(
+            paths["django_workflow"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_django_workflow_production_fixture(
             paths["django_workflow"].read_text(encoding="utf-8")
         )
     )
