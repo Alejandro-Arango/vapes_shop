@@ -1731,6 +1731,7 @@ def validate_host_provisioning(
         "vapes-shop-backup.timer",
         "vapes-shop-production-monitor.timer",
         "vapes-shop-recovery-drill.timer",
+        '["systemctl", "is-active", timer]',
         "production-monitor.env.example",
         "production-monitor.env",
         "os.replace(temporary_path, output_path)",

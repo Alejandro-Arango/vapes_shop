@@ -395,6 +395,14 @@ def audit_host(
                     lambda value: value == "enabled",
                 )
             )
+            checks.append(
+                command_check(
+                    runner,
+                    f"{timer}:active",
+                    ["systemctl", "is-active", timer],
+                    lambda value: value == "active",
+                )
+            )
         checks.extend(
             (
                 command_check(
