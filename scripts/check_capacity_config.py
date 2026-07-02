@@ -47,6 +47,7 @@ CAP_DROP_SERVICES = READ_ONLY_SERVICES
 CAP_ADD_ALLOWLIST = {
     "restore": ("CHOWN", "DAC_OVERRIDE", "FOWNER"),
 }
+TMPFS_MOUNT = "/tmp:rw,noexec,nosuid,nodev"
 ENV_RESOURCE_KEYS = tuple(
     value
     for values in RESOURCE_POLICY.values()
@@ -156,8 +157,10 @@ def validate_compose(compose_text):
         if "read_only: true" not in block:
             findings.append(f"{service_name} no activa read_only")
 
-        if "tmpfs:" not in block or "- /tmp" not in block:
-            findings.append(f"{service_name} no monta /tmp como tmpfs")
+        if "tmpfs:" not in block or f"- {TMPFS_MOUNT}" not in block:
+            findings.append(
+                f"{service_name} no monta /tmp como tmpfs endurecido"
+            )
 
     for service_name in NO_NEW_PRIVILEGES_SERVICES:
         block = services.get(service_name, "")

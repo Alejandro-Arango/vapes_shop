@@ -48,6 +48,23 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn("migrate no activa read_only", findings)
 
+    def test_migrate_without_hardened_tmpfs_is_rejected(self):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = compose_text.replace(
+            "      - /tmp:rw,noexec,nosuid,nodev\n",
+            "      - /tmp\n",
+            1,
+        )
+
+        findings = capacity.validate_compose(invalid_text)
+
+        self.assertIn(
+            "migrate no monta /tmp como tmpfs endurecido",
+            findings,
+        )
+
     def test_db_without_no_new_privileges_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8",

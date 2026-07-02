@@ -151,7 +151,7 @@ services:
     restart: "no"
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -173,7 +173,7 @@ services:
       - media_data:/app/backend/media
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -202,7 +202,7 @@ services:
       - media_data:/srv/media:ro
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev
     healthcheck:
       test:
         - CMD
@@ -242,7 +242,7 @@ services:
       - ${BACKUP_PATH:-./backups}:/backups
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -270,7 +270,7 @@ services:
       - ./scripts/monitor_backups.py:/monitor/monitor_backups.py:ro
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -305,7 +305,7 @@ services:
       - external_restore_check:/restore-check
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -339,7 +339,7 @@ services:
       - ${EXTERNAL_BACKUP_PASSWORD_FILE:-./secrets/restic-password.txt}:/run/secrets/restic_password:ro
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -370,7 +370,7 @@ services:
       - ${BACKUP_PATH:-./backups}:/backups
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev
     security_opt:
       - no-new-privileges:true
     cap_drop:
