@@ -1511,6 +1511,26 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_monitor_schedule_without_sandbox_is_rejected(self):
+        inputs = self.production_monitor_schedule_inputs()
+        inputs["monitor_service_text"] = inputs[
+            "monitor_service_text"
+        ].replace(
+            "ProtectSystem=strict",
+            "ProtectSystem=full",
+            1,
+        )
+
+        findings = capacity.validate_production_monitor_schedule(**inputs)
+
+        self.assertIn(
+            (
+                "vapes-shop-production-monitor.service no contiene "
+                "ProtectSystem=strict"
+            ),
+            findings,
+        )
+
     def test_production_monitor_schedule_without_artifact_is_rejected(self):
         inputs = self.production_monitor_schedule_inputs()
         inputs["monitor_workflow_text"] = inputs[

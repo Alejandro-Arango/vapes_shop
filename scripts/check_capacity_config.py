@@ -759,6 +759,41 @@ def validate_production_monitor_schedule(
         ),
         (
             monitor_service_text,
+            "PrivateDevices=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "ProtectSystem=strict",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "ProtectHome=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "ReadWritePaths=/var/lib/vapes-shop",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "CapabilityBoundingSet=",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "RestrictSUIDSGID=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "LockPersonality=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
             "UMask=0077",
             "vapes-shop-production-monitor.service",
         ),
