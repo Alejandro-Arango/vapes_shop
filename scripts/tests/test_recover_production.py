@@ -313,6 +313,22 @@ class ProductionRecoveryTests(unittest.TestCase):
 
         self.assertFalse(controller.current_state_path.exists())
 
+    def test_existing_temporary_state_is_rejected(self):
+        runner = FakeRunner()
+        controller = self.controller(runner)
+        temporary_path = controller.current_state_path.with_suffix(".tmp")
+        controller.current_state_path.parent.mkdir(parents=True)
+        temporary_path.write_text("stale\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            recovery.ProductionRecoveryError,
+            "temporales preexistentes",
+        ):
+            controller.write_state({"status": "ok"})
+
+        self.assertFalse(controller.current_state_path.exists())
+        self.assertEqual(temporary_path.read_text(encoding="utf-8"), "stale\n")
+
     def test_state_parent_symlink_is_rejected(self):
         runner = FakeRunner()
         controller = self.controller(runner)
@@ -396,6 +412,20 @@ class ProductionRecoveryTests(unittest.TestCase):
 
         self.assertFalse(report_path.exists())
         self.assertFalse(temporary_path.exists())
+
+    def test_existing_output_report_temporary_is_rejected_before_write(self):
+        report_path = self.root / "recovery-report.json"
+        temporary_path = report_path.with_suffix(".json.tmp")
+        temporary_path.write_text("stale\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            recovery.ProductionRecoveryError,
+            "temporal preexistente",
+        ):
+            recovery.write_report(report_path, {"status": "critical"})
+
+        self.assertFalse(report_path.exists())
+        self.assertEqual(temporary_path.read_text(encoding="utf-8"), "stale\n")
 
     def test_interrupted_recovery_journal_blocks_retry(self):
         self.state_directory.mkdir()

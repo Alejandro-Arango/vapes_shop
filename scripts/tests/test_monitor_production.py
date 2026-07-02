@@ -256,6 +256,27 @@ class ProductionMonitorTests(unittest.TestCase):
 
                     self.assertFalse(report_path.exists())
 
+    def test_existing_temporary_report_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "production-monitor.json"
+            temporary_path = report_path.with_suffix(".json.tmp")
+            temporary_path.write_text("stale\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                monitor.MonitorError,
+                "temporales preexistentes",
+            ):
+                monitor.write_report(
+                    report_path,
+                    {"status": "ok", "event": "production_readiness"},
+                )
+
+            self.assertFalse(report_path.exists())
+            self.assertEqual(
+                temporary_path.read_text(encoding="utf-8"),
+                "stale\n",
+            )
+
     def test_configuration_error_is_persisted_to_report(self):
         with tempfile.TemporaryDirectory() as directory:
             report_path = Path(directory) / "production-monitor.json"

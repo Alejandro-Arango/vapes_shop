@@ -422,10 +422,12 @@ class ProductionRecoveryController:
         if (
             self.recovery_journal_path.is_symlink()
             or self.recovery_journal_path.parent.is_symlink()
+            or temporary_path.exists()
             or temporary_path.is_symlink()
         ):
             raise ProductionRecoveryError(
-                "El journal de recuperacion no admite enlaces simbolicos."
+                "El journal de recuperacion no admite enlaces simbolicos "
+                "ni temporales preexistentes."
             )
 
         payload = {
@@ -453,11 +455,12 @@ class ProductionRecoveryController:
         if (
             self.last_recovery_report_path.is_symlink()
             or self.last_recovery_report_path.parent.is_symlink()
+            or temporary_path.exists()
             or temporary_path.is_symlink()
         ):
             raise ProductionRecoveryError(
                 "El reporte local de recuperacion no admite "
-                "enlaces simbolicos."
+                "enlaces simbolicos ni temporales preexistentes."
             )
 
         temporary_path.write_text(
@@ -737,10 +740,12 @@ class ProductionRecoveryController:
         if (
             self.current_state_path.is_symlink()
             or self.current_state_path.parent.is_symlink()
+            or temporary_path.exists()
             or temporary_path.is_symlink()
         ):
             raise ProductionRecoveryError(
-                "El estado productivo no admite enlaces simbolicos."
+                "El estado productivo no admite enlaces simbolicos "
+                "ni temporales preexistentes."
             )
 
         temporary_path.write_text(
@@ -975,9 +980,10 @@ def write_report(path, report):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = output_path.with_suffix(f"{output_path.suffix}.tmp")
 
-    if temporary_path.is_symlink():
+    if temporary_path.exists() or temporary_path.is_symlink():
         raise ProductionRecoveryError(
-            "El reporte no puede reemplazar un enlace simbolico."
+            "El reporte no puede reemplazar un enlace simbolico "
+            "ni un temporal preexistente."
         )
 
     temporary_path.write_text(

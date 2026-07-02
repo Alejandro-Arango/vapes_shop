@@ -219,10 +219,12 @@ def write_report(path, report):
     if (
         output_path.is_symlink()
         or output_path.parent.is_symlink()
+        or temporary_path.exists()
         or temporary_path.is_symlink()
     ):
         raise MonitorError(
-            "El reporte de dependencia no admite enlaces simbolicos."
+            "El reporte de dependencia no admite enlaces simbolicos "
+            "ni temporales preexistentes."
         )
 
     temporary_path.write_text(

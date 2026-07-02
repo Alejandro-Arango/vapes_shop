@@ -474,9 +474,13 @@ def write_report(path, report):
     if (
         output_path.is_symlink()
         or output_path.parent.is_symlink()
+        or temporary_path.exists()
         or temporary_path.is_symlink()
     ):
-        raise ValueError("El reporte no puede reemplazar un enlace simbolico.")
+        raise ValueError(
+            "El reporte no puede reemplazar un enlace simbolico "
+            "ni un temporal preexistente."
+        )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n",

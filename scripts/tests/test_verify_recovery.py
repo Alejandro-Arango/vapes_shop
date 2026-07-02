@@ -152,6 +152,24 @@ class RecoveryVerifierTests(unittest.TestCase):
 
                     self.assertFalse(report_path.exists())
 
+    def test_existing_temporary_report_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "recovery-report.json"
+            temporary_path = report_path.with_suffix(".json.tmp")
+            temporary_path.write_text("stale\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                recovery.MonitorError,
+                "temporales preexistentes",
+            ):
+                recovery.write_report(report_path, {"status": "recovered"})
+
+            self.assertFalse(report_path.exists())
+            self.assertEqual(
+                temporary_path.read_text(encoding="utf-8"),
+                "stale\n",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

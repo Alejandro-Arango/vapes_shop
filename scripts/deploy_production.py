@@ -234,10 +234,12 @@ class DeploymentController:
         if (
             path.is_symlink()
             or path.parent.is_symlink()
+            or temporary_path.exists()
             or temporary_path.is_symlink()
         ):
             raise DeploymentError(
-                "El estado de despliegue no admite enlaces simbolicos."
+                "El estado de despliegue no admite enlaces simbolicos "
+                "ni temporales preexistentes."
             )
 
         temporary_path.write_text(

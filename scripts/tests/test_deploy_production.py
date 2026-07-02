@@ -170,6 +170,28 @@ class DeploymentControllerTests(unittest.TestCase):
 
         self.assertFalse(state_path.exists())
 
+    def test_existing_temporary_state_is_rejected_before_write(self):
+        controller = self.build_controller(FakeRunner())
+        state_path = self.state_directory / "current.json"
+        temporary_path = state_path.with_suffix(".tmp")
+        state_path.parent.mkdir(parents=True)
+        temporary_path.write_text("stale\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            deploy.DeploymentError,
+            "temporales preexistentes",
+        ):
+            controller.write_state(
+                state_path,
+                {
+                    "app_image": APP_V1,
+                    "backup_image": BACKUP_V1,
+                },
+            )
+
+        self.assertFalse(state_path.exists())
+        self.assertEqual(temporary_path.read_text(encoding="utf-8"), "stale\n")
+
     def test_state_parent_symlink_is_rejected_before_write(self):
         controller = self.build_controller(FakeRunner())
         state_path = self.state_directory / "current.json"

@@ -234,9 +234,10 @@ def write_manifest(output_path, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = path.with_suffix(path.suffix + ".tmp")
 
-    if temporary_path.is_symlink():
+    if temporary_path.exists() or temporary_path.is_symlink():
         raise ReleaseManifestError(
-            "El manifiesto no puede escribir sobre un temporal simbolico."
+            "El manifiesto no puede escribir sobre un temporal simbolico "
+            "o preexistente."
         )
 
     temporary_path.write_text(
@@ -283,9 +284,10 @@ def write_checksum(checksum_path, manifest_path):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = path.with_suffix(path.suffix + ".tmp")
 
-    if temporary_path.is_symlink():
+    if temporary_path.exists() or temporary_path.is_symlink():
         raise ReleaseManifestError(
-            "El checksum no puede escribir sobre un temporal simbolico."
+            "El checksum no puede escribir sobre un temporal simbolico "
+            "o preexistente."
         )
 
     temporary_path.write_text(

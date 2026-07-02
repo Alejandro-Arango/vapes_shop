@@ -194,6 +194,27 @@ class ReleaseManifestTests(unittest.TestCase):
 
             self.assertFalse(manifest_path.exists())
 
+    def test_existing_temporary_manifest_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest_path = Path(directory) / "recovery-manifest.json"
+            temporary_path = manifest_path.with_suffix(".json.tmp")
+            temporary_path.write_text("stale\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                manifest.ReleaseManifestError,
+                "preexistente",
+            ):
+                manifest.write_manifest(
+                    manifest_path,
+                    self.valid_manifest(),
+                )
+
+            self.assertFalse(manifest_path.exists())
+            self.assertEqual(
+                temporary_path.read_text(encoding="utf-8"),
+                "stale\n",
+            )
+
     def test_temporary_checksum_symlink_is_rejected_before_write(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -213,6 +234,27 @@ class ReleaseManifestTests(unittest.TestCase):
                     manifest.write_checksum(checksum_path, manifest_path)
 
             self.assertFalse(checksum_path.exists())
+
+    def test_existing_temporary_checksum_is_rejected_before_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest_path = root / "recovery-manifest.json"
+            checksum_path = root / "recovery-manifest.sha256"
+            temporary_path = checksum_path.with_suffix(".sha256.tmp")
+            manifest.write_manifest(manifest_path, self.valid_manifest())
+            temporary_path.write_text("stale\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                manifest.ReleaseManifestError,
+                "preexistente",
+            ):
+                manifest.write_checksum(checksum_path, manifest_path)
+
+            self.assertFalse(checksum_path.exists())
+            self.assertEqual(
+                temporary_path.read_text(encoding="utf-8"),
+                "stale\n",
+            )
 
 
 if __name__ == "__main__":

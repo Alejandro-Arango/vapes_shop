@@ -680,6 +680,7 @@ def validate_recovery_verifier(verifier_text):
         "elapsed_seconds",
         "output_path.is_symlink()",
         "output_path.parent.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "El reporte de recuperacion no admite enlaces simbolicos",
         "os.chmod(temporary_path, 0o600)",
@@ -703,6 +704,7 @@ def validate_dependency_outage_verifier(verifier_text):
         "consecutive_successes",
         "output_path.is_symlink()",
         "output_path.parent.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "El reporte de dependencia no admite enlaces simbolicos",
         "os.chmod(temporary_path, 0o600)",
@@ -726,6 +728,7 @@ def validate_media_storage_verifier(verifier_text):
         "storage.delete(saved_name)",
         "output_path.is_symlink()",
         "output_path.parent.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "El reporte de almacenamiento media no admite enlaces simbolicos",
         "os.chmod(temporary_path, 0o600)",
@@ -756,6 +759,7 @@ def validate_backup_monitor(monitor_text):
         "BACKUP_ROOT no puede ser un enlace simbolico",
         "output_path.is_symlink()",
         "output_path.parent.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "El reporte de monitoreo de backups no admite enlaces simbolicos",
         "os.chmod(temporary_path, 0o600)",
@@ -845,6 +849,7 @@ def validate_production_monitor(monitor_text):
         "report_error",
         "output_path.is_symlink()",
         "output_path.parent.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "El reporte de monitoreo productivo no admite enlaces simbolicos",
         "os.chmod(temporary_path, 0o600)",
@@ -1417,6 +1422,7 @@ def validate_external_backup_script(script_text):
         "BACKUP_ROOT debe estar vacio",
         "output_path.is_symlink()",
         "output_path.parent.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "El reporte de backup externo no admite enlaces simbolicos",
         "os.chmod(temporary_path, 0o600)",
@@ -1606,6 +1612,7 @@ def validate_disaster_recovery(
         "current_state_path.parent.is_symlink()",
         "recovery_journal_path.parent.is_symlink()",
         "last_recovery_report_path.parent.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "El reporte no puede reemplazar un enlace simbolico",
         "El estado productivo no admite enlaces simbolicos",
@@ -1654,6 +1661,14 @@ def validate_disaster_recovery(
             (
                 "recover_production.py no contiene 4 validaciones "
                 "temporary_path.is_symlink()"
+            )
+        )
+
+    if recovery_text.count("temporary_path.exists()") < 4:
+        findings.append(
+            (
+                "recover_production.py no contiene 4 validaciones "
+                "temporary_path.exists()"
             )
         )
 
@@ -1789,8 +1804,9 @@ def validate_release_manifest(
         "load_verified_manifest",
         "expected_repository",
         "expected_tag",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
-        "temporal simbolico",
+        "o preexistente",
         "os.chmod(temporary_path, 0o600)",
         "os.replace",
     )
@@ -1871,6 +1887,14 @@ def validate_release_manifest(
             )
         )
 
+    if manifest_text.count("temporary_path.exists()") < 2:
+        findings.append(
+            (
+                "release_manifest.py debe validar temporales preexistentes "
+                "en manifiesto y checksum"
+            )
+        )
+
     if manifest_text.count("path.exists() and path.is_dir()") < 2:
         findings.append(
             (
@@ -1907,6 +1931,7 @@ def validate_backup_operations(script_text):
         "El directorio de estado de backups no admite",
         "output_path.is_symlink()",
         "output_path.parent.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "El reporte de backup no admite enlaces simbolicos",
         "os.chmod(temporary_path, 0o600)",
@@ -2171,6 +2196,7 @@ def validate_host_provisioning(
         "production-monitor.env",
         "os.replace(temporary_path, output_path)",
         "output_path.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "firewall_default_deny_enabled",
         '["ufw", "status", "verbose"]',
@@ -2203,6 +2229,7 @@ def validate_host_provisioning(
         "El directorio de estado de despliegue no admite",
         "path.is_symlink()",
         "path.parent.is_symlink()",
+        "temporary_path.exists()",
         "temporary_path.is_symlink()",
         "El estado de despliegue no admite enlaces simbolicos",
     ):

@@ -1127,6 +1127,28 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_recovery_verifier_without_report_tmp_exists_guard_is_rejected(
+        self,
+    ):
+        verifier_text = (
+            PROJECT_ROOT / "scripts" / "verify_recovery.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = verifier_text.replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_recovery_verifier(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/verify_recovery.py no contiene "
+                "temporary_path.exists()"
+            ),
+            findings,
+        )
+
     def test_resilience_config_without_backlog_is_rejected(self):
         start_text = (
             PROJECT_ROOT / "docker" / "start.sh"
@@ -1525,6 +1547,30 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_dependency_outage_without_report_tmp_exists_guard_is_rejected(
+        self,
+    ):
+        verifier_text = (
+            PROJECT_ROOT / "scripts" / "verify_dependency_outage.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = verifier_text.replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_dependency_outage_verifier(
+            invalid_text
+        )
+
+        self.assertIn(
+            (
+                "scripts/verify_dependency_outage.py no contiene "
+                "temporary_path.exists()"
+            ),
+            findings,
+        )
+
     def test_database_outage_config_without_connect_timeout_is_rejected(self):
         compose_text = (
             PROJECT_ROOT / "compose.yaml"
@@ -1630,6 +1676,26 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_media_storage_without_report_tmp_exists_guard_is_rejected(self):
+        verifier_text = (
+            PROJECT_ROOT / "scripts" / "verify_media_storage.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = verifier_text.replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_media_storage_verifier(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/verify_media_storage.py no contiene "
+                "temporary_path.exists()"
+            ),
+            findings,
+        )
+
     def test_media_outage_workflow_without_read_only_failure_is_rejected(self):
         workflow_text = (
             PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
@@ -1702,6 +1768,28 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "scripts/monitor_backups.py no contiene "
                 "temporary_path.is_symlink()"
+            ),
+            findings,
+        )
+
+    def test_backup_monitor_without_report_tmp_exists_guard_is_rejected(
+        self,
+    ):
+        monitor_text = (
+            PROJECT_ROOT / "scripts" / "monitor_backups.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = monitor_text.replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_backup_monitor(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/monitor_backups.py no contiene "
+                "temporary_path.exists()"
             ),
             findings,
         )
@@ -1780,6 +1868,28 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "scripts/monitor_production.py no contiene "
                 "temporary_path.is_symlink()"
+            ),
+            findings,
+        )
+
+    def test_production_monitor_without_report_tmp_exists_guard_is_rejected(
+        self,
+    ):
+        monitor_text = (
+            PROJECT_ROOT / "scripts" / "monitor_production.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = monitor_text.replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_production_monitor(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/monitor_production.py no contiene "
+                "temporary_path.exists()"
             ),
             findings,
         )
@@ -2534,6 +2644,28 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_external_backup_without_report_tmp_exists_guard_is_rejected(
+        self,
+    ):
+        script_text = (
+            PROJECT_ROOT / "scripts" / "external_backup.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = script_text.replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_external_backup_script(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/external_backup.py no contiene "
+                "temporary_path.exists()"
+            ),
+            findings,
+        )
+
     def test_external_backup_without_directory_guards_is_rejected(self):
         script_text = (
             PROJECT_ROOT / "scripts" / "external_backup.py"
@@ -2789,8 +2921,8 @@ class CapacityConfigTests(unittest.TestCase):
     ):
         inputs = self.disaster_recovery_inputs()
         inputs["recovery_text"] = inputs["recovery_text"].replace(
-            "    if temporary_path.is_symlink():",
-            "    if False:",
+            "temporary_path.is_symlink()",
+            "False",
             1,
         )
 
@@ -2800,6 +2932,26 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "recover_production.py no contiene 4 validaciones "
                 "temporary_path.is_symlink()"
+            ),
+            findings,
+        )
+
+    def test_recovery_output_report_without_tmp_exists_guard_is_rejected(
+        self,
+    ):
+        inputs = self.disaster_recovery_inputs()
+        inputs["recovery_text"] = inputs["recovery_text"].replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_disaster_recovery(**inputs)
+
+        self.assertIn(
+            (
+                "recover_production.py no contiene 4 validaciones "
+                "temporary_path.exists()"
             ),
             findings,
         )
@@ -2896,6 +3048,24 @@ class CapacityConfigTests(unittest.TestCase):
         self.assertIn(
             (
                 "release_manifest.py debe validar temporales simbolicos "
+                "en manifiesto y checksum"
+            ),
+            findings,
+        )
+
+    def test_release_manifest_without_tmp_exists_guard_is_rejected(self):
+        inputs = self.release_manifest_inputs()
+        inputs["manifest_text"] = inputs["manifest_text"].replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_release_manifest(**inputs)
+
+        self.assertIn(
+            (
+                "release_manifest.py debe validar temporales preexistentes "
                 "en manifiesto y checksum"
             ),
             findings,
@@ -3010,6 +3180,28 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "scripts/backup_operations.py no contiene "
                 "temporary_path.is_symlink()"
+            ),
+            findings,
+        )
+
+    def test_backup_operations_without_report_tmp_exists_guard_is_rejected(
+        self,
+    ):
+        script_text = (
+            PROJECT_ROOT / "scripts" / "backup_operations.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = script_text.replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_backup_operations(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/backup_operations.py no contiene "
+                "temporary_path.exists()"
             ),
             findings,
         )
@@ -3342,6 +3534,38 @@ class CapacityConfigTests(unittest.TestCase):
 
         self.assertIn(
             "check_host_readiness.py no contiene temporary_path.is_symlink()",
+            findings,
+        )
+
+    def test_host_readiness_without_report_tmp_exists_guard_is_rejected(
+        self,
+    ):
+        inputs = self.host_provisioning_inputs()
+        inputs["readiness_text"] = inputs["readiness_text"].replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_host_provisioning(**inputs)
+
+        self.assertIn(
+            "check_host_readiness.py no contiene temporary_path.exists()",
+            findings,
+        )
+
+    def test_deploy_state_without_tmp_exists_guard_is_rejected(self):
+        inputs = self.host_provisioning_inputs()
+        inputs["deploy_text"] = inputs["deploy_text"].replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_host_provisioning(**inputs)
+
+        self.assertIn(
+            "deploy_production.py no restringe los archivos de estado",
             findings,
         )
 
