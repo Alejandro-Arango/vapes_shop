@@ -1738,6 +1738,29 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_django_ci_without_concurrency_is_rejected(self):
+        workflow_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = workflow_text.replace(
+            (
+                "concurrency:\n"
+                "  group: django-ci-${{ github.ref }}\n"
+                "  cancel-in-progress: true\n\n"
+            ),
+            "",
+            1,
+        )
+
+        findings = capacity.validate_django_workflow_concurrency(
+            invalid_text
+        )
+
+        self.assertIn(
+            "django-ci.yml no contiene concurrency:",
+            findings,
+        )
+
     def test_publish_images_without_release_validation_timeout_is_rejected(
         self,
     ):

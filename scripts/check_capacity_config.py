@@ -1103,6 +1103,20 @@ def validate_django_workflow_timeouts(django_workflow_text):
     ]
 
 
+def validate_django_workflow_concurrency(django_workflow_text):
+    required_fragments = (
+        "concurrency:\n",
+        "  group: django-ci-${{ github.ref }}\n",
+        "  cancel-in-progress: true\n",
+    )
+
+    return [
+        f"django-ci.yml no contiene {fragment.strip()}"
+        for fragment in required_fragments
+        if fragment not in django_workflow_text
+    ]
+
+
 def validate_publish_workflow_timeouts(publish_workflow_text):
     required_jobs = (
         ("validate", 30),
@@ -2618,6 +2632,11 @@ def find_capacity_findings(project_root):
     )
     findings.extend(
         validate_django_workflow_timeouts(
+            paths["django_workflow"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_django_workflow_concurrency(
             paths["django_workflow"].read_text(encoding="utf-8")
         )
     )
