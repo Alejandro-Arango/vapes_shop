@@ -808,6 +808,21 @@ def validate_production_monitor_schedule(
         ),
         (
             monitor_service_text,
+            "ProtectKernelTunables=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "ProtectKernelModules=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "ProtectControlGroups=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
             "CapabilityBoundingSet=",
             "vapes-shop-production-monitor.service",
         ),
@@ -819,6 +834,11 @@ def validate_production_monitor_schedule(
         (
             monitor_service_text,
             "LockPersonality=true",
+            "vapes-shop-production-monitor.service",
+        ),
+        (
+            monitor_service_text,
+            "SystemCallArchitectures=native",
             "vapes-shop-production-monitor.service",
         ),
         (
@@ -1754,6 +1774,21 @@ def validate_backup_schedule(
         ),
         (
             backup_service_text,
+            "ProtectKernelTunables=true",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "ProtectKernelModules=true",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "ProtectControlGroups=true",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
             "CapabilityBoundingSet=",
             "vapes-shop-backup.service",
         ),
@@ -1765,6 +1800,11 @@ def validate_backup_schedule(
         (
             backup_service_text,
             "LockPersonality=true",
+            "vapes-shop-backup.service",
+        ),
+        (
+            backup_service_text,
+            "SystemCallArchitectures=native",
             "vapes-shop-backup.service",
         ),
         (
@@ -1804,6 +1844,21 @@ def validate_backup_schedule(
         ),
         (
             drill_service_text,
+            "ProtectKernelTunables=true",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "ProtectKernelModules=true",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "ProtectControlGroups=true",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
             "CapabilityBoundingSet=",
             "vapes-shop-recovery-drill.service",
         ),
@@ -1815,6 +1870,11 @@ def validate_backup_schedule(
         (
             drill_service_text,
             "LockPersonality=true",
+            "vapes-shop-recovery-drill.service",
+        ),
+        (
+            drill_service_text,
+            "SystemCallArchitectures=native",
             "vapes-shop-recovery-drill.service",
         ),
         (

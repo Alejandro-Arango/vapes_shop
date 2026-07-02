@@ -1753,6 +1753,28 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_monitor_schedule_without_kernel_lockdown_is_rejected(
+        self,
+    ):
+        inputs = self.production_monitor_schedule_inputs()
+        inputs["monitor_service_text"] = inputs[
+            "monitor_service_text"
+        ].replace(
+            "ProtectKernelTunables=true",
+            "ProtectKernelTunables=false",
+            1,
+        )
+
+        findings = capacity.validate_production_monitor_schedule(**inputs)
+
+        self.assertIn(
+            (
+                "vapes-shop-production-monitor.service no contiene "
+                "ProtectKernelTunables=true"
+            ),
+            findings,
+        )
+
     def test_production_monitor_schedule_without_artifact_is_rejected(self):
         inputs = self.production_monitor_schedule_inputs()
         inputs["monitor_workflow_text"] = inputs[
@@ -2479,6 +2501,24 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_backup_schedule_without_native_syscall_arch_is_rejected(self):
+        inputs = self.backup_schedule_inputs()
+        inputs["backup_service_text"] = inputs["backup_service_text"].replace(
+            "SystemCallArchitectures=native",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_backup_schedule(**inputs)
+
+        self.assertIn(
+            (
+                "vapes-shop-backup.service no contiene "
+                "SystemCallArchitectures=native"
+            ),
+            findings,
+        )
+
     def test_recovery_drill_schedule_without_systemd_sandbox_is_rejected(
         self,
     ):
@@ -2495,6 +2535,26 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "vapes-shop-recovery-drill.service no contiene "
                 "ProtectSystem=full"
+            ),
+            findings,
+        )
+
+    def test_recovery_drill_schedule_without_cgroup_lockdown_is_rejected(
+        self,
+    ):
+        inputs = self.backup_schedule_inputs()
+        inputs["drill_service_text"] = inputs["drill_service_text"].replace(
+            "ProtectControlGroups=true",
+            "ProtectControlGroups=false",
+            1,
+        )
+
+        findings = capacity.validate_backup_schedule(**inputs)
+
+        self.assertIn(
+            (
+                "vapes-shop-recovery-drill.service no contiene "
+                "ProtectControlGroups=true"
             ),
             findings,
         )
