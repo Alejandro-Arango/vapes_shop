@@ -136,6 +136,7 @@ def check_readiness(target_url, timeout):
     try:
         with HTTP_OPENER.open(request, timeout=timeout) as response:
             status_code = response.status
+            content_type = response.headers.get("Content-Type", "")
             body = read_limited(response)
             request_id = response.headers.get(
                 "X-Request-ID",
@@ -154,6 +155,11 @@ def check_readiness(target_url, timeout):
     if status_code != 200:
         raise MonitorError(
             f"Readiness respondio HTTP {status_code}; request_id={request_id}."
+        )
+
+    if "application/json" not in content_type.lower():
+        raise MonitorError(
+            f"Readiness no devolvio Content-Type JSON; request_id={request_id}."
         )
 
     try:

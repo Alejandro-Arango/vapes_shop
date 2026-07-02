@@ -1163,6 +1163,25 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_monitor_without_content_type_guard_is_rejected(self):
+        monitor_text = (
+            PROJECT_ROOT / "scripts" / "monitor_production.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = monitor_text.replace(
+            "Content-Type JSON",
+            "tipo de contenido valido",
+        )
+
+        findings = capacity.validate_production_monitor(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/monitor_production.py no contiene "
+                "Content-Type JSON"
+            ),
+            findings,
+        )
+
     def test_production_monitor_without_report_guard_is_rejected(self):
         monitor_text = (
             PROJECT_ROOT / "scripts" / "monitor_production.py"

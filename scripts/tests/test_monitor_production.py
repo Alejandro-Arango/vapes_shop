@@ -17,6 +17,7 @@ SPEC.loader.exec_module(monitor)
 
 class MonitorHandler(BaseHTTPRequestHandler):
     readiness_status = 200
+    readiness_content_type = "application/json"
     readiness_payload = {
         "status": "ok",
         "database": "available",
@@ -36,7 +37,7 @@ class MonitorHandler(BaseHTTPRequestHandler):
 
         body = json.dumps(type(self).readiness_payload).encode("utf-8")
         self.send_response(type(self).readiness_status)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", type(self).readiness_content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("X-Request-ID", "proxy-request-123")
         self.end_headers()
@@ -81,6 +82,7 @@ class ProductionMonitorTests(unittest.TestCase):
 
     def setUp(self):
         MonitorHandler.readiness_status = 200
+        MonitorHandler.readiness_content_type = "application/json"
         MonitorHandler.readiness_payload = {
             "status": "ok",
             "database": "available",
@@ -147,6 +149,19 @@ class ProductionMonitorTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
         self.assertIn("database", event["error"])
+
+    def test_invalid_content_type_is_reported_as_failure(self):
+        MonitorHandler.readiness_content_type = "text/plain"
+
+        exit_code, event = monitor.run_monitor(
+            f"{self.base_url}/healthz",
+            attempts=1,
+            retry_delay=0,
+            allow_http=True,
+        )
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Content-Type JSON", event["error"])
 
     def test_http_is_rejected_without_explicit_local_override(self):
         with self.assertRaises(monitor.MonitorError):

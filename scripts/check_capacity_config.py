@@ -644,6 +644,7 @@ def validate_production_monitor(monitor_text):
         "NoRedirectHandler",
         "validate_health_url",
         "debe apuntar a /healthz",
+        "Content-Type JSON",
         "X-Request-ID",
         "status\": \"critical\"",
         "status\": \"configuration_error\"",
