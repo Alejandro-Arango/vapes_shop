@@ -398,6 +398,26 @@ def validate_environment_security_defaults(
     return findings
 
 
+def validate_root_env_example(root_env_text):
+    findings = []
+    required_fragments = (
+        'DJANGO_CONTENT_SECURITY_POLICY="default-src \'self\';',
+        'DEFAULT_FROM_EMAIL="Vape Shop <no-reply@tu-dominio.com>"',
+    )
+
+    for fragment in required_fragments:
+        if fragment not in root_env_text:
+            findings.append(f".env.example no contiene {fragment}")
+
+    if "DJANGO_CONTENT_SECURITY_POLICY=default-src" in root_env_text:
+        findings.append(".env.example debe citar DJANGO_CONTENT_SECURITY_POLICY")
+
+    if "DEFAULT_FROM_EMAIL=Vape Shop " in root_env_text:
+        findings.append(".env.example debe citar DEFAULT_FROM_EMAIL")
+
+    return findings
+
+
 def validate_production_check_security(production_check_text):
     required_fragments = (
         "check_upload_limits",
@@ -2281,6 +2301,7 @@ def find_capacity_findings(project_root):
     project_root = Path(project_root)
     paths = {
         "compose": project_root / "compose.yaml",
+        "root_env": project_root / ".env.example",
         "local_env": project_root / "compose.env.example",
         "production_env": project_root / "compose.production.env.example",
         "load": project_root / "performance" / "catalog.js",
@@ -2468,6 +2489,11 @@ def find_capacity_findings(project_root):
             paths["compose"].read_text(encoding="utf-8"),
             paths["local_env"].read_text(encoding="utf-8"),
             paths["production_env"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_root_env_example(
+            paths["root_env"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

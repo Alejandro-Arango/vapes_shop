@@ -195,6 +195,40 @@ class CapacityConfigTests(unittest.TestCase):
             "worker-src 'self'",
         )
 
+    def test_root_env_without_quoted_csp_is_rejected(self):
+        root_env_text = (PROJECT_ROOT / ".env.example").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = root_env_text.replace(
+            'DJANGO_CONTENT_SECURITY_POLICY="default-src',
+            "DJANGO_CONTENT_SECURITY_POLICY=default-src",
+            1,
+        )
+
+        findings = capacity.validate_root_env_example(invalid_text)
+
+        self.assertIn(
+            ".env.example debe citar DJANGO_CONTENT_SECURITY_POLICY",
+            findings,
+        )
+
+    def test_root_env_without_quoted_default_sender_is_rejected(self):
+        root_env_text = (PROJECT_ROOT / ".env.example").read_text(
+            encoding="utf-8",
+        )
+        invalid_text = root_env_text.replace(
+            'DEFAULT_FROM_EMAIL="Vape Shop <no-reply@tu-dominio.com>"',
+            "DEFAULT_FROM_EMAIL=Vape Shop <no-reply@tu-dominio.com>",
+            1,
+        )
+
+        findings = capacity.validate_root_env_example(invalid_text)
+
+        self.assertIn(
+            ".env.example debe citar DEFAULT_FROM_EMAIL",
+            findings,
+        )
+
     def test_production_environment_without_debug_false_is_rejected(self):
         compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
             encoding="utf-8",
