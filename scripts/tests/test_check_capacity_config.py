@@ -2337,6 +2337,61 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_container_backup_without_latest_temp_guard_is_rejected(self):
+        backup_text = (PROJECT_ROOT / "docker" / "backup.sh").read_text(
+            encoding="utf-8",
+        )
+        restore_text = (PROJECT_ROOT / "docker" / "restore.sh").read_text(
+            encoding="utf-8",
+        )
+        invalid_backup = backup_text.replace(
+            (
+                ".latest.tmp no puede existir antes de actualizar "
+                "latest.txt."
+            ),
+            ".latest.tmp se puede reutilizar.",
+            1,
+        )
+
+        findings = capacity.validate_container_backup_scripts(
+            invalid_backup,
+            restore_text,
+        )
+
+        self.assertIn(
+            (
+                "docker/backup.sh no contiene "
+                ".latest.tmp no puede existir antes de actualizar latest.txt."
+            ),
+            findings,
+        )
+
+    def test_container_backup_without_latest_temp_mode_is_rejected(self):
+        backup_text = (PROJECT_ROOT / "docker" / "backup.sh").read_text(
+            encoding="utf-8",
+        )
+        restore_text = (PROJECT_ROOT / "docker" / "restore.sh").read_text(
+            encoding="utf-8",
+        )
+        invalid_backup = backup_text.replace(
+            'chmod 0600 "${latest_temporary}"\n',
+            "",
+            1,
+        )
+
+        findings = capacity.validate_container_backup_scripts(
+            invalid_backup,
+            restore_text,
+        )
+
+        self.assertIn(
+            (
+                'docker/backup.sh no contiene chmod 0600 "'
+                '${latest_temporary}"'
+            ),
+            findings,
+        )
+
     def test_container_restore_without_archive_symlink_guard_is_rejected(self):
         backup_text = (PROJECT_ROOT / "docker" / "backup.sh").read_text(
             encoding="utf-8",

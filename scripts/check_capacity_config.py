@@ -793,7 +793,12 @@ def validate_container_backup_scripts(backup_text, restore_text):
         ),
         (
             backup_text,
-            ".latest.tmp no puede ser un enlace simbolico.",
+            ".latest.tmp no puede existir antes de actualizar latest.txt.",
+            "docker/backup.sh",
+        ),
+        (
+            backup_text,
+            'chmod 0600 "${latest_temporary}"',
             "docker/backup.sh",
         ),
         (

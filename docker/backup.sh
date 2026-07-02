@@ -155,11 +155,12 @@ EOF
 mv -- "${temporary_directory}" "${final_directory}"
 latest_temporary="${BACKUP_ROOT}/.latest.tmp"
 
-if [[ -L "${latest_temporary}" ]]; then
-    fail ".latest.tmp no puede ser un enlace simbolico."
+if [[ -e "${latest_temporary}" || -L "${latest_temporary}" ]]; then
+    fail ".latest.tmp no puede existir antes de actualizar latest.txt."
 fi
 
 printf '%s\n' "${backup_id}" > "${latest_temporary}"
+chmod 0600 "${latest_temporary}"
 mv -- "${latest_temporary}" "${BACKUP_ROOT}/latest.txt"
 trap - EXIT
 
