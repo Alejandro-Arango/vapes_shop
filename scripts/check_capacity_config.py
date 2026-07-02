@@ -44,6 +44,9 @@ READ_ONLY_SERVICES = (
 )
 NO_NEW_PRIVILEGES_SERVICES = tuple(RESOURCE_POLICY)
 CAP_DROP_SERVICES = READ_ONLY_SERVICES
+CAP_ADD_ALLOWLIST = {
+    "restore": ("CHOWN", "DAC_OVERRIDE", "FOWNER"),
+}
 ENV_RESOURCE_KEYS = tuple(
     value
     for values in RESOURCE_POLICY.values()
@@ -94,6 +97,36 @@ def extract_service_blocks(compose_text):
     return services
 
 
+def extract_block_list(block, key):
+    values = []
+    collecting = False
+    key_indent = 0
+
+    for line in block.splitlines():
+        if re.fullmatch(rf"\s+{re.escape(key)}:", line):
+            collecting = True
+            key_indent = len(line) - len(line.lstrip(" "))
+            continue
+
+        if not collecting:
+            continue
+
+        if not line.strip():
+            continue
+
+        indent = len(line) - len(line.lstrip(" "))
+        if indent <= key_indent:
+            break
+
+        item_match = re.fullmatch(r"\s+-\s+(.+)", line)
+        if item_match:
+            values.append(
+                item_match.group(1).strip().strip('"').strip("'")
+            )
+
+    return tuple(values)
+
+
 def validate_compose(compose_text):
     findings = []
     services = extract_service_blocks(compose_text)
@@ -142,6 +175,30 @@ def validate_compose(compose_text):
 
         if "cap_drop:" not in block or "- ALL" not in block:
             findings.append(f"{service_name} no descarta capacidades Linux")
+
+    for service_name, block in services.items():
+        cap_add = extract_block_list(block, "cap_add")
+
+        if not cap_add:
+            continue
+
+        allowed_cap_add = CAP_ADD_ALLOWLIST.get(service_name)
+        if allowed_cap_add is None:
+            findings.append(
+                f"{service_name} no debe agregar capacidades Linux"
+            )
+        elif cap_add != allowed_cap_add:
+            findings.append(
+                f"{service_name} agrega capacidades Linux no permitidas"
+            )
+
+    for service_name, allowed_cap_add in CAP_ADD_ALLOWLIST.items():
+        block = services.get(service_name, "")
+
+        if extract_block_list(block, "cap_add") != allowed_cap_add:
+            findings.append(
+                f"{service_name} no declara cap_add minimo permitido"
+            )
 
     return findings
 
