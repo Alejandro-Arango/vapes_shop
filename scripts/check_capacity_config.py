@@ -1158,6 +1158,145 @@ def validate_django_workflow_concurrency(django_workflow_text):
     ]
 
 
+def leading_spaces(line):
+    return len(line) - len(line.lstrip(" "))
+
+
+def parse_permissions_block(lines, start_index):
+    line = lines[start_index]
+    base_indent = leading_spaces(line)
+    stripped = line.strip()
+
+    if stripped == "permissions: {}":
+        return {}
+
+    if stripped != "permissions:":
+        return None
+
+    permissions = {}
+
+    for child_line in lines[start_index + 1:]:
+        if not child_line.strip():
+            continue
+
+        child_indent = leading_spaces(child_line)
+        if child_indent <= base_indent:
+            break
+
+        child_match = re.fullmatch(
+            r"\s+([A-Za-z-]+):\s+([A-Za-z-]+)",
+            child_line,
+        )
+
+        if child_match and child_indent == base_indent + 2:
+            permissions[child_match.group(1)] = child_match.group(2)
+
+    return permissions
+
+
+def top_level_permissions(workflow_text):
+    lines = workflow_text.splitlines()
+
+    for index, line in enumerate(lines):
+        if leading_spaces(line) == 0 and line.startswith("permissions:"):
+            return parse_permissions_block(lines, index)
+
+    return None
+
+
+def job_permissions(workflow_text):
+    lines = workflow_text.splitlines()
+    permissions_by_job = {}
+    current_job = None
+    inside_jobs = False
+
+    for index, line in enumerate(lines):
+        if line == "jobs:":
+            inside_jobs = True
+            continue
+
+        if not inside_jobs:
+            continue
+
+        if line and leading_spaces(line) == 0:
+            break
+
+        job_match = re.fullmatch(r"  ([A-Za-z0-9_-]+):", line)
+        if job_match:
+            current_job = job_match.group(1)
+            continue
+
+        if (
+            current_job
+            and leading_spaces(line) == 4
+            and line.strip().startswith("permissions:")
+        ):
+            permissions_by_job[current_job] = parse_permissions_block(
+                lines,
+                index,
+            )
+
+    return permissions_by_job
+
+
+def validate_workflow_permissions(workflow_texts):
+    findings = []
+    required_top_level_permissions = {
+        "django-ci.yml": {"contents": "read"},
+        "performance.yml": {"contents": "read"},
+        "dast.yml": {"contents": "read"},
+        "production-monitor.yml": {"contents": "read"},
+        "secret-scan.yml": {"contents": "read"},
+        "supply-chain.yml": {"contents": "read"},
+        "codeql.yml": {
+            "contents": "read",
+            "security-events": "write",
+        },
+        "publish-images.yml": {},
+    }
+    required_publish_job_permissions = {
+        "validate": {"contents": "read"},
+        "publish": {
+            "contents": "write",
+            "packages": "write",
+            "attestations": "write",
+            "id-token": "write",
+        },
+    }
+
+    for workflow_name, expected_permissions in (
+        required_top_level_permissions.items()
+    ):
+        workflow_permissions = top_level_permissions(
+            workflow_texts.get(workflow_name, "")
+        )
+
+        if workflow_permissions != expected_permissions:
+            findings.append(
+                (
+                    f"{workflow_name} no usa permisos top-level "
+                    "minimos esperados"
+                )
+            )
+
+    publish_permissions = job_permissions(
+        workflow_texts.get("publish-images.yml", "")
+    )
+
+    for job_name, expected_permissions in (
+        required_publish_job_permissions.items()
+    ):
+        if publish_permissions.get(job_name) != expected_permissions:
+            findings.append(
+                (
+                    "publish-images.yml no limita permisos del job "
+                    f"{job_name}"
+                )
+            )
+
+    return findings
+
+
 def validate_django_workflow_production_fixture(django_workflow_text):
     required_fragments = (
         'DJANGO_ALLOWED_HOSTS: "ci.tienda-vape.co,www.ci.tienda-vape.co"',
@@ -2621,6 +2760,7 @@ def find_capacity_findings(project_root):
 
     findings.extend(validate_official_action_pins(workflow_texts))
     findings.extend(validate_checkout_credentials(workflow_texts))
+    findings.extend(validate_workflow_permissions(workflow_texts))
     findings.extend(
         validate_dependabot_config(
             paths["dependabot"].read_text(encoding="utf-8")

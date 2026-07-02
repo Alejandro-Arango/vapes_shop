@@ -2166,6 +2166,93 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_workflow_without_minimal_top_permissions_is_rejected(self):
+        workflow_texts = {
+            "django-ci.yml": (
+                PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
+            ).read_text(encoding="utf-8"),
+            "performance.yml": (
+                PROJECT_ROOT / ".github" / "workflows" / "performance.yml"
+            ).read_text(encoding="utf-8"),
+            "dast.yml": (
+                PROJECT_ROOT / ".github" / "workflows" / "dast.yml"
+            ).read_text(encoding="utf-8"),
+            "production-monitor.yml": (
+                PROJECT_ROOT
+                / ".github"
+                / "workflows"
+                / "production-monitor.yml"
+            ).read_text(encoding="utf-8"),
+            "secret-scan.yml": (
+                PROJECT_ROOT / ".github" / "workflows" / "secret-scan.yml"
+            ).read_text(encoding="utf-8").replace(
+                "permissions:\n  contents: read\n",
+                "permissions:\n  contents: write\n",
+                1,
+            ),
+            "supply-chain.yml": (
+                PROJECT_ROOT / ".github" / "workflows" / "supply-chain.yml"
+            ).read_text(encoding="utf-8"),
+            "codeql.yml": (
+                PROJECT_ROOT / ".github" / "workflows" / "codeql.yml"
+            ).read_text(encoding="utf-8"),
+            "publish-images.yml": (
+                PROJECT_ROOT
+                / ".github"
+                / "workflows"
+                / "publish-images.yml"
+            ).read_text(encoding="utf-8"),
+        }
+
+        findings = capacity.validate_workflow_permissions(workflow_texts)
+
+        self.assertIn(
+            (
+                "secret-scan.yml no usa permisos top-level "
+                "minimos esperados"
+            ),
+            findings,
+        )
+
+    def test_publish_workflow_without_empty_top_permissions_is_rejected(self):
+        workflow_texts = {
+            path.name: path.read_text(encoding="utf-8")
+            for path in (
+                PROJECT_ROOT / ".github" / "workflows"
+            ).glob("*.yml")
+        }
+        workflow_texts["publish-images.yml"] = workflow_texts[
+            "publish-images.yml"
+        ].replace("permissions: {}\n", "permissions:\n  contents: read\n", 1)
+
+        findings = capacity.validate_workflow_permissions(workflow_texts)
+
+        self.assertIn(
+            (
+                "publish-images.yml no usa permisos top-level "
+                "minimos esperados"
+            ),
+            findings,
+        )
+
+    def test_publish_workflow_without_publish_permission_is_rejected(self):
+        workflow_texts = {
+            path.name: path.read_text(encoding="utf-8")
+            for path in (
+                PROJECT_ROOT / ".github" / "workflows"
+            ).glob("*.yml")
+        }
+        workflow_texts["publish-images.yml"] = workflow_texts[
+            "publish-images.yml"
+        ].replace("      packages: write\n", "", 1)
+
+        findings = capacity.validate_workflow_permissions(workflow_texts)
+
+        self.assertIn(
+            "publish-images.yml no limita permisos del job publish",
+            findings,
+        )
+
     def test_dependabot_without_docker_directory_is_rejected(self):
         dependabot_text = (
             PROJECT_ROOT / ".github" / "dependabot.yml"
