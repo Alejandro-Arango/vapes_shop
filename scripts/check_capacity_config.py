@@ -486,6 +486,47 @@ def validate_backend_auth_payload_limits(views_auth_text, serializers_text):
     return findings
 
 
+def validate_backend_mutation_throttles(
+    views_auth_text,
+    views_favorites_text,
+    views_reviews_text,
+):
+    findings = []
+    required_fragments = (
+        (
+            views_auth_text,
+            "@throttle_classes([AuthUserRateThrottle])\ndef profile",
+            "views_auth.py no limita auth_profile",
+        ),
+        (
+            views_auth_text,
+            "@throttle_classes([AuthUserRateThrottle])\ndef shipping_addresses",
+            "views_auth.py no limita shipping_addresses",
+        ),
+        (
+            views_auth_text,
+            "@throttle_classes([AuthUserRateThrottle])\ndef shipping_address_detail",
+            "views_auth.py no limita shipping_address_detail",
+        ),
+        (
+            views_favorites_text,
+            "@throttle_classes([CartRateThrottle])\ndef toggle_favorite_product",
+            "views_favorites.py no limita toggle_favorite_product",
+        ),
+        (
+            views_reviews_text,
+            "@throttle_classes([AuthUserRateThrottle])\ndef submit_product_review",
+            "views_reviews.py no limita submit_product_review",
+        ),
+    )
+
+    for text, fragment, message in required_fragments:
+        if fragment not in text:
+            findings.append(message)
+
+    return findings
+
+
 def validate_frontend_tracking_link_policy(app_text):
     findings = []
 
@@ -2844,6 +2885,12 @@ def find_capacity_findings(project_root):
             / "production_check.py"
         ),
         "views_auth": project_root / "backend" / "store" / "views_auth.py",
+        "views_favorites": (
+            project_root / "backend" / "store" / "views_favorites.py"
+        ),
+        "views_reviews": (
+            project_root / "backend" / "store" / "views_reviews.py"
+        ),
         "serializers": project_root / "backend" / "store" / "serializers.py",
         "app_js": (
             project_root
@@ -2957,6 +3004,13 @@ def find_capacity_findings(project_root):
         validate_backend_auth_payload_limits(
             paths["views_auth"].read_text(encoding="utf-8"),
             paths["serializers"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_backend_mutation_throttles(
+            paths["views_auth"].read_text(encoding="utf-8"),
+            paths["views_favorites"].read_text(encoding="utf-8"),
+            paths["views_reviews"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

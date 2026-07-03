@@ -717,6 +717,84 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_backend_mutation_without_profile_throttle_is_rejected(self):
+        views_auth_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_auth.py"
+        ).read_text(encoding="utf-8")
+        views_favorites_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_favorites.py"
+        ).read_text(encoding="utf-8")
+        views_reviews_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_reviews.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = views_auth_text.replace(
+            "@throttle_classes([AuthUserRateThrottle])\ndef profile",
+            "def profile",
+            1,
+        )
+
+        findings = capacity.validate_backend_mutation_throttles(
+            invalid_text,
+            views_favorites_text,
+            views_reviews_text,
+        )
+
+        self.assertIn("views_auth.py no limita auth_profile", findings)
+
+    def test_backend_mutation_without_favorite_throttle_is_rejected(self):
+        views_auth_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_auth.py"
+        ).read_text(encoding="utf-8")
+        views_favorites_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_favorites.py"
+        ).read_text(encoding="utf-8")
+        views_reviews_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_reviews.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = views_favorites_text.replace(
+            "@throttle_classes([CartRateThrottle])\ndef toggle_favorite_product",
+            "def toggle_favorite_product",
+            1,
+        )
+
+        findings = capacity.validate_backend_mutation_throttles(
+            views_auth_text,
+            invalid_text,
+            views_reviews_text,
+        )
+
+        self.assertIn(
+            "views_favorites.py no limita toggle_favorite_product",
+            findings,
+        )
+
+    def test_backend_mutation_without_review_throttle_is_rejected(self):
+        views_auth_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_auth.py"
+        ).read_text(encoding="utf-8")
+        views_favorites_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_favorites.py"
+        ).read_text(encoding="utf-8")
+        views_reviews_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_reviews.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = views_reviews_text.replace(
+            "@throttle_classes([AuthUserRateThrottle])\ndef submit_product_review",
+            "def submit_product_review",
+            1,
+        )
+
+        findings = capacity.validate_backend_mutation_throttles(
+            views_auth_text,
+            views_favorites_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            "views_reviews.py no limita submit_product_review",
+            findings,
+        )
+
     def test_frontend_tracking_link_without_sanitizer_is_rejected(self):
         app_text = (
             PROJECT_ROOT
