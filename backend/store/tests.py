@@ -125,6 +125,7 @@ from .throttles import (
     CheckoutUserRateThrottle,
     ContactAnonRateThrottle,
 )
+from .views_api import HEALTH_CACHE_KEY, is_cache_available
 from .views_orders import build_cart_audit_metadata
 
 
@@ -285,6 +286,20 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.headers["Cache-Control"], "no-store, max-age=0")
         self.assertEqual(response.headers["Pragma"], "no-cache")
         self.assertEqual(response.headers["Expires"], "0")
+
+    def test_cache_readiness_requires_fresh_marker(self):
+        with patch("store.views_api.uuid4") as uuid_factory:
+            uuid_factory.return_value.hex = "fresh-cache-marker"
+
+            with patch("store.views_api.cache.set") as cache_set:
+                with patch("store.views_api.cache.get", return_value="stale-marker"):
+                    self.assertFalse(is_cache_available())
+
+        cache_set.assert_called_once_with(
+            HEALTH_CACHE_KEY,
+            "fresh-cache-marker",
+            timeout=5,
+        )
 
     def test_liveness_check_does_not_query_dependencies(self):
         with patch("store.views_api.connection.cursor") as database_cursor:

@@ -1,4 +1,5 @@
 import re
+from uuid import uuid4
 
 from django.core.cache import cache
 from django.db import DatabaseError, connection
@@ -210,7 +211,7 @@ def is_cache_available():
     Nombre: is_cache_available
     Descripcion: Verifica lectura y escritura basica del cache configurado.
     """
-    marker = "ok"
+    marker = uuid4().hex
 
     try:
         cache.set(HEALTH_CACHE_KEY, marker, timeout=5)
