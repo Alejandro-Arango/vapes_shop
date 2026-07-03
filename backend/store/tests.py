@@ -2856,6 +2856,37 @@ class StoreApiTests(APITestCase):
             EventLog.objects.filter(event_type="profile_update_success").exists()
         )
 
+    def test_profile_update_is_rate_limited(self):
+        cache.clear()
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        payload = {
+            "first_name": "Cliente",
+            "last_name": "Perfil",
+            "phone": "3001234567",
+        }
+
+        try:
+            with patch.object(AuthUserRateThrottle, "rate", "2/min", create=True):
+                for _ in range(2):
+                    response = self.client.post(
+                        reverse("auth_profile"),
+                        payload,
+                        format="json",
+                    )
+
+                    self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+                response = self.client.post(
+                    reverse("auth_profile"),
+                    payload,
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
+
     def test_password_change_requires_auth_and_updates_password(self):
         unauthenticated_response = self.client.post(
             reverse("auth_password_change"),

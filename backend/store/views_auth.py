@@ -628,6 +628,7 @@ def me(request):
 
 @api_view(["POST", "PATCH"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AuthUserRateThrottle])
 def profile(request):
     """
     Nombre: profile
@@ -764,6 +765,7 @@ def password_change(request):
 
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AuthUserRateThrottle])
 def shipping_addresses(request):
     """
     Nombre: shipping_addresses
@@ -818,6 +820,7 @@ def shipping_addresses(request):
 
 @api_view(["PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AuthUserRateThrottle])
 def shipping_address_detail(request, address_id):
     """
     Nombre: shipping_address_detail
