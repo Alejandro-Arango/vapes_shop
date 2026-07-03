@@ -648,6 +648,41 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_environment_with_unsafe_secret_placeholder_is_rejected(
+        self,
+    ):
+        compose_text = (PROJECT_ROOT / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+        local_env_text = (PROJECT_ROOT / "compose.env.example").read_text(
+            encoding="utf-8",
+        )
+        production_env_text = (
+            PROJECT_ROOT / "compose.production.env.example"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_env_text.replace(
+            (
+                "MYSQL_PASSWORD="
+                "reemplaza-con-secreto-mysql-aplicacion-de-al-menos-32-caracteres\n"
+            ),
+            "MYSQL_PASSWORD=change-me-password\n",
+            1,
+        )
+
+        findings = capacity.validate_environment_security_defaults(
+            compose_text,
+            local_env_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            (
+                "compose.production.env.example debe usar placeholder "
+                "seguro para MYSQL_PASSWORD"
+            ),
+            findings,
+        )
+
     def test_production_environment_without_upload_memory_limit_is_rejected(
         self,
     ):

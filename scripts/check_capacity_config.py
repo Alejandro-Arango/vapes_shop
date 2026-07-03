@@ -353,6 +353,17 @@ def validate_environment_security_defaults(
         "media-src 'self'",
         "worker-src 'self'",
     )
+    required_secret_placeholders = {
+        "DJANGO_SECRET_KEY": (
+            "reemplaza-con-clave-secreta-django-aleatoria-de-al-menos-50-caracteres"
+        ),
+        "MYSQL_PASSWORD": (
+            "reemplaza-con-secreto-mysql-aplicacion-de-al-menos-32-caracteres"
+        ),
+        "MYSQL_ROOT_PASSWORD": (
+            "reemplaza-con-secreto-mysql-root-de-al-menos-32-caracteres"
+        ),
+    }
     production_compose_only_keys = (
         "DJANGO_EMAIL_HOST",
         "DEFAULT_FROM_EMAIL",
@@ -382,6 +393,16 @@ def validate_environment_security_defaults(
                 (
                     "compose.production.env.example debe declarar "
                     f"{key}={expected_value}"
+                )
+            )
+
+    for key, expected_value in required_secret_placeholders.items():
+        value = production_values.get(key)
+        if value != expected_value:
+            findings.append(
+                (
+                    "compose.production.env.example debe usar placeholder "
+                    f"seguro para {key}"
                 )
             )
 
