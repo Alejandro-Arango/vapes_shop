@@ -9,6 +9,8 @@ import logging
 from django.conf import settings
 from django.core.mail import send_mail
 
+from .url_utils import normalize_safe_external_url
+
 
 logger = logging.getLogger(__name__)
 ORDER_STATUS_NOTIFICATION_STATUSES = {"enviado", "entregado"}
@@ -109,8 +111,10 @@ def build_order_status_message(order):
     if order.tracking_number:
         tracking_lines.append(f"Guia: {order.tracking_number}")
 
-    if order.tracking_url:
-        tracking_lines.append(f"Rastreo: {order.tracking_url}")
+    safe_tracking_url = normalize_safe_external_url(order.tracking_url)
+
+    if safe_tracking_url:
+        tracking_lines.append(f"Rastreo: {safe_tracking_url}")
 
     tracking_text = "\n".join(tracking_lines) or "Aun no hay datos de rastreo registrados."
 

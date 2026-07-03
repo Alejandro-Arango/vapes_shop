@@ -6,7 +6,6 @@ Dependencias: Django transaction, Django REST Framework, modelos Product, Custom
 
 import re
 from decimal import Decimal
-from urllib.parse import urlsplit
 from uuid import UUID
 
 from django.db import transaction
@@ -24,6 +23,7 @@ from .models import Customer, Order, OrderItem, Product, ShippingAddress, StockM
 from .order_notifications import notify_order_created
 from .order_status import record_order_status, serialize_order_status_history
 from .throttles import CartRateThrottle, CheckoutUserRateThrottle
+from .url_utils import normalize_safe_external_url
 
 
 PHONE_PATTERN = re.compile(r"^[0-9\s()+-]+$")
@@ -42,7 +42,6 @@ ORDER_STATUS_FILTERS = {
     status_key
     for status_key, _ in Order.STATUS_CHOICES
 }
-TRACKING_URL_ALLOWED_SCHEMES = {"http", "https"}
 
 
 def get_checkout_idempotency_key(request):
@@ -73,20 +72,7 @@ def serialize_tracking_url(value):
     Descripcion: Expone URLs de rastreo solo cuando usan esquemas navegables seguros.
     Retorna: URL http/https normalizada o cadena vacia.
     """
-    tracking_url = (value or "").strip()
-
-    if not tracking_url:
-        return ""
-
-    parsed_url = urlsplit(tracking_url)
-
-    if (
-        parsed_url.scheme.lower() not in TRACKING_URL_ALLOWED_SCHEMES
-        or not parsed_url.netloc
-    ):
-        return ""
-
-    return tracking_url
+    return normalize_safe_external_url(value)
 
 
 def build_checkout_success_response(order, notifications=None, replay=False):

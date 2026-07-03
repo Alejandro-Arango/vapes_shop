@@ -105,6 +105,7 @@ from .models import (
     sanitize_product_image,
     validate_product_image,
 )
+from .order_notifications import build_order_status_message
 from .throttles import (
     AuthAnonRateThrottle,
     AuthUserRateThrottle,
@@ -4802,6 +4803,29 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["tracking"]["url"], "")
+
+    def test_order_status_email_hides_unsafe_tracking_url(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Correo",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="enviado",
+            completed=True,
+            tracking_carrier="Transportadora",
+            tracking_url="javascript:alert(1)",
+            age_verified=True,
+        )
+
+        message = build_order_status_message(order)
+
+        self.assertIn("Transportadora", message)
+        self.assertNotIn("javascript:alert", message)
+        self.assertNotIn("Rastreo:", message)
 
     def test_reorder_adds_available_items_to_cart(self):
         user = self.create_user()
