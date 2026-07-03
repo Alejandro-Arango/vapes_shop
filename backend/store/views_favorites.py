@@ -11,30 +11,9 @@ from rest_framework.response import Response
 from django.db.models import Avg, Count, Q
 
 from .audit import log_event
+from .cart_utils import parse_product_id
 from .models import FavoriteProduct, Product
 from .serializers import ProductSerializer
-
-
-def parse_product_id(data):
-    """
-    Nombre: parse_product_id
-    Descripcion: Normaliza el ID de producto recibido desde el frontend.
-    Retorna: ID entero o None cuando no es valido.
-    """
-    raw_product_id = data.get("productId") or data.get("product_id")
-
-    if isinstance(raw_product_id, bool):
-        return None
-
-    try:
-        product_id = int(raw_product_id)
-    except (TypeError, ValueError):
-        return None
-
-    if product_id < 1:
-        return None
-
-    return product_id
 
 
 @api_view(["GET"])
@@ -89,7 +68,9 @@ def toggle_favorite_product(request):
     Nombre: toggle_favorite_product
     Descripcion: Marca o desmarca un producto activo como favorito del usuario autenticado.
     """
-    product_id = parse_product_id(request.data)
+    product_id = parse_product_id(
+        request.data.get("productId") or request.data.get("product_id")
+    )
 
     if product_id is None:
         return Response(

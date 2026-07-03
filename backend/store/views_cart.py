@@ -7,7 +7,13 @@ Dependencias: Django REST Framework, modelo Product
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 
-from .cart_utils import parse_positive_quantity, sync_cart_with_products
+from .cart_utils import (
+    MAX_CART_QUANTITY,
+    parse_positive_quantity,
+    parse_product_id,
+    sync_cart_with_products,
+)
+from .query_params import parse_bounded_positive_int
 from .discounts import (
     COUPON_SESSION_KEY,
     build_pricing,
@@ -27,22 +33,12 @@ def parse_cart_update_quantity(value):
     if isinstance(value, bool):
         return None
 
-    if isinstance(value, int):
-        quantity = value
-    elif isinstance(value, str):
-        normalized_value = value.strip()
+    normalized_value = str(value).strip()
 
-        if not normalized_value.isdigit():
-            return None
+    if normalized_value == "0":
+        return 0
 
-        quantity = int(normalized_value)
-    else:
-        return None
-
-    if quantity < 0:
-        return None
-
-    return quantity
+    return parse_bounded_positive_int(normalized_value, MAX_CART_QUANTITY)
 
 
 @api_view(["GET"])
@@ -167,17 +163,17 @@ def api_cart_add(request):
     """
     data = request.data
 
-    product_id = str(data.get("productId", "")).strip()
+    product_id = parse_product_id(data.get("productId"))
     quantity = parse_positive_quantity(data.get("quantity", 1))
 
-    if not product_id.isdigit():
+    if product_id is None:
         return Response({"error": "productId invalido"}, status=400)
 
     if quantity is None:
         return Response({"error": "Cantidad invalida"}, status=400)
 
     try:
-        product = Product.objects.get(id=int(product_id), is_active=True)
+        product = Product.objects.get(id=product_id, is_active=True)
     except Product.DoesNotExist:
         return Response({"error": "Producto no disponible"}, status=404)
 
@@ -214,10 +210,10 @@ def api_cart_update(request):
     Nombre: api_cart_update
     Descripcion: Define la cantidad exacta de un producto en el carrito.
     """
-    product_id = str(request.data.get("productId", "")).strip()
+    product_id = parse_product_id(request.data.get("productId"))
     quantity = parse_cart_update_quantity(request.data.get("quantity"))
 
-    if not product_id.isdigit():
+    if product_id is None:
         return Response({"error": "productId invalido"}, status=400)
 
     if quantity is None:
@@ -229,7 +225,7 @@ def api_cart_update(request):
         cart = {}
 
     if quantity == 0:
-        cart.pop(product_id, None)
+        cart.pop(str(product_id), None)
         request.session["cart"] = cart
         request.session.modified = True
 
@@ -239,7 +235,7 @@ def api_cart_update(request):
         })
 
     try:
-        product = Product.objects.get(id=int(product_id), is_active=True)
+        product = Product.objects.get(id=product_id, is_active=True)
     except Product.DoesNotExist:
         return Response({"error": "Producto no disponible"}, status=404)
 
@@ -266,14 +262,14 @@ def api_cart_remove(request):
     Nombre: api_cart_remove
     Descripcion: Elimina completamente un producto del carrito.
     """
-    product_id = str(request.data.get("productId", "")).strip()
+    product_id = parse_product_id(request.data.get("productId"))
 
-    if not product_id.isdigit():
+    if product_id is None:
         return Response({"error": "productId invalido"}, status=400)
 
     cart = request.session.get("cart", {})
 
-    cart.pop(product_id, None)
+    cart.pop(str(product_id), None)
 
     request.session["cart"] = cart
     request.session.modified = True
@@ -288,23 +284,25 @@ def api_cart_decrease(request):
     Nombre: api_cart_decrease
     Descripcion: Disminuye en una unidad la cantidad de un producto y lo elimina si llega a cero.
     """
-    product_id = str(request.data.get("productId", "")).strip()
+    product_id = parse_product_id(request.data.get("productId"))
 
-    if not product_id.isdigit():
+    if product_id is None:
         return Response({"error": "productId invalido"}, status=400)
 
     cart = request.session.get("cart", {})
 
-    if product_id in cart:
-        current_quantity = parse_positive_quantity(cart.get(product_id))
+    product_key = str(product_id)
+
+    if product_key in cart:
+        current_quantity = parse_positive_quantity(cart.get(product_key))
 
         if current_quantity is None:
-            cart.pop(product_id, None)
+            cart.pop(product_key, None)
         else:
-            cart[product_id] = current_quantity - 1
+            cart[product_key] = current_quantity - 1
 
-            if cart[product_id] <= 0:
-                cart.pop(product_id, None)
+            if cart[product_key] <= 0:
+                cart.pop(product_key, None)
 
     request.session["cart"] = cart
     request.session.modified = True

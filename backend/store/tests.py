@@ -3832,6 +3832,11 @@ class StoreApiTests(APITestCase):
             {"productId": "abc"},
             format="json",
         )
+        oversized_response = self.client.post(
+            reverse("toggle_favorite_product"),
+            {"productId": "9" * 5000},
+            format="json",
+        )
         inactive_response = self.client.post(
             reverse("toggle_favorite_product"),
             {"productId": inactive_product.id},
@@ -3839,6 +3844,10 @@ class StoreApiTests(APITestCase):
         )
 
         self.assertEqual(invalid_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            oversized_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
         self.assertEqual(inactive_response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(FavoriteProduct.objects.count(), 0)
         self.assertTrue(
@@ -4020,7 +4029,7 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.headers["Cache-Control"], "no-store, max-age=0")
 
     def test_cart_add_rejects_invalid_quantity_and_stock_excess(self):
-        invalid_quantities = (0, "1.5", True, "abc")
+        invalid_quantities = (0, "1.5", True, "abc", "9" * 5000)
 
         for invalid_quantity in invalid_quantities:
             response = self.client.post(
@@ -4034,6 +4043,14 @@ class StoreApiTests(APITestCase):
 
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+        invalid_product_response = self.client.post(
+            reverse("api_cart_add"),
+            {
+                "productId": "9" * 5000,
+                "quantity": 1,
+            },
+            format="json",
+        )
         response = self.client.post(
             reverse("api_cart_add"),
             {
@@ -4043,6 +4060,10 @@ class StoreApiTests(APITestCase):
             format="json",
         )
 
+        self.assertEqual(
+            invalid_product_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_cart_add_accepts_valid_quantity(self):
@@ -4143,7 +4164,7 @@ class StoreApiTests(APITestCase):
         self.assertEqual(self.client.session.get("cart"), {})
 
     def test_cart_update_rejects_invalid_quantity_and_stock_excess(self):
-        invalid_quantities = (-1, "2.5", True, "abc")
+        invalid_quantities = (-1, "2.5", True, "abc", "9" * 5000)
 
         for invalid_quantity in invalid_quantities:
             response = self.client.post(
@@ -4157,6 +4178,14 @@ class StoreApiTests(APITestCase):
 
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+        invalid_product_response = self.client.post(
+            reverse("api_cart_update"),
+            {
+                "productId": "9" * 5000,
+                "quantity": 1,
+            },
+            format="json",
+        )
         response = self.client.post(
             reverse("api_cart_update"),
             {
@@ -4166,6 +4195,10 @@ class StoreApiTests(APITestCase):
             format="json",
         )
 
+        self.assertEqual(
+            invalid_product_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_cart_add_is_rate_limited(self):
@@ -4245,6 +4278,19 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["items"], [])
         self.assertEqual(response.data["total"], 0)
+        self.assertEqual(self.client.session.get("cart"), {})
+
+        self.set_session_cart(
+            {
+                "9" * 5000: 1,
+                str(self.product.id): "9" * 5000,
+            }
+        )
+
+        response = self.client.get(reverse("api_cart"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["items"], [])
         self.assertEqual(self.client.session.get("cart"), {})
 
     def test_cart_normalizes_legacy_session_item(self):

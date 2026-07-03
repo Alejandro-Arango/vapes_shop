@@ -5,6 +5,11 @@ Dependencias: Modelo Product
 """
 
 from .models import Product
+from .query_params import parse_bounded_positive_int
+
+
+MAX_MODEL_ID = 9223372036854775807
+MAX_CART_QUANTITY = 1000000
 
 
 def parse_positive_quantity(value):
@@ -16,22 +21,7 @@ def parse_positive_quantity(value):
     if isinstance(value, bool):
         return None
 
-    if isinstance(value, int):
-        quantity = value
-    elif isinstance(value, str):
-        normalized_value = value.strip()
-
-        if not normalized_value.isdigit():
-            return None
-
-        quantity = int(normalized_value)
-    else:
-        return None
-
-    if quantity <= 0:
-        return None
-
-    return quantity
+    return parse_bounded_positive_int(value, MAX_CART_QUANTITY)
 
 
 def parse_product_id(value):
@@ -43,22 +33,7 @@ def parse_product_id(value):
     if isinstance(value, bool):
         return None
 
-    if isinstance(value, int):
-        product_id = value
-    elif isinstance(value, str):
-        normalized_value = value.strip()
-
-        if not normalized_value.isdigit():
-            return None
-
-        product_id = int(normalized_value)
-    else:
-        return None
-
-    if product_id <= 0:
-        return None
-
-    return product_id
+    return parse_bounded_positive_int(value, MAX_MODEL_ID)
 
 
 def sync_cart_with_products(cart):
