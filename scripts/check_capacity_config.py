@@ -699,6 +699,8 @@ def validate_image_pipeline(pipeline_text):
 def validate_media_proxy(nginx_text):
     required_fragments = (
         "location /media/",
+        "location ~ ^/media/(?:.*/)?\\.",
+        "return 404;",
         "add_header X-Content-Type-Options nosniff always;",
         "add_header Cross-Origin-Resource-Policy same-origin always;",
         "add_header Content-Security-Policy "
