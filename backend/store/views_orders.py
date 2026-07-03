@@ -22,6 +22,7 @@ from .discounts import COUPON_SESSION_KEY, build_pricing, quantize_money
 from .models import Customer, Order, OrderItem, Product, ShippingAddress, StockMovement
 from .order_notifications import notify_order_created
 from .order_status import record_order_status, serialize_order_status_history
+from .query_params import parse_bounded_positive_int
 from .throttles import CartRateThrottle, CheckoutUserRateThrottle
 from .url_utils import normalize_safe_external_url
 
@@ -37,6 +38,7 @@ SHIPPING_MAX_LENGTHS = {
 MAX_AUDIT_PRODUCT_IDS = 20
 ORDER_DEFAULT_PAGE = 1
 ORDER_DEFAULT_PAGE_SIZE = 4
+ORDER_MAX_PAGE = 1000
 ORDER_MAX_PAGE_SIZE = 20
 ORDER_STATUS_FILTERS = {
     status_key
@@ -309,20 +311,17 @@ def get_order_query_error(request):
     if status_filter != "all" and status_filter not in ORDER_STATUS_FILTERS:
         return "Estado de pedido invalido."
 
-    if page is not None and not page.strip().isdigit():
+    if page is not None and parse_bounded_positive_int(
+        page,
+        ORDER_MAX_PAGE,
+    ) is None:
         return "Pagina invalida."
 
-    if page is not None and int(page) < 1:
-        return "Pagina invalida."
-
-    if page_size is not None and not page_size.strip().isdigit():
+    if page_size is not None and parse_bounded_positive_int(
+        page_size,
+        ORDER_MAX_PAGE_SIZE,
+    ) is None:
         return "Tamano de pagina invalido."
-
-    if page_size is not None:
-        clean_page_size = int(page_size)
-
-        if clean_page_size < 1 or clean_page_size > ORDER_MAX_PAGE_SIZE:
-            return "Tamano de pagina invalido."
 
     return ""
 
@@ -345,8 +344,14 @@ def get_order_pagination_params(request):
     Nombre: get_order_pagination_params
     Descripcion: Obtiene pagina y tamano de pagina para el historial de pedidos.
     """
-    page = int(request.query_params.get("page", ORDER_DEFAULT_PAGE))
-    page_size = int(request.query_params.get("page_size", ORDER_DEFAULT_PAGE_SIZE))
+    page = parse_bounded_positive_int(
+        request.query_params.get("page"),
+        ORDER_MAX_PAGE,
+    ) or ORDER_DEFAULT_PAGE
+    page_size = parse_bounded_positive_int(
+        request.query_params.get("page_size"),
+        ORDER_MAX_PAGE_SIZE,
+    ) or ORDER_DEFAULT_PAGE_SIZE
 
     return page, page_size
 

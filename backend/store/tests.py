@@ -3597,6 +3597,14 @@ class StoreApiTests(APITestCase):
             reverse("api_products"),
             {"page": "0"},
         )
+        too_large_page_response = self.client.get(
+            reverse("api_products"),
+            {"page": "1001"},
+        )
+        oversized_page_response = self.client.get(
+            reverse("api_products"),
+            {"page": "9" * 5000},
+        )
         invalid_page_size_response = self.client.get(
             reverse("api_products"),
             {"page_size": "100"},
@@ -3612,6 +3620,14 @@ class StoreApiTests(APITestCase):
         )
         self.assertEqual(
             invalid_page_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            too_large_page_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            oversized_page_response.status_code,
             status.HTTP_400_BAD_REQUEST,
         )
         self.assertEqual(
@@ -5143,6 +5159,14 @@ class StoreApiTests(APITestCase):
             reverse("my_orders"),
             {"page": "0"},
         )
+        too_large_page_response = self.client.get(
+            reverse("my_orders"),
+            {"page": "1001"},
+        )
+        oversized_page_response = self.client.get(
+            reverse("my_orders"),
+            {"page": "9" * 5000},
+        )
         invalid_page_size_response = self.client.get(
             reverse("my_orders"),
             {"page_size": "100"},
@@ -5154,6 +5178,14 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(
             invalid_page_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            too_large_page_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            oversized_page_response.status_code,
             status.HTTP_400_BAD_REQUEST,
         )
         self.assertEqual(

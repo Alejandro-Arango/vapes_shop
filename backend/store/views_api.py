@@ -10,12 +10,14 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import Category, FavoriteProduct, Product
+from .query_params import parse_bounded_positive_int
 from .serializers import CategorySerializer, ProductSerializer
 
 
 PRODUCT_STOCK_FILTERS = ("all", "available", "low", "empty")
 PRODUCT_DEFAULT_PAGE = 1
 PRODUCT_DEFAULT_PAGE_SIZE = 6
+PRODUCT_MAX_PAGE = 1000
 PRODUCT_MAX_PAGE_SIZE = 24
 HEALTH_CACHE_KEY = "store:health-check"
 PRODUCT_ORDERING_OPTIONS = {
@@ -43,20 +45,17 @@ def get_product_query_error(request):
     if ordering not in PRODUCT_ORDERING_OPTIONS:
         return "Ordenamiento invalido."
 
-    if page is not None and not page.strip().isdigit():
+    if page is not None and parse_bounded_positive_int(
+        page,
+        PRODUCT_MAX_PAGE,
+    ) is None:
         return "Pagina invalida."
 
-    if page is not None and int(page) < 1:
-        return "Pagina invalida."
-
-    if page_size is not None and not page_size.strip().isdigit():
+    if page_size is not None and parse_bounded_positive_int(
+        page_size,
+        PRODUCT_MAX_PAGE_SIZE,
+    ) is None:
         return "Tamano de pagina invalido."
-
-    if page_size is not None:
-        clean_page_size = int(page_size)
-
-        if clean_page_size < 1 or clean_page_size > PRODUCT_MAX_PAGE_SIZE:
-            return "Tamano de pagina invalido."
 
     return ""
 
@@ -107,8 +106,14 @@ def get_product_pagination_params(request):
     Nombre: get_product_pagination_params
     Descripcion: Obtiene pagina y tamano de pagina con valores por defecto seguros.
     """
-    page = int(request.query_params.get("page", PRODUCT_DEFAULT_PAGE))
-    page_size = int(request.query_params.get("page_size", PRODUCT_DEFAULT_PAGE_SIZE))
+    page = parse_bounded_positive_int(
+        request.query_params.get("page"),
+        PRODUCT_MAX_PAGE,
+    ) or PRODUCT_DEFAULT_PAGE
+    page_size = parse_bounded_positive_int(
+        request.query_params.get("page_size"),
+        PRODUCT_MAX_PAGE_SIZE,
+    ) or PRODUCT_DEFAULT_PAGE_SIZE
 
     return page, page_size
 
