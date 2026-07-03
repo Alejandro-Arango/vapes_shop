@@ -294,6 +294,7 @@ class ApiCacheControlMiddleware:
         "/api/live/",
         "/api/orders/",
     )
+    SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -301,9 +302,18 @@ class ApiCacheControlMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
 
-        if request.path.startswith(self.NO_CACHE_API_PREFIXES):
+        if self.should_disable_cache(request):
             response.headers["Cache-Control"] = "no-store, max-age=0"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
 
         return response
+
+    def should_disable_cache(self, request):
+        if request.path.startswith(self.NO_CACHE_API_PREFIXES):
+            return True
+
+        return (
+            request.path.startswith("/api/")
+            and request.method.upper() not in self.SAFE_METHODS
+        )

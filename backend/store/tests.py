@@ -3738,6 +3738,14 @@ class StoreApiTests(APITestCase):
 
         self.assertEqual(create_response.status_code, status.HTTP_200_OK)
         self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            create_response.headers["Cache-Control"],
+            "no-store, max-age=0",
+        )
+        self.assertEqual(
+            update_response.headers["Cache-Control"],
+            "no-store, max-age=0",
+        )
         self.assertEqual(ProductReview.objects.count(), 1)
         self.assertEqual(update_response.data["review"]["rating"], 4)
         self.assertEqual(update_response.data["rating_average"], 4.0)
