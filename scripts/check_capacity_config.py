@@ -1182,6 +1182,22 @@ def validate_security_workflow_timeouts(
     ]
 
 
+def validate_supply_chain_scan_policy(supply_chain_workflow_text):
+    findings = []
+
+    if supply_chain_workflow_text.count("severity-cutoff: high") < 2:
+        findings.append(
+            "supply-chain.yml debe bloquear vulnerabilidades high o superiores"
+        )
+
+    if "severity-cutoff: critical" in supply_chain_workflow_text:
+        findings.append(
+            "supply-chain.yml no debe limitar el bloqueo solo a critical"
+        )
+
+    return findings
+
+
 def validate_django_workflow_timeouts(django_workflow_text):
     required_jobs = (
         ("validate", 20),
@@ -2969,6 +2985,11 @@ def find_capacity_findings(project_root):
         validate_security_workflow_timeouts(
             paths["secret_scan_workflow"].read_text(encoding="utf-8"),
             paths["supply_chain_workflow"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_supply_chain_scan_policy(
+            paths["supply_chain_workflow"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

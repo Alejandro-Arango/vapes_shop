@@ -84,7 +84,7 @@ jobs:
         with:
           sbom: app-sbom.spdx.json
           fail-build: true
-          severity-cutoff: critical
+          severity-cutoff: high
           only-fixed: true
           output-format: json
           output-file: app-vulnerabilities.json
@@ -107,7 +107,7 @@ jobs:
         with:
           sbom: backup-sbom.spdx.json
           fail-build: true
-          severity-cutoff: critical
+          severity-cutoff: high
           only-fixed: true
           output-format: json
           output-file: backup-vulnerabilities.json

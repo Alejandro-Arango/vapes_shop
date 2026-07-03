@@ -2077,6 +2077,23 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_supply_chain_with_critical_only_scan_is_rejected(self):
+        supply_chain_text = (
+            PROJECT_ROOT / ".github" / "workflows" / "supply-chain.yml"
+        ).read_text(encoding="utf-8")
+        invalid_text = supply_chain_text.replace(
+            "severity-cutoff: high",
+            "severity-cutoff: critical",
+            1,
+        )
+
+        findings = capacity.validate_supply_chain_scan_policy(invalid_text)
+
+        self.assertIn(
+            "supply-chain.yml no debe limitar el bloqueo solo a critical",
+            findings,
+        )
+
     def test_django_ci_without_validate_timeout_is_rejected(self):
         workflow_text = (
             PROJECT_ROOT / ".github" / "workflows" / "django-ci.yml"
