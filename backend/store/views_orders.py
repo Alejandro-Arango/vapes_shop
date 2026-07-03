@@ -8,7 +8,7 @@ import re
 from decimal import Decimal
 from uuid import UUID
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -769,22 +769,39 @@ def checkout(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        order = Order.objects.create(
-            customer=customer,
-            checkout_token=idempotency_key,
-            completed=True,
-            status="pagado",
-            shipping_name=shipping_name,
-            shipping_phone=shipping_phone,
-            shipping_address=shipping_address,
-            shipping_city=shipping_city,
-            shipping_notes=shipping_notes,
-            age_verified=True,
-            coupon_code=pricing["coupon"]["code"] if pricing["coupon"] else "",
-            subtotal_amount=pricing["subtotal"],
-            discount_amount=pricing["discount"],
-            total_amount=pricing["total"],
-        )
+        try:
+            with transaction.atomic():
+                order = Order.objects.create(
+                    customer=customer,
+                    checkout_token=idempotency_key,
+                    completed=True,
+                    status="pagado",
+                    shipping_name=shipping_name,
+                    shipping_phone=shipping_phone,
+                    shipping_address=shipping_address,
+                    shipping_city=shipping_city,
+                    shipping_notes=shipping_notes,
+                    age_verified=True,
+                    coupon_code=(
+                        pricing["coupon"]["code"] if pricing["coupon"] else ""
+                    ),
+                    subtotal_amount=pricing["subtotal"],
+                    discount_amount=pricing["discount"],
+                    total_amount=pricing["total"],
+                )
+        except IntegrityError:
+            if idempotency_key:
+                existing_response = get_existing_checkout_response(
+                    request,
+                    customer,
+                    idempotency_key,
+                    lock=True,
+                )
+
+                if existing_response is not None:
+                    return existing_response
+
+            raise
         record_order_status(
             order,
             status="pagado",

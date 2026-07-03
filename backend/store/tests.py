@@ -4396,6 +4396,72 @@ class StoreApiTests(APITestCase):
             1,
         )
 
+    def test_checkout_replays_existing_order_after_idempotency_race(self):
+        from . import views_orders as views_orders_module
+
+        user = self.create_user()
+        customer = ensure_customer_for_user(user)
+        idempotency_key = str(uuid4())
+        existing_order = Order.objects.create(
+            customer=customer,
+            checkout_token=idempotency_key,
+            completed=True,
+            status="pagado",
+            age_verified=True,
+        )
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+        payload = {
+            "shippingName": "Cliente Prueba",
+            "shippingPhone": "3000000000",
+            "shippingAddress": "Calle 1",
+            "shippingCity": "Medellin",
+            "shippingNotes": "",
+            "ageConfirmed": True,
+        }
+        calls = {"count": 0}
+        real_get_existing = views_orders_module.get_existing_checkout_response
+
+        def delayed_existing_response(
+            request,
+            customer,
+            idempotency_key,
+            lock=False,
+        ):
+            calls["count"] += 1
+
+            if calls["count"] <= 2:
+                return None
+
+            return real_get_existing(
+                request,
+                customer,
+                idempotency_key,
+                lock=lock,
+            )
+
+        with patch(
+            "store.views_orders.get_existing_checkout_response",
+            side_effect=delayed_existing_response,
+        ):
+            with patch(
+                "store.views_orders.Order.objects.create",
+                side_effect=IntegrityError,
+            ):
+                response = self.client.post(
+                    reverse("checkout"),
+                    payload,
+                    format="json",
+                    HTTP_IDEMPOTENCY_KEY=idempotency_key,
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["idempotent_replay"])
+        self.assertEqual(response.data["order_id"], existing_order.id)
+        self.assertEqual(Order.objects.count(), 1)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 5)
+
     def test_checkout_rejects_invalid_idempotency_key(self):
         user = self.create_user()
         self.client.login(username=user.username, password="ClaveSegura123")
