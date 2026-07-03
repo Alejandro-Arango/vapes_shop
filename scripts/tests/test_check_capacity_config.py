@@ -1158,6 +1158,24 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_media_proxy_without_symlink_guard_is_rejected(self):
+        nginx_text = (
+            PROJECT_ROOT / "docker" / "nginx.conf"
+        ).read_text(encoding="utf-8")
+        invalid_text = nginx_text.replace(
+            "            disable_symlinks on from=/srv/media;\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_media_proxy(invalid_text)
+
+        self.assertIn(
+            "docker/nginx.conf no contiene "
+            "disable_symlinks on from=/srv/media;",
+            findings,
+        )
+
     def test_recovery_script_without_load_shedding_is_rejected(self):
         recovery_text = (
             PROJECT_ROOT / "performance" / "recovery.js"

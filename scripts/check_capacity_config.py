@@ -703,6 +703,7 @@ def validate_media_proxy(nginx_text):
         "add_header Cross-Origin-Resource-Policy same-origin always;",
         "add_header Content-Security-Policy "
         "\"default-src 'none'; sandbox\" always;",
+        "disable_symlinks on from=/srv/media;",
     )
 
     return [
