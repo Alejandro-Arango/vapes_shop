@@ -1740,6 +1740,27 @@ class StoreApiTests(APITestCase):
     @override_settings(
         REST_FRAMEWORK={
             "DEFAULT_THROTTLE_RATES": {
+                "auth_anon": f"{'9' * 5000}/min",
+                "auth_user": "10/min",
+                "contact_anon": "10/hour",
+                "cart": "60/min",
+                "checkout_user": "20/min",
+            },
+        },
+    )
+    def test_production_check_rejects_extreme_throttle_quantity(self):
+        errors = []
+
+        ProductionCheckCommand().check_throttle_rates(errors)
+
+        self.assertIn(
+            "AUTH_THROTTLE_RATE no debe superar 20/min.",
+            errors,
+        )
+
+    @override_settings(
+        REST_FRAMEWORK={
+            "DEFAULT_THROTTLE_RATES": {
                 "auth_anon": "20/min",
                 "contact_anon": "10/hour",
                 "cart": "60/min",

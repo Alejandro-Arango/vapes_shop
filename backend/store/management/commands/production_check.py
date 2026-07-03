@@ -70,6 +70,7 @@ MAX_THROTTLE_RATES = {
     "cart": ("CART_THROTTLE_RATE", "60/min"),
     "checkout_user": ("CHECKOUT_THROTTLE_RATE", "20/min"),
 }
+MAX_THROTTLE_QUANTITY_DIGITS = 6
 THROTTLE_PERIOD_SECONDS = {
     "s": 1,
     "sec": 1,
@@ -702,10 +703,19 @@ class Command(BaseCommand):
 
         quantity, period = rate.strip().lower().split("/", 1)
 
-        if not quantity.isdigit():
+        if (
+            not quantity
+            or not quantity.isascii()
+            or not quantity.isdecimal()
+            or len(quantity) > MAX_THROTTLE_QUANTITY_DIGITS
+        ):
             return None
 
-        quantity = int(quantity)
+        try:
+            quantity = int(quantity)
+        except ValueError:
+            return None
+
         period_seconds = THROTTLE_PERIOD_SECONDS.get(period)
 
         if quantity <= 0 or period_seconds is None:

@@ -543,6 +543,8 @@ def validate_production_check_security(production_check_text):
         "MAX_THROTTLE_RATES",
         'f"{env_name} no debe superar {maximum_rate}."',
         "is_rate_at_most",
+        "MAX_THROTTLE_QUANTITY_DIGITS",
+        "quantity.isascii()",
         "CHECKOUT_THROTTLE_RATE",
         "DJANGO_OTP_TOTP_ISSUER debe estar configurado.",
         "DJANGO_OTP_TOTP_THROTTLE_FACTOR debe ser al menos 1.",
