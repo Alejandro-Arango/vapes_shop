@@ -31,6 +31,7 @@ from django.db import (
     transaction,
 )
 from django.db.models.deletion import ProtectedError
+from django.http import HttpResponse
 from django.test import RequestFactory, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
@@ -85,6 +86,11 @@ from .logging_utils import (
     set_request_id,
 )
 from .management.commands.production_check import Command as ProductionCheckCommand
+from .middleware import (
+    ContentSecurityPolicyMiddleware,
+    CrossOriginResourcePolicyMiddleware,
+    PermissionsPolicyMiddleware,
+)
 from .models import (
     Category,
     ContactLead,
@@ -233,6 +239,35 @@ class StoreApiTests(APITestCase):
         self.assertNotIn("unpkg.com", content)
         self.assertNotIn("fonts.googleapis.com", content)
         self.assertNotIn("<script>", content)
+
+    def test_security_header_middlewares_override_weaker_response_headers(self):
+        def weak_response(request):
+            response = HttpResponse("ok")
+            response.headers["Content-Security-Policy"] = "default-src *"
+            response.headers["Permissions-Policy"] = "camera=*"
+            response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+
+            return response
+
+        middleware = PermissionsPolicyMiddleware(
+            ContentSecurityPolicyMiddleware(
+                CrossOriginResourcePolicyMiddleware(weak_response)
+            )
+        )
+        response = middleware(self.request_factory.get("/"))
+
+        self.assertEqual(
+            response.headers["Content-Security-Policy"],
+            settings.CONTENT_SECURITY_POLICY,
+        )
+        self.assertEqual(
+            response.headers["Permissions-Policy"],
+            settings.PERMISSIONS_POLICY,
+        )
+        self.assertEqual(
+            response.headers["Cross-Origin-Resource-Policy"],
+            settings.CROSS_ORIGIN_RESOURCE_POLICY,
+        )
 
     def test_health_check_reports_available_service(self):
         response = self.client.get(reverse("health_check"))

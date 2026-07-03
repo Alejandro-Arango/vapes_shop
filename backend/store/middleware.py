@@ -236,7 +236,7 @@ class PermissionsPolicyMiddleware:
         policy = getattr(settings, "PERMISSIONS_POLICY", "")
 
         if policy:
-            response.headers.setdefault("Permissions-Policy", policy)
+            response.headers["Permissions-Policy"] = policy
 
         return response
 
@@ -255,7 +255,7 @@ class ContentSecurityPolicyMiddleware:
         policy = getattr(settings, "CONTENT_SECURITY_POLICY", "")
 
         if policy:
-            response.headers.setdefault("Content-Security-Policy", policy)
+            response.headers["Content-Security-Policy"] = policy
 
         return response
 
@@ -274,7 +274,7 @@ class CrossOriginResourcePolicyMiddleware:
         policy = getattr(settings, "CROSS_ORIGIN_RESOURCE_POLICY", "")
 
         if policy:
-            response.headers.setdefault("Cross-Origin-Resource-Policy", policy)
+            response.headers["Cross-Origin-Resource-Policy"] = policy
 
         return response
 
