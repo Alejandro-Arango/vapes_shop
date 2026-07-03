@@ -364,6 +364,12 @@ class StoreApiTests(APITestCase):
         response = self.client.get("/admin/", REMOTE_ADDR="203.0.113.10")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        event = EventLog.objects.get(event_type="admin_access_denied")
+        self.assertEqual(event.severity, "warning")
+        self.assertEqual(event.ip_address, "203.0.113.10")
+        self.assertEqual(event.path, "/admin/")
+        self.assertEqual(event.metadata["method"], "GET")
+        self.assertEqual(event.metadata["admin_path"], "admin/")
 
     @override_settings(ADMIN_ALLOWED_IPS=("127.0.0.1",), ADMIN_URL_PATH="admin/")
     def test_admin_access_rejects_disallowed_ip_without_trailing_slash(self):

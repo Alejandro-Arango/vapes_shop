@@ -96,6 +96,16 @@ class AdminAccessMiddleware:
             client_ip = get_client_ip(request)
 
             if client_ip not in allowed_ips:
+                log_event(
+                    "admin_access_denied",
+                    "Acceso administrativo denegado por IP no permitida.",
+                    request=request,
+                    severity="warning",
+                    metadata={
+                        "method": request.method,
+                        "admin_path": settings.ADMIN_URL_PATH,
+                    },
+                )
                 return HttpResponseForbidden("Acceso no permitido.")
 
         return self.get_response(request)
