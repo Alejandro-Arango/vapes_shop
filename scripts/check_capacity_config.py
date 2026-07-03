@@ -443,6 +443,22 @@ def validate_environment_security_defaults(
     return findings
 
 
+def validate_frontend_password_policy(app_text):
+    findings = []
+
+    if "const authPasswordMinLength = 12;" not in app_text:
+        findings.append(
+            "app.js debe declarar authPasswordMinLength = 12"
+        )
+
+    if "length < 6" in app_text or "al menos 6 caracteres" in app_text:
+        findings.append(
+            "app.js no debe permitir contrasenas mas cortas que el backend"
+        )
+
+    return findings
+
+
 def validate_root_env_example(root_env_text):
     findings = []
     required_fragments = (
@@ -2726,6 +2742,15 @@ def find_capacity_findings(project_root):
             / "commands"
             / "production_check.py"
         ),
+        "app_js": (
+            project_root
+            / "backend"
+            / "store"
+            / "static"
+            / "store"
+            / "js"
+            / "app.js"
+        ),
         "production_monitor": (
             project_root / "scripts" / "monitor_production.py"
         ),
@@ -2818,6 +2843,11 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_root_env_example(
             paths["root_env"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_frontend_password_policy(
+            paths["app_js"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

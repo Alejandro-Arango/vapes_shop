@@ -648,6 +648,29 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_frontend_password_policy_weaker_than_backend_is_rejected(self):
+        app_text = (
+            PROJECT_ROOT
+            / "backend"
+            / "store"
+            / "static"
+            / "store"
+            / "js"
+            / "app.js"
+        ).read_text(encoding="utf-8")
+        invalid_text = app_text.replace(
+            "const authPasswordMinLength = 12;",
+            "const authPasswordMinLength = 6;",
+            1,
+        )
+
+        findings = capacity.validate_frontend_password_policy(invalid_text)
+
+        self.assertIn(
+            "app.js debe declarar authPasswordMinLength = 12",
+            findings,
+        )
+
     def test_production_environment_with_unsafe_secret_placeholder_is_rejected(
         self,
     ):

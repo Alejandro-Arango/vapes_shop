@@ -52,6 +52,7 @@ const shippingLimits = {
 
 const shippingPhonePattern = /^[0-9\s()+-]+$/;
 const checkoutIdempotencyStorageKey = "checkout_idempotency";
+const authPasswordMinLength = 12;
 
 // =============================================================================
 //  UTILIDADES GENERALES
@@ -4508,8 +4509,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        if (newPassword.length < 6) {
-            showProfileFeedback("La contrasena debe tener al menos 6 caracteres.", "error");
+        if (newPassword.length < authPasswordMinLength) {
+            showProfileFeedback(
+                `La contrasena debe tener al menos ${authPasswordMinLength} caracteres.`,
+                "error"
+            );
             return;
         }
 
@@ -4639,8 +4643,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        if (password.length < 6) {
-            showAuthFeedback("La contrasena debe tener al menos 6 caracteres.", "error");
+        if (password.length < authPasswordMinLength) {
+            showAuthFeedback(
+                `La contrasena debe tener al menos ${authPasswordMinLength} caracteres.`,
+                "error"
+            );
             return;
         }
 
@@ -4718,8 +4725,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        if (password.length < 6) {
-            showAuthFeedback("La contrasena debe tener al menos 6 caracteres.", "error");
+        if (password.length < authPasswordMinLength) {
+            showAuthFeedback(
+                `La contrasena debe tener al menos ${authPasswordMinLength} caracteres.`,
+                "error"
+            );
             return;
         }
 
