@@ -1527,6 +1527,50 @@ class StoreApiTests(APITestCase):
         )
 
     @override_settings(
+        CONTENT_SECURITY_POLICY=(
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "object-src 'none' https://evil.example; "
+            "frame-ancestors 'none' https://evil.example; "
+            "form-action 'self'; "
+            "script-src 'self'; "
+            "script-src https://cdn.example; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self'; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "media-src 'self'; "
+            "worker-src 'self'"
+        ),
+    )
+    def test_production_check_rejects_ambiguous_csp_directives(self):
+        errors = []
+
+        ProductionCheckCommand().check_content_security_policy(errors)
+
+        self.assertIn(
+            (
+                "DJANGO_CONTENT_SECURITY_POLICY no debe duplicar "
+                "directivas: script-src."
+            ),
+            errors,
+        )
+        self.assertIn(
+            (
+                "DJANGO_CONTENT_SECURITY_POLICY no debe mezclar "
+                "object-src 'none' con otros origenes."
+            ),
+            errors,
+        )
+        self.assertIn(
+            (
+                "DJANGO_CONTENT_SECURITY_POLICY no debe mezclar "
+                "frame-ancestors 'none' con otros origenes."
+            ),
+            errors,
+        )
+
+    @override_settings(
         SECURE_CONTENT_TYPE_NOSNIFF=False,
         X_FRAME_OPTIONS="SAMEORIGIN",
         SECURE_REFERRER_POLICY="unsafe-url",

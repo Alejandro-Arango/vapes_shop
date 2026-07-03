@@ -386,6 +386,15 @@ class Command(BaseCommand):
             errors.append("DJANGO_CONTENT_SECURITY_POLICY debe estar configurada.")
             return
 
+        duplicate_directives = self.get_duplicate_csp_directives(policy)
+        if duplicate_directives:
+            errors.append(
+                (
+                    "DJANGO_CONTENT_SECURITY_POLICY no debe duplicar directivas: "
+                    f"{', '.join(duplicate_directives)}."
+                )
+            )
+
         for directive in required_directives:
             if directive not in policy:
                 errors.append(
@@ -415,6 +424,41 @@ class Command(BaseCommand):
                 "DJANGO_CONTENT_SECURITY_POLICY no debe permitir fuentes http:."
             )
 
+        for directive_name in ("object-src", "frame-ancestors"):
+            if self.csp_directive_mixes_none_with_sources(
+                policy,
+                directive_name,
+            ):
+                errors.append(
+                    (
+                        "DJANGO_CONTENT_SECURITY_POLICY no debe mezclar "
+                        f"{directive_name} 'none' con otros origenes."
+                    )
+                )
+
+    def get_duplicate_csp_directives(self, policy):
+        seen = set()
+        duplicates = []
+
+        for directive_name in self.get_csp_directive_names(policy):
+            if directive_name in seen and directive_name not in duplicates:
+                duplicates.append(directive_name)
+
+            seen.add(directive_name)
+
+        return duplicates
+
+    def get_csp_directive_names(self, policy):
+        directive_names = []
+
+        for directive in policy.split(";"):
+            tokens = directive.strip().split()
+
+            if tokens:
+                directive_names.append(tokens[0])
+
+        return directive_names
+
     def get_csp_sources(self, policy):
         sources = []
 
@@ -434,6 +478,11 @@ class Command(BaseCommand):
                 return tokens[1:]
 
         return []
+
+    def csp_directive_mixes_none_with_sources(self, policy, directive_name):
+        sources = self.get_csp_directive_sources(policy, directive_name)
+
+        return "'none'" in sources and len(sources) > 1
 
     def check_browser_security_headers(self, errors):
         if not getattr(settings, "SECURE_CONTENT_TYPE_NOSNIFF", False):
