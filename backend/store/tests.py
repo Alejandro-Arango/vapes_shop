@@ -77,7 +77,13 @@ from .admin import (
     build_csv_response,
 )
 from .admin_dashboard import build_business_dashboard_context
-from .audit import get_client_ip, log_event
+from .audit import (
+    MAX_METADATA_STRING_LENGTH,
+    REDACTED_VALUE,
+    TRUNCATED_VALUE,
+    get_client_ip,
+    log_event,
+)
 from .customer_utils import ensure_customer_for_user
 from .logging_utils import (
     JsonFormatter,
@@ -6089,6 +6095,53 @@ class StoreApiTests(APITestCase):
         self.assertEqual(event.metadata["items"][0]["sessionid"], "[redacted]")
         self.assertEqual(event.metadata["items"][0]["public"], "ok")
         self.assertEqual(event.metadata["headers"]["cookie"], "[redacted]")
+
+    def test_log_event_bounds_large_metadata(self):
+        long_sensitive_key = f"{'x' * 150}_password"
+        event = log_event(
+            "security_test",
+            "Evento de prueba con metadata excesiva.",
+            metadata={
+                "long_text": "x" * 800,
+                "long_list": list(range(60)),
+                "long_dict": {f"key_{index}": index for index in range(60)},
+                "nested": {
+                    "level_1": {
+                        "level_2": {
+                            "level_3": {
+                                "level_4": {
+                                    "level_5": {
+                                        "level_6": "no debe persistir completo",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                long_sensitive_key: "secreto",
+            },
+        )
+        redacted_long_key = next(
+            key
+            for key in event.metadata
+            if key.startswith("x" * 80)
+        )
+
+        self.assertLessEqual(
+            len(event.metadata["long_text"]),
+            MAX_METADATA_STRING_LENGTH + len(f"...{TRUNCATED_VALUE}"),
+        )
+        self.assertTrue(event.metadata["long_text"].endswith(TRUNCATED_VALUE))
+        self.assertEqual(len(event.metadata["long_list"]), 51)
+        self.assertEqual(event.metadata["long_list"][-1], TRUNCATED_VALUE)
+        self.assertTrue(event.metadata["long_dict"]["_truncated_items"])
+        self.assertEqual(
+            event.metadata["nested"]["level_1"]["level_2"]["level_3"][
+                "level_4"
+            ]["level_5"],
+            TRUNCATED_VALUE,
+        )
+        self.assertEqual(event.metadata[redacted_long_key], REDACTED_VALUE)
 
     @override_settings(TRUST_X_FORWARDED_FOR=True)
     def test_log_event_ignores_invalid_client_ip(self):

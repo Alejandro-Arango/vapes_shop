@@ -27,6 +27,24 @@ SENSITIVE_METADATA_KEYS = (
     "session",
 )
 REDACTED_VALUE = "[redacted]"
+TRUNCATED_VALUE = "[truncated]"
+MAX_METADATA_DEPTH = 5
+MAX_METADATA_ITEMS = 50
+MAX_METADATA_KEY_LENGTH = 120
+MAX_METADATA_STRING_LENGTH = 512
+
+
+def truncate_text(value, maximum):
+    """
+    Nombre: truncate_text
+    Descripcion: Recorta texto persistido en auditoria para evitar registros excesivos.
+    """
+    text = str(value)
+
+    if len(text) <= maximum:
+        return text
+
+    return f"{text[:maximum]}...{TRUNCATED_VALUE}"
 
 
 def normalize_ip_address(value):
@@ -44,40 +62,56 @@ def normalize_ip_address(value):
         return None
 
 
-def sanitize_metadata(value):
+def sanitize_metadata(value, depth=0):
     """
     Nombre: sanitize_metadata
-    Descripcion: Redacta valores sensibles antes de guardarlos en auditoria.
+    Descripcion: Redacta y acota valores antes de guardarlos en auditoria.
     Retorna: Metadata segura para almacenar en EventLog.
     """
+    if depth > MAX_METADATA_DEPTH:
+        return TRUNCATED_VALUE
+
     if isinstance(value, dict):
         sanitized = {}
 
-        for key, item in value.items():
-            key_text = str(key)
+        for index, (key, item) in enumerate(value.items()):
+            if index >= MAX_METADATA_ITEMS:
+                sanitized["_truncated_items"] = True
+                break
+
+            raw_key_text = str(key)
+            key_text = truncate_text(raw_key_text, MAX_METADATA_KEY_LENGTH)
 
             has_sensitive_key = any(
-                secret_key in key_text.lower()
+                secret_key in raw_key_text.lower()
                 for secret_key in SENSITIVE_METADATA_KEYS
             )
 
             if has_sensitive_key:
                 sanitized[key_text] = REDACTED_VALUE
             else:
-                sanitized[key_text] = sanitize_metadata(item)
+                sanitized[key_text] = sanitize_metadata(item, depth + 1)
 
         return sanitized
 
     if isinstance(value, (list, tuple)):
-        return [
-            sanitize_metadata(item)
-            for item in value
+        sanitized_items = [
+            sanitize_metadata(item, depth + 1)
+            for item in value[:MAX_METADATA_ITEMS]
         ]
 
-    if value is None or isinstance(value, (str, int, float, bool)):
+        if len(value) > MAX_METADATA_ITEMS:
+            sanitized_items.append(TRUNCATED_VALUE)
+
+        return sanitized_items
+
+    if isinstance(value, str):
+        return truncate_text(value, MAX_METADATA_STRING_LENGTH)
+
+    if value is None or isinstance(value, (int, float, bool)):
         return value
 
-    return str(value)
+    return truncate_text(value, MAX_METADATA_STRING_LENGTH)
 
 
 def get_client_ip(request):
