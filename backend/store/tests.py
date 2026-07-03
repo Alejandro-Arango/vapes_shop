@@ -325,6 +325,12 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @override_settings(ADMIN_ALLOWED_IPS=("127.0.0.1",), ADMIN_URL_PATH="admin/")
+    def test_admin_access_rejects_disallowed_ip_without_trailing_slash(self):
+        response = self.client.get("/admin", REMOTE_ADDR="203.0.113.10")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @override_settings(ADMIN_ALLOWED_IPS=("127.0.0.1",), ADMIN_URL_PATH="admin/")
     def test_admin_access_allows_configured_ip(self):
         response = self.client.get("/admin/", REMOTE_ADDR="127.0.0.1")
 

@@ -90,10 +90,9 @@ class AdminAccessMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        admin_path = f"/{settings.ADMIN_URL_PATH}"
         allowed_ips = getattr(settings, "ADMIN_ALLOWED_IPS", ())
 
-        if allowed_ips and request.path_info.startswith(admin_path):
+        if allowed_ips and is_admin_path(request):
             client_ip = get_client_ip(request)
 
             if client_ip not in allowed_ips:
@@ -102,14 +101,23 @@ class AdminAccessMiddleware:
         return self.get_response(request)
 
 
-def is_admin_path(request):
-    admin_path = f"/{settings.ADMIN_URL_PATH}"
+def get_admin_path_prefix():
+    """
+    Nombre: get_admin_path_prefix
+    Descripcion: Normaliza el prefijo del admin para comparar rutas con o sin slash final.
+    """
+    return f"/{settings.ADMIN_URL_PATH}".rstrip("/")
 
-    return request.path_info.startswith(admin_path)
+
+def is_admin_path(request):
+    admin_path = get_admin_path_prefix()
+    request_path = request.path_info.rstrip("/")
+
+    return request_path == admin_path or request_path.startswith(f"{admin_path}/")
 
 
 def is_admin_login_path(request):
-    admin_path = f"/{settings.ADMIN_URL_PATH}".rstrip("/")
+    admin_path = get_admin_path_prefix()
     request_path = request.path_info.rstrip("/")
 
     return request_path in (admin_path, f"{admin_path}/login")
