@@ -15,6 +15,8 @@ from .models import Category, ContactLead, Customer, Product, ShippingAddress
 
 CONTACT_MESSAGE_MAX_LENGTH = 1000
 CONTACT_PHONE_MAX_DIGITS = 15
+AUTH_IDENTIFIER_MAX_LENGTH = 254
+AUTH_PASSWORD_MAX_LENGTH = 128
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -195,7 +197,10 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     Descripcion: Valida los datos de registro y crea usuarios usando el sistema de autenticacion de Django.
     """
 
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(
+        write_only=True,
+        max_length=AUTH_PASSWORD_MAX_LENGTH,
+    )
 
     class Meta:
         model = User

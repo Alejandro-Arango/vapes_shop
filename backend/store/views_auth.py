@@ -30,6 +30,8 @@ from .audit import log_event
 from .customer_utils import ensure_customer_for_user
 from .models import Order, ShippingAddress
 from .serializers import (
+    AUTH_IDENTIFIER_MAX_LENGTH,
+    AUTH_PASSWORD_MAX_LENGTH,
     CustomerProfileSerializer,
     ShippingAddressSerializer,
     UserRegisterSerializer,
@@ -195,6 +197,22 @@ def normalize_login_password(value):
     return value
 
 
+def is_auth_identifier_too_long(value):
+    """
+    Nombre: is_auth_identifier_too_long
+    Descripcion: Evita identificadores extremos antes de consultar usuarios.
+    """
+    return len(value) > AUTH_IDENTIFIER_MAX_LENGTH
+
+
+def is_auth_password_too_long(value):
+    """
+    Nombre: is_auth_password_too_long
+    Descripcion: Evita trabajo criptografico con secretos excesivos.
+    """
+    return len(value) > AUTH_PASSWORD_MAX_LENGTH
+
+
 def normalize_reset_email(value):
     """
     Nombre: normalize_reset_email
@@ -309,6 +327,23 @@ def login_view(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    if (
+        is_auth_identifier_too_long(email_or_username)
+        or is_auth_password_too_long(password)
+    ):
+        log_event(
+            "auth_login_failed",
+            "Intento de login con credenciales excesivas.",
+            request=request,
+            severity="warning",
+            metadata={"reason": "credential_too_long"},
+        )
+
+        return Response(
+            {"error": "Credenciales invalidas"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     user = authenticate(
         request,
         username=email_or_username,
@@ -375,6 +410,20 @@ def password_reset_request(request):
     Descripcion: Envia enlace de recuperacion sin revelar si el correo existe.
     """
     email = normalize_reset_email(request.data.get("email"))
+
+    if is_auth_identifier_too_long(email):
+        log_event(
+            "password_reset_request_invalid",
+            "Solicitud de recuperacion con correo excesivo.",
+            request=request,
+            severity="warning",
+            metadata={"reason": "identifier_too_long"},
+        )
+
+        return Response(
+            {"error": "Ingresa un correo valido."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     try:
         validate_email(email)
@@ -472,6 +521,24 @@ def password_reset_confirm(request):
 
         return Response(
             {"error": "El enlace de recuperacion no es valido o ya expiro."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if (
+        is_auth_password_too_long(password)
+        or is_auth_password_too_long(password_confirm)
+    ):
+        log_event(
+            "password_reset_confirm_failed",
+            "Confirmacion de recuperacion con contrasena excesiva.",
+            request=request,
+            user=user,
+            severity="warning",
+            metadata={"user_id": user.id, "reason": "credential_too_long"},
+        )
+
+        return Response(
+            {"error": "La contrasena no puede superar 128 caracteres."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -610,6 +677,25 @@ def password_change(request):
     new_password_confirm = normalize_login_password(
         request.data.get("new_password_confirm")
     )
+
+    if (
+        is_auth_password_too_long(current_password)
+        or is_auth_password_too_long(new_password)
+        or is_auth_password_too_long(new_password_confirm)
+    ):
+        log_event(
+            "password_change_failed",
+            "Cambio de contrasena rechazado por secreto excesivo.",
+            request=request,
+            user=request.user,
+            severity="warning",
+            metadata={"reason": "credential_too_long"},
+        )
+
+        return Response(
+            {"error": "La contrasena no puede superar 128 caracteres."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     if not current_password or not request.user.check_password(current_password):
         log_event(

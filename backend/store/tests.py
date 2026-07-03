@@ -118,6 +118,7 @@ from .models import (
     validate_product_image,
 )
 from .order_notifications import build_order_status_message
+from .serializers import AUTH_PASSWORD_MAX_LENGTH
 from .throttles import (
     AuthAnonRateThrottle,
     AuthUserRateThrottle,
@@ -2944,6 +2945,40 @@ class StoreApiTests(APITestCase):
             3,
         )
 
+    def test_password_change_rejects_oversized_secret_before_hash_check(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        oversized_password = "x" * (AUTH_PASSWORD_MAX_LENGTH + 1)
+
+        with patch(
+            "django.contrib.auth.base_user.AbstractBaseUser.check_password"
+        ) as check_password:
+            response = self.client.post(
+                reverse("auth_password_change"),
+                {
+                    "current_password": oversized_password,
+                    "new_password": "NuevaClaveSegura123",
+                    "new_password_confirm": "NuevaClaveSegura123",
+                },
+                format="json",
+            )
+
+        user.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["error"],
+            "La contrasena no puede superar 128 caracteres.",
+        )
+        check_password.assert_not_called()
+        self.assertTrue(user.check_password("ClaveSegura123"))
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="password_change_failed",
+                metadata__reason="credential_too_long",
+            ).exists()
+        )
+
     def test_password_change_is_rate_limited(self):
         cache.clear()
         user = self.create_user()
@@ -3260,6 +3295,29 @@ class StoreApiTests(APITestCase):
             EventLog.objects.filter(event_type="auth_login_failed").exists()
         )
 
+    def test_login_rejects_oversized_password_without_authenticate(self):
+        oversized_password = "x" * (AUTH_PASSWORD_MAX_LENGTH + 1)
+
+        with patch("store.views_auth.authenticate") as authenticate_mock:
+            response = self.client.post(
+                reverse("auth_login"),
+                {
+                    "email": "cliente",
+                    "password": oversized_password,
+                },
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["error"], "Credenciales invalidas")
+        authenticate_mock.assert_not_called()
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="auth_login_failed",
+                metadata__reason="credential_too_long",
+            ).exists()
+        )
+
     def test_login_is_rate_limited(self):
         cache.clear()
         login_data = {
@@ -3397,6 +3455,37 @@ class StoreApiTests(APITestCase):
         )
 
         self.assertEqual(reused_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_password_reset_confirm_rejects_oversized_password(self):
+        user = self.create_user()
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        oversized_password = "x" * (AUTH_PASSWORD_MAX_LENGTH + 1)
+
+        response = self.client.post(
+            reverse("auth_password_reset_confirm"),
+            {
+                "uid": uid,
+                "token": token,
+                "password": oversized_password,
+                "password_confirm": oversized_password,
+            },
+            format="json",
+        )
+        user.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["error"],
+            "La contrasena no puede superar 128 caracteres.",
+        )
+        self.assertTrue(user.check_password("ClaveSegura123"))
+        self.assertTrue(
+            EventLog.objects.filter(
+                event_type="password_reset_confirm_failed",
+                metadata__reason="credential_too_long",
+            ).exists()
+        )
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
