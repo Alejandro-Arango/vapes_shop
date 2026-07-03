@@ -123,10 +123,16 @@ function getCsrfToken() {
  * Descripcion: Construye los encabezados necesarios para enviar JSON y token CSRF al backend Django.
  */
 function csrfHeaders() {
-    return {
+    const headers = {
         "Content-Type": "application/json",
-        "X-CSRFToken": getCsrfToken(),
     };
+    const csrfToken = getCsrfToken();
+
+    if (csrfToken) {
+        headers["X-CSRFToken"] = csrfToken;
+    }
+
+    return headers;
 }
 
 /*
