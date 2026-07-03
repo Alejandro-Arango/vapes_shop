@@ -8,6 +8,17 @@ from django.contrib.auth.models import User
 
 from .models import Customer
 
+FALLBACK_CUSTOMER_EMAIL_DOMAIN = "invalid.local"
+
+
+def build_fallback_customer_email(user: User) -> str:
+    """
+    Nombre: build_fallback_customer_email
+    Descripcion: Genera un correo interno no entregable para usuarios sin email.
+    Retorna: Correo fallback estable asociado al usuario.
+    """
+    return f"user-{user.id}@{FALLBACK_CUSTOMER_EMAIL_DOMAIN}"
+
 
 def ensure_customer_for_user(user: User) -> Customer:
     """
@@ -36,7 +47,7 @@ def ensure_customer_for_user(user: User) -> Customer:
         else:
             return Customer.objects.create(
                 user=user,
-                email=email or f"{user.username}@example.com",
+                email=email or build_fallback_customer_email(user),
                 first_name=user.first_name or user.username,
                 last_name=user.last_name or "",
                 phone="",

@@ -77,6 +77,7 @@ from .admin import (
 )
 from .admin_dashboard import build_business_dashboard_context
 from .audit import get_client_ip, log_event
+from .customer_utils import ensure_customer_for_user
 from .logging_utils import (
     JsonFormatter,
     RequestContextFilter,
@@ -2589,6 +2590,17 @@ class StoreApiTests(APITestCase):
         self.assertEqual(customer.user, user)
         self.assertEqual(response.data["customer"]["first_name"], "Cliente")
         self.assertEqual(response.data["default_shipping"]["name"], "Cliente Preexistente")
+
+    def test_customer_without_email_uses_internal_fallback_domain(self):
+        user = User.objects.create_user(
+            username="sin-email",
+            password="ClaveSegura123",
+        )
+
+        customer = ensure_customer_for_user(user)
+
+        self.assertEqual(customer.email, f"user-{user.id}@invalid.local")
+        self.assertNotIn("example.com", customer.email)
 
     def test_me_returns_default_shipping_from_latest_order(self):
         user = self.create_user()
