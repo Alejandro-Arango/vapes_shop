@@ -856,6 +856,43 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_backend_public_contact_response_with_internal_fields_is_rejected(self):
+        views_reviews_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_reviews.py"
+        ).read_text(encoding="utf-8")
+        views_contact_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_contact.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = views_contact_text.replace(
+            '"whatsapp_url": whatsapp_url,',
+            (
+                '"lead_id": lead.id,\n'
+                '            "email_sent": email_sent,\n'
+                '            "whatsapp_url": whatsapp_url,'
+            ),
+            1,
+        )
+
+        findings = capacity.validate_backend_public_api_privacy(
+            views_reviews_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            (
+                'views_contact.py no debe exponer "lead_id": lead.id '
+                "en respuesta publica"
+            ),
+            findings,
+        )
+        self.assertIn(
+            (
+                'views_contact.py no debe exponer "email_sent": email_sent '
+                "en respuesta publica"
+            ),
+            findings,
+        )
+
     def test_frontend_tracking_link_without_sanitizer_is_rejected(self):
         app_text = (
             PROJECT_ROOT

@@ -133,8 +133,6 @@ def contact(request):
     return Response(
         {
             "message": "Gracias. Registramos tu correo y abriremos WhatsApp para continuar.",
-            "lead_id": lead.id,
-            "email_sent": email_sent,
             "whatsapp_url": whatsapp_url,
         },
         status=status.HTTP_201_CREATED,

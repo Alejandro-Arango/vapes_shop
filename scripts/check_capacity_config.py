@@ -533,7 +533,7 @@ def validate_backend_mutation_throttles(
     return findings
 
 
-def validate_backend_public_api_privacy(views_reviews_text):
+def validate_backend_public_api_privacy(views_reviews_text, views_contact_text=""):
     findings = []
 
     if "PUBLIC_REVIEW_USER_LABEL" not in views_reviews_text:
@@ -547,6 +547,29 @@ def validate_backend_public_api_privacy(views_reviews_text):
             findings.append(
                 f"views_reviews.py no debe exponer {fragment} en resenas"
             )
+
+    if views_contact_text:
+        response_marker = (
+            'return Response(\n'
+            '        {\n'
+            '            "message": "Gracias. Registramos tu correo'
+        )
+        response_start = views_contact_text.find(response_marker)
+        response_end = views_contact_text.find(
+            "status=status.HTTP_201_CREATED",
+            response_start,
+        )
+        response_text = (
+            views_contact_text[response_start:response_end]
+            if response_start != -1 and response_end != -1
+            else ""
+        )
+
+        for fragment in ('"lead_id": lead.id', '"email_sent": email_sent'):
+            if fragment in response_text:
+                findings.append(
+                    f"views_contact.py no debe exponer {fragment} en respuesta publica"
+                )
 
     return findings
 
@@ -2918,6 +2941,9 @@ def find_capacity_findings(project_root):
         "views_orders": (
             project_root / "backend" / "store" / "views_orders.py"
         ),
+        "views_contact": (
+            project_root / "backend" / "store" / "views_contact.py"
+        ),
         "serializers": project_root / "backend" / "store" / "serializers.py",
         "app_js": (
             project_root
@@ -3043,7 +3069,8 @@ def find_capacity_findings(project_root):
     )
     findings.extend(
         validate_backend_public_api_privacy(
-            paths["views_reviews"].read_text(encoding="utf-8")
+            paths["views_reviews"].read_text(encoding="utf-8"),
+            paths["views_contact"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

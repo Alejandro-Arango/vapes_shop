@@ -3547,6 +3547,8 @@ class StoreApiTests(APITestCase):
         self.assertTrue(lead.email_notification_sent)
         self.assertIn("wa.me", response.data["whatsapp_url"])
         self.assertIn("visitante%40example.com", response.data["whatsapp_url"])
+        self.assertNotIn("lead_id", response.data)
+        self.assertNotIn("email_sent", response.data)
         self.assertEqual(len(mail.outbox), 1)
         event = EventLog.objects.get(
             event_type="contact_received",
