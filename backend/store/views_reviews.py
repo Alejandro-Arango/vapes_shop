@@ -17,6 +17,7 @@ from .throttles import AuthUserRateThrottle
 
 
 REVIEW_COMMENT_MAX_LENGTH = 600
+PUBLIC_REVIEW_USER_LABEL = "Cliente verificado"
 
 
 def apply_no_store(response):
@@ -59,7 +60,7 @@ def serialize_review(review, request):
         "id": review.id,
         "rating": review.rating,
         "comment": review.comment,
-        "user": review.user.username or review.user.email,
+        "user": PUBLIC_REVIEW_USER_LABEL,
         "owned_by_user": (
             request.user.is_authenticated and review.user_id == request.user.id
         ),

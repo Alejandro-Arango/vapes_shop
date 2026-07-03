@@ -795,6 +795,27 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_backend_public_reviews_without_user_label_are_rejected(self):
+        views_reviews_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_reviews.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = views_reviews_text.replace(
+            '"user": PUBLIC_REVIEW_USER_LABEL',
+            '"user": review.user.username',
+            1,
+        )
+
+        findings = capacity.validate_backend_public_api_privacy(invalid_text)
+
+        self.assertIn(
+            "views_reviews.py no debe exponer usuario real en resenas",
+            findings,
+        )
+        self.assertIn(
+            "views_reviews.py no debe exponer review.user.username en resenas",
+            findings,
+        )
+
     def test_frontend_tracking_link_without_sanitizer_is_rejected(self):
         app_text = (
             PROJECT_ROOT

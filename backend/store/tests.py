@@ -4124,6 +4124,7 @@ class StoreApiTests(APITestCase):
         self.assertEqual(update_response.data["rating_count"], 1)
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertEqual(list_response.data["own_review"]["rating"], 4)
+        self.assertEqual(list_response.data["own_review"]["user"], "Cliente verificado")
         self.assertEqual(list_response.data["reviews"][0]["comment"], "Buen producto.")
         self.assertTrue(
             EventLog.objects.filter(
@@ -4167,6 +4168,26 @@ class StoreApiTests(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         finally:
             cache.clear()
+
+    def test_product_reviews_do_not_expose_user_identifier(self):
+        reviewer = User.objects.create_user(
+            username="privado@example.com",
+            email="privado@example.com",
+            password="ClaveSegura123",
+        )
+        ProductReview.objects.create(
+            product=self.product,
+            user=reviewer,
+            rating=5,
+            comment="Comentario publico.",
+            is_approved=True,
+        )
+
+        response = self.client.get(reverse("product_reviews", args=[self.product.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["reviews"][0]["user"], "Cliente verificado")
+        self.assertNotIn("privado@example.com", str(response.data))
 
     def test_product_reviews_reject_invalid_payload_and_inactive_product(self):
         user = self.create_user()

@@ -527,6 +527,24 @@ def validate_backend_mutation_throttles(
     return findings
 
 
+def validate_backend_public_api_privacy(views_reviews_text):
+    findings = []
+
+    if "PUBLIC_REVIEW_USER_LABEL" not in views_reviews_text:
+        findings.append("views_reviews.py debe usar etiqueta publica de usuario")
+
+    if '"user": PUBLIC_REVIEW_USER_LABEL' not in views_reviews_text:
+        findings.append("views_reviews.py no debe exponer usuario real en resenas")
+
+    for fragment in ("review.user.username", "review.user.email"):
+        if fragment in views_reviews_text:
+            findings.append(
+                f"views_reviews.py no debe exponer {fragment} en resenas"
+            )
+
+    return findings
+
+
 def validate_frontend_tracking_link_policy(app_text):
     findings = []
 
@@ -3011,6 +3029,11 @@ def find_capacity_findings(project_root):
             paths["views_auth"].read_text(encoding="utf-8"),
             paths["views_favorites"].read_text(encoding="utf-8"),
             paths["views_reviews"].read_text(encoding="utf-8"),
+        )
+    )
+    findings.extend(
+        validate_backend_public_api_privacy(
+            paths["views_reviews"].read_text(encoding="utf-8")
         )
     )
     findings.extend(
