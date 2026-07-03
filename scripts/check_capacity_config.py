@@ -480,6 +480,32 @@ def validate_frontend_tracking_link_policy(app_text):
     return findings
 
 
+def validate_frontend_external_window_policy(app_text):
+    findings = []
+    compact_app_text = "".join(app_text.split())
+    required_fragments = (
+        (
+            'window.open("about:blank", "_blank", "noopener,noreferrer")',
+            "app.js debe abrir preventana externa con noopener,noreferrer",
+        ),
+        (
+            'window.open(data.whatsapp_url, "_blank", "noopener,noreferrer")',
+            "app.js debe abrir WhatsApp fallback con noopener,noreferrer",
+        ),
+    )
+
+    for fragment, message in required_fragments:
+        if "".join(fragment.split()) not in compact_app_text:
+            findings.append(message)
+
+    if 'window.open("about:blank","_blank");' in compact_app_text:
+        findings.append(
+            "app.js no debe abrir preventanas externas sin noopener,noreferrer"
+        )
+
+    return findings
+
+
 def validate_root_env_example(root_env_text):
     findings = []
     required_fragments = (
@@ -2896,6 +2922,11 @@ def find_capacity_findings(project_root):
     )
     findings.extend(
         validate_frontend_tracking_link_policy(
+            paths["app_js"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_frontend_external_window_policy(
             paths["app_js"].read_text(encoding="utf-8")
         )
     )

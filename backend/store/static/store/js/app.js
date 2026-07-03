@@ -4827,7 +4827,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        const whatsappWindow = window.open("about:blank", "_blank");
+        const whatsappWindow = window.open(
+            "about:blank",
+            "_blank",
+            "noopener,noreferrer"
+        );
 
         if (whatsappWindow) {
             whatsappWindow.opener = null;

@@ -696,6 +696,37 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_frontend_external_window_without_noopener_is_rejected(self):
+        app_text = (
+            PROJECT_ROOT
+            / "backend"
+            / "store"
+            / "static"
+            / "store"
+            / "js"
+            / "app.js"
+        ).read_text(encoding="utf-8")
+        invalid_text = app_text.replace(
+            (
+                'window.open(\n'
+                '            "about:blank",\n'
+                '            "_blank",\n'
+                '            "noopener,noreferrer"\n'
+                "        )"
+            ),
+            'window.open("about:blank", "_blank")',
+            1,
+        )
+
+        findings = capacity.validate_frontend_external_window_policy(
+            invalid_text,
+        )
+
+        self.assertIn(
+            "app.js debe abrir preventana externa con noopener,noreferrer",
+            findings,
+        )
+
     def test_production_environment_with_unsafe_secret_placeholder_is_rejected(
         self,
     ):
