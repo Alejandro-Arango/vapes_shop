@@ -459,6 +459,33 @@ def validate_frontend_password_policy(app_text):
     return findings
 
 
+def validate_backend_auth_payload_limits(views_auth_text, serializers_text):
+    findings = []
+    serializer_fragments = (
+        "AUTH_PASSWORD_MAX_LENGTH = 128",
+        "max_length=AUTH_PASSWORD_MAX_LENGTH",
+    )
+    view_fragments = (
+        "AUTH_IDENTIFIER_MAX_LENGTH",
+        "AUTH_PASSWORD_MAX_LENGTH",
+        "is_auth_identifier_too_long(email_or_username)",
+        "is_auth_password_too_long(password)",
+        "is_auth_password_too_long(current_password)",
+        "is_auth_password_too_long(password_confirm)",
+        "credential_too_long",
+    )
+
+    for fragment in serializer_fragments:
+        if fragment not in serializers_text:
+            findings.append(f"serializers.py no contiene {fragment}")
+
+    for fragment in view_fragments:
+        if fragment not in views_auth_text:
+            findings.append(f"views_auth.py no contiene {fragment}")
+
+    return findings
+
+
 def validate_frontend_tracking_link_policy(app_text):
     findings = []
 
@@ -2816,6 +2843,8 @@ def find_capacity_findings(project_root):
             / "commands"
             / "production_check.py"
         ),
+        "views_auth": project_root / "backend" / "store" / "views_auth.py",
+        "serializers": project_root / "backend" / "store" / "serializers.py",
         "app_js": (
             project_root
             / "backend"
@@ -2922,6 +2951,12 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_frontend_password_policy(
             paths["app_js"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_backend_auth_payload_limits(
+            paths["views_auth"].read_text(encoding="utf-8"),
+            paths["serializers"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

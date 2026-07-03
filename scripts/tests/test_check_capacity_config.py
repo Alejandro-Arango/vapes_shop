@@ -671,6 +671,52 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_backend_auth_payload_limit_without_serializer_guard_is_rejected(self):
+        serializers_text = (
+            PROJECT_ROOT / "backend" / "store" / "serializers.py"
+        ).read_text(encoding="utf-8")
+        views_auth_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_auth.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = serializers_text.replace(
+            "max_length=AUTH_PASSWORD_MAX_LENGTH",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_backend_auth_payload_limits(
+            views_auth_text,
+            invalid_text,
+        )
+
+        self.assertIn(
+            "serializers.py no contiene max_length=AUTH_PASSWORD_MAX_LENGTH",
+            findings,
+        )
+
+    def test_backend_auth_payload_limit_without_view_guard_is_rejected(self):
+        serializers_text = (
+            PROJECT_ROOT / "backend" / "store" / "serializers.py"
+        ).read_text(encoding="utf-8")
+        views_auth_text = (
+            PROJECT_ROOT / "backend" / "store" / "views_auth.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = views_auth_text.replace(
+            "is_auth_password_too_long(current_password)",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_backend_auth_payload_limits(
+            invalid_text,
+            serializers_text,
+        )
+
+        self.assertIn(
+            "views_auth.py no contiene is_auth_password_too_long(current_password)",
+            findings,
+        )
+
     def test_frontend_tracking_link_without_sanitizer_is_rejected(self):
         app_text = (
             PROJECT_ROOT
