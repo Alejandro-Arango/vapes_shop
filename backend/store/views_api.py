@@ -1,3 +1,5 @@
+import re
+
 from django.core.cache import cache
 from django.db import DatabaseError, connection
 from django.db.models import Avg, Count, Q
@@ -10,7 +12,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import Category, FavoriteProduct, Product
-from .query_params import parse_bounded_positive_int
+from .query_params import parse_bounded_positive_int, parse_bounded_query_text
 from .serializers import CategorySerializer, ProductSerializer
 
 
@@ -19,6 +21,9 @@ PRODUCT_DEFAULT_PAGE = 1
 PRODUCT_DEFAULT_PAGE_SIZE = 6
 PRODUCT_MAX_PAGE = 1000
 PRODUCT_MAX_PAGE_SIZE = 24
+PRODUCT_SEARCH_MAX_LENGTH = 100
+PRODUCT_CATEGORY_SLUG_MAX_LENGTH = 100
+CATEGORY_SLUG_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 HEALTH_CACHE_KEY = "store:health-check"
 PRODUCT_ORDERING_OPTIONS = {
     "default": ("-created_at", "-id"),
@@ -36,6 +41,14 @@ def get_product_query_error(request):
     """
     stock_filter = request.query_params.get("stock", "all").strip().lower()
     ordering = request.query_params.get("ordering", "default").strip().lower()
+    search_value = parse_bounded_query_text(
+        request.query_params.get("q"),
+        PRODUCT_SEARCH_MAX_LENGTH,
+    )
+    category_slug = parse_bounded_query_text(
+        request.query_params.get("category"),
+        PRODUCT_CATEGORY_SLUG_MAX_LENGTH,
+    )
     page = request.query_params.get("page")
     page_size = request.query_params.get("page_size")
 
@@ -44,6 +57,14 @@ def get_product_query_error(request):
 
     if ordering not in PRODUCT_ORDERING_OPTIONS:
         return "Ordenamiento invalido."
+
+    if search_value is None:
+        return "Busqueda invalida."
+
+    if category_slug is None or (
+        category_slug and not CATEGORY_SLUG_PATTERN.fullmatch(category_slug)
+    ):
+        return "Categoria invalida."
 
     if page is not None and parse_bounded_positive_int(
         page,
@@ -65,8 +86,14 @@ def apply_product_query_params(products, request):
     Nombre: apply_product_query_params
     Descripcion: Aplica busqueda, categoria, disponibilidad y ordenamiento a productos activos.
     """
-    search_value = request.query_params.get("q", "").strip()
-    category_slug = request.query_params.get("category", "").strip()
+    search_value = parse_bounded_query_text(
+        request.query_params.get("q"),
+        PRODUCT_SEARCH_MAX_LENGTH,
+    ) or ""
+    category_slug = parse_bounded_query_text(
+        request.query_params.get("category"),
+        PRODUCT_CATEGORY_SLUG_MAX_LENGTH,
+    ) or ""
     stock_filter = request.query_params.get("stock", "all").strip().lower()
     ordering = request.query_params.get("ordering", "default").strip().lower()
 

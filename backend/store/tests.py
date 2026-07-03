@@ -3640,6 +3640,18 @@ class StoreApiTests(APITestCase):
             reverse("api_products"),
             {"ordering": "fecha-desc"},
         )
+        oversized_search_response = self.client.get(
+            reverse("api_products"),
+            {"q": "x" * 101},
+        )
+        oversized_category_response = self.client.get(
+            reverse("api_products"),
+            {"category": "x" * 101},
+        )
+        invalid_category_response = self.client.get(
+            reverse("api_products"),
+            {"category": "../pods"},
+        )
         invalid_page_response = self.client.get(
             reverse("api_products"),
             {"page": "0"},
@@ -3663,6 +3675,18 @@ class StoreApiTests(APITestCase):
         )
         self.assertEqual(
             invalid_ordering_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            oversized_search_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            oversized_category_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            invalid_category_response.status_code,
             status.HTTP_400_BAD_REQUEST,
         )
         self.assertEqual(

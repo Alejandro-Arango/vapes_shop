@@ -29,3 +29,22 @@ def parse_bounded_positive_int(value, maximum):
         return None
 
     return parsed_value
+
+
+def parse_bounded_query_text(value, maximum):
+    """
+    Nombre: parse_bounded_query_text
+    Descripcion: Normaliza texto de query params y rechaza valores excesivos o de control.
+    Retorna: Texto limpio, cadena vacia si no existe o None si no es aceptable.
+    """
+    if value is None:
+        return ""
+
+    raw_value = str(value).strip()
+
+    if len(raw_value) > maximum or any(
+        character in raw_value for character in ("\x00", "\r", "\n")
+    ):
+        return None
+
+    return raw_value
