@@ -7,12 +7,13 @@ Dependencias: Django ORM, Django REST Framework, auditoria y modelos de store
 from django.db.models import Avg, Count
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .audit import log_event
 from .models import Product, ProductReview
+from .throttles import AuthUserRateThrottle
 
 
 REVIEW_COMMENT_MAX_LENGTH = 600
@@ -159,6 +160,7 @@ def product_reviews(request, product_id):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AuthUserRateThrottle])
 def submit_product_review(request, product_id):
     """
     Nombre: submit_product_review

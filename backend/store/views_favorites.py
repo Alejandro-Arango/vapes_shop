@@ -5,7 +5,7 @@ Dependencias: Django REST Framework, auditoria y modelos de store
 """
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Avg, Count, Q
@@ -14,6 +14,7 @@ from .audit import log_event
 from .cart_utils import parse_product_id
 from .models import FavoriteProduct, Product
 from .serializers import ProductSerializer
+from .throttles import CartRateThrottle
 
 
 @api_view(["GET"])
@@ -63,6 +64,7 @@ def favorite_products(request):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([CartRateThrottle])
 def toggle_favorite_product(request):
     """
     Nombre: toggle_favorite_product

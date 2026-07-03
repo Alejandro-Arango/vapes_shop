@@ -3986,6 +3986,33 @@ class StoreApiTests(APITestCase):
             ).exists()
         )
 
+    def test_favorite_toggle_is_rate_limited(self):
+        cache.clear()
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        payload = {"productId": self.product.id}
+
+        try:
+            with patch.object(CartRateThrottle, "rate", "2/min", create=True):
+                for _ in range(2):
+                    response = self.client.post(
+                        reverse("toggle_favorite_product"),
+                        payload,
+                        format="json",
+                    )
+
+                    self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+                response = self.client.post(
+                    reverse("toggle_favorite_product"),
+                    payload,
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
+
     def test_favorites_reject_invalid_or_inactive_product(self):
         user = self.create_user()
         inactive_product = Product.objects.create(
@@ -4110,6 +4137,36 @@ class StoreApiTests(APITestCase):
                 metadata__product_id=self.product.id,
             ).exists()
         )
+
+    def test_review_submit_is_rate_limited(self):
+        cache.clear()
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        payload = {
+            "rating": 5,
+            "comment": "Buen producto.",
+        }
+
+        try:
+            with patch.object(AuthUserRateThrottle, "rate", "2/min", create=True):
+                for _ in range(2):
+                    response = self.client.post(
+                        reverse("submit_product_review", args=[self.product.id]),
+                        payload,
+                        format="json",
+                    )
+
+                    self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+                response = self.client.post(
+                    reverse("submit_product_review", args=[self.product.id]),
+                    payload,
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
 
     def test_product_reviews_reject_invalid_payload_and_inactive_product(self):
         user = self.create_user()
