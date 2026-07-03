@@ -4,6 +4,9 @@ Descripcion: Utilidades para validar parametros query acotados y evitar conversi
 """
 
 
+MAX_MODEL_ID = 9223372036854775807
+
+
 def parse_bounded_positive_int(value, maximum):
     """
     Nombre: parse_bounded_positive_int

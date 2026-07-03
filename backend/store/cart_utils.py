@@ -5,10 +5,9 @@ Dependencias: Modelo Product
 """
 
 from .models import Product
-from .query_params import parse_bounded_positive_int
+from .query_params import MAX_MODEL_ID, parse_bounded_positive_int
 
 
-MAX_MODEL_ID = 9223372036854775807
 MAX_CART_QUANTITY = 1000000
 
 

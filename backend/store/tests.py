@@ -3159,6 +3159,29 @@ class StoreApiTests(APITestCase):
         self.assertEqual(order.shipping_city, "Medellin")
         self.assertEqual(order.shipping_notes, "Timbre 2")
 
+    def test_checkout_rejects_extreme_shipping_address_id(self):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+
+        response = self.client.post(
+            reverse("checkout"),
+            {
+                "shippingAddressId": "9" * 5000,
+                "ageConfirmed": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["error"],
+            "La direccion guardada no es valida",
+        )
+        self.assertEqual(Order.objects.count(), 0)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 5)
+
     def test_failed_login_creates_event_log(self):
         response = self.client.post(
             reverse("auth_login"),

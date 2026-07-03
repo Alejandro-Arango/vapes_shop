@@ -22,7 +22,7 @@ from .discounts import COUPON_SESSION_KEY, build_pricing, quantize_money
 from .models import Customer, Order, OrderItem, Product, ShippingAddress, StockMovement
 from .order_notifications import notify_order_created
 from .order_status import record_order_status, serialize_order_status_history
-from .query_params import parse_bounded_positive_int
+from .query_params import MAX_MODEL_ID, parse_bounded_positive_int
 from .throttles import CartRateThrottle, CheckoutUserRateThrottle
 from .url_utils import normalize_safe_external_url
 
@@ -497,15 +497,23 @@ def checkout(request):
     )
 
     if shipping_address_id:
-        try:
-            shipping_address_id = int(shipping_address_id)
-        except (TypeError, ValueError):
+        raw_shipping_address_id = shipping_address_id
+        shipping_address_id = parse_bounded_positive_int(
+            raw_shipping_address_id,
+            MAX_MODEL_ID,
+        )
+
+        if shipping_address_id is None:
             log_event(
                 "checkout_failed",
                 "Checkout rechazado por direccion guardada invalida.",
                 request=request,
                 severity="warning",
-                metadata={"shipping_address_id": str(shipping_address_id)},
+                metadata={
+                    "shipping_address_id_length": len(
+                        str(raw_shipping_address_id)
+                    ),
+                },
             )
 
             return Response(
