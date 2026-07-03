@@ -2017,6 +2017,32 @@ class StoreApiTests(APITestCase):
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        EMAIL_HOST="smtp.tienda-vapes.com",
+        EMAIL_HOST_USER="smtp-user-vapes",
+        EMAIL_HOST_PASSWORD="clave-corta",
+        EMAIL_USE_TLS=True,
+        EMAIL_USE_SSL=False,
+        DEFAULT_FROM_EMAIL="Vape Shop <no-reply@tienda-vapes.com>",
+        CONTACT_NOTIFICATION_EMAIL="admin@tienda-vapes.com",
+        ORDER_NOTIFICATION_EMAIL="orders@tienda-vapes.com",
+        INVENTORY_NOTIFICATION_EMAIL="inventory@tienda-vapes.com",
+    )
+    def test_production_check_rejects_short_smtp_password(self):
+        errors = []
+        warnings = []
+
+        ProductionCheckCommand().check_email(errors, warnings)
+
+        self.assertIn(
+            (
+                "DJANGO_EMAIL_HOST_PASSWORD debe tener al menos "
+                "16 caracteres."
+            ),
+            errors,
+        )
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
         EMAIL_HOST="smtp.example.com",
         EMAIL_HOST_USER="smtp-user-vapes",
         EMAIL_HOST_PASSWORD="smtp-credential-value-123",

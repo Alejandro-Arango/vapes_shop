@@ -94,6 +94,7 @@ UNSAFE_PASSWORD_HASHERS = (
     "django.contrib.auth.hashers.CryptPasswordHasher",
 )
 MIN_DATABASE_PASSWORD_LENGTH = 16
+MIN_SMTP_PASSWORD_LENGTH = 16
 UNSAFE_DATABASE_USERS = (
     "admin",
     "mysql",
@@ -898,6 +899,10 @@ class Command(BaseCommand):
             if not email_password:
                 errors.append(
                     "DJANGO_EMAIL_HOST_PASSWORD debe estar configurado para SMTP."
+                )
+            elif len(str(email_password).strip()) < MIN_SMTP_PASSWORD_LENGTH:
+                errors.append(
+                    "DJANGO_EMAIL_HOST_PASSWORD debe tener al menos 16 caracteres."
                 )
             elif self.has_placeholder_value(email_password):
                 errors.append(

@@ -561,6 +561,8 @@ def validate_production_check_security(production_check_text):
         "UnsaltedMD5PasswordHasher",
         "UnsaltedSHA1PasswordHasher",
         "PASSWORD_HASHERS no debe incluir hashers debiles o sin sal.",
+        "MIN_SMTP_PASSWORD_LENGTH",
+        "DJANGO_EMAIL_HOST_PASSWORD debe tener al menos 16 caracteres.",
     )
 
     return [

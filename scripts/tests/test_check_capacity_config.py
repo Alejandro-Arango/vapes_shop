@@ -907,6 +907,33 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_production_check_without_smtp_password_length_guard_is_rejected(
+        self,
+    ):
+        production_check_text = (
+            PROJECT_ROOT
+            / "backend"
+            / "store"
+            / "management"
+            / "commands"
+            / "production_check.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = production_check_text.replace(
+            "DJANGO_EMAIL_HOST_PASSWORD debe tener al menos 16 caracteres.",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_production_check_security(invalid_text)
+
+        self.assertIn(
+            (
+                "production_check.py no contiene "
+                "DJANGO_EMAIL_HOST_PASSWORD debe tener al menos 16 caracteres."
+            ),
+            findings,
+        )
+
     def test_production_check_without_upload_limit_guard_is_rejected(self):
         production_check_text = (
             PROJECT_ROOT
