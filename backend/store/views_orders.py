@@ -6,6 +6,7 @@ Dependencias: Django transaction, Django REST Framework, modelos Product, Custom
 
 import re
 from decimal import Decimal
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from django.db import transaction
@@ -41,6 +42,7 @@ ORDER_STATUS_FILTERS = {
     status_key
     for status_key, _ in Order.STATUS_CHOICES
 }
+TRACKING_URL_ALLOWED_SCHEMES = {"http", "https"}
 
 
 def get_checkout_idempotency_key(request):
@@ -63,6 +65,28 @@ def get_checkout_idempotency_key(request):
         return UUID(str(raw_key).strip()), ""
     except (ValueError, AttributeError, TypeError):
         return None, "La clave de idempotencia no es valida"
+
+
+def serialize_tracking_url(value):
+    """
+    Nombre: serialize_tracking_url
+    Descripcion: Expone URLs de rastreo solo cuando usan esquemas navegables seguros.
+    Retorna: URL http/https normalizada o cadena vacia.
+    """
+    tracking_url = (value or "").strip()
+
+    if not tracking_url:
+        return ""
+
+    parsed_url = urlsplit(tracking_url)
+
+    if (
+        parsed_url.scheme.lower() not in TRACKING_URL_ALLOWED_SCHEMES
+        or not parsed_url.netloc
+    ):
+        return ""
+
+    return tracking_url
 
 
 def build_checkout_success_response(order, notifications=None, replay=False):
@@ -278,7 +302,7 @@ def serialize_order(order):
         "tracking": {
             "carrier": order.tracking_carrier,
             "number": order.tracking_number,
-            "url": order.tracking_url,
+            "url": serialize_tracking_url(order.tracking_url),
             "shipped_at": order.shipped_at,
             "delivered_at": order.delivered_at,
         },

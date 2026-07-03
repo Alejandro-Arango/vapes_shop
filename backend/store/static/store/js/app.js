@@ -76,6 +76,24 @@ function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, (char) => map[char]);
 }
 
+function sanitizeExternalUrl(value) {
+    const rawUrl = String(value || "").trim();
+
+    if (!rawUrl) return "";
+
+    try {
+        const parsedUrl = new URL(rawUrl, window.location.origin);
+
+        if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+            return "";
+        }
+
+        return parsedUrl.href;
+    } catch {
+        return "";
+    }
+}
+
 function getCookie(name) {
     if (!document.cookie || document.cookie === "") return null;
 
@@ -1662,6 +1680,7 @@ function renderShippingInfo(order) {
 
 function renderTrackingInfo(order) {
     const tracking = order.tracking || {};
+    const trackingUrl = sanitizeExternalUrl(tracking.url);
     const shippedAt = tracking.shipped_at
         ? new Date(tracking.shipped_at).toLocaleString()
         : "";
@@ -1671,7 +1690,7 @@ function renderTrackingInfo(order) {
     const hasTrackingData =
         tracking.carrier ||
         tracking.number ||
-        tracking.url ||
+        trackingUrl ||
         shippedAt ||
         deliveredAt;
 
@@ -1724,11 +1743,11 @@ function renderTrackingInfo(order) {
                     : ""
                 }
 
-                ${tracking.url
+                ${trackingUrl
                     ? `
                         <p class="order-shipping-notes">
                             <strong>Rastreo:</strong>
-                            <a href="${escapeHtml(tracking.url)}" target="_blank" rel="noopener noreferrer">
+                            <a href="${escapeHtml(trackingUrl)}" target="_blank" rel="noopener noreferrer">
                                 Abrir enlace de seguimiento
                             </a>
                         </p>

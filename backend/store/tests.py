@@ -4780,6 +4780,29 @@ class StoreApiTests(APITestCase):
             "Pedido enviado por transportadora.",
         )
 
+    def test_order_detail_hides_unsafe_tracking_url(self):
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Rastreo",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="enviado",
+            completed=True,
+            tracking_url="javascript:alert(1)",
+            age_verified=True,
+        )
+
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        response = self.client.get(reverse("order_detail", args=[order.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["tracking"]["url"], "")
+
     def test_reorder_adds_available_items_to_cart(self):
         user = self.create_user()
         customer = Customer.objects.create(

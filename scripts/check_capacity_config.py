@@ -459,6 +459,27 @@ def validate_frontend_password_policy(app_text):
     return findings
 
 
+def validate_frontend_tracking_link_policy(app_text):
+    findings = []
+
+    if "function sanitizeExternalUrl(value)" not in app_text:
+        findings.append(
+            "app.js debe declarar sanitizeExternalUrl para enlaces externos"
+        )
+
+    if "const trackingUrl = sanitizeExternalUrl(tracking.url);" not in app_text:
+        findings.append(
+            "app.js debe sanitizar tracking.url antes de renderizarlo"
+        )
+
+    if 'href="${escapeHtml(tracking.url)}"' in app_text:
+        findings.append(
+            "app.js no debe renderizar tracking.url directo en href"
+        )
+
+    return findings
+
+
 def validate_root_env_example(root_env_text):
     findings = []
     required_fragments = (
@@ -2847,6 +2868,11 @@ def find_capacity_findings(project_root):
     )
     findings.extend(
         validate_frontend_password_policy(
+            paths["app_js"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_frontend_tracking_link_policy(
             paths["app_js"].read_text(encoding="utf-8")
         )
     )

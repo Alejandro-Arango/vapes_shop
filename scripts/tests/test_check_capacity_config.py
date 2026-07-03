@@ -671,6 +671,31 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_frontend_tracking_link_without_sanitizer_is_rejected(self):
+        app_text = (
+            PROJECT_ROOT
+            / "backend"
+            / "store"
+            / "static"
+            / "store"
+            / "js"
+            / "app.js"
+        ).read_text(encoding="utf-8")
+        invalid_text = app_text.replace(
+            'href="${escapeHtml(trackingUrl)}"',
+            'href="${escapeHtml(tracking.url)}"',
+            1,
+        )
+
+        findings = capacity.validate_frontend_tracking_link_policy(
+            invalid_text,
+        )
+
+        self.assertIn(
+            "app.js no debe renderizar tracking.url directo en href",
+            findings,
+        )
+
     def test_production_environment_with_unsafe_secret_placeholder_is_rejected(
         self,
     ):
