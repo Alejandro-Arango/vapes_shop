@@ -22,6 +22,9 @@ SENSITIVE_METADATA_KEYS = (
     "secret",
     "authorization",
     "api_key",
+    "cookie",
+    "csrf",
+    "session",
 )
 REDACTED_VALUE = "[redacted]"
 

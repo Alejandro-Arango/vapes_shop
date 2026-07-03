@@ -5711,21 +5711,29 @@ class StoreApiTests(APITestCase):
                 "safe": "visible",
                 "nested": {
                     "access_token": "token-secreto",
+                    "csrfmiddlewaretoken": "csrf-secreto",
                 },
                 "items": [
                     {
                         "secret": "valor-secreto",
+                        "sessionid": "sesion-secreta",
                         "public": "ok",
                     },
                 ],
+                "headers": {
+                    "cookie": "sessionid=valor",
+                },
             },
         )
 
         self.assertEqual(event.metadata["password"], "[redacted]")
         self.assertEqual(event.metadata["safe"], "visible")
         self.assertEqual(event.metadata["nested"]["access_token"], "[redacted]")
+        self.assertEqual(event.metadata["nested"]["csrfmiddlewaretoken"], "[redacted]")
         self.assertEqual(event.metadata["items"][0]["secret"], "[redacted]")
+        self.assertEqual(event.metadata["items"][0]["sessionid"], "[redacted]")
         self.assertEqual(event.metadata["items"][0]["public"], "ok")
+        self.assertEqual(event.metadata["headers"]["cookie"], "[redacted]")
 
     @override_settings(TRUST_X_FORWARDED_FOR=True)
     def test_log_event_ignores_invalid_client_ip(self):
