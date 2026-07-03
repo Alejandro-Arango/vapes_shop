@@ -490,6 +490,7 @@ def validate_backend_mutation_throttles(
     views_auth_text,
     views_favorites_text,
     views_reviews_text,
+    views_orders_text,
 ):
     findings = []
     required_fragments = (
@@ -517,6 +518,11 @@ def validate_backend_mutation_throttles(
             views_reviews_text,
             "@throttle_classes([AuthUserRateThrottle])\ndef submit_product_review",
             "views_reviews.py no limita submit_product_review",
+        ),
+        (
+            views_orders_text,
+            "@throttle_classes([CheckoutUserRateThrottle])\ndef cancel_order",
+            "views_orders.py no limita cancel_order",
         ),
     )
 
@@ -2909,6 +2915,9 @@ def find_capacity_findings(project_root):
         "views_reviews": (
             project_root / "backend" / "store" / "views_reviews.py"
         ),
+        "views_orders": (
+            project_root / "backend" / "store" / "views_orders.py"
+        ),
         "serializers": project_root / "backend" / "store" / "serializers.py",
         "app_js": (
             project_root
@@ -3029,6 +3038,7 @@ def find_capacity_findings(project_root):
             paths["views_auth"].read_text(encoding="utf-8"),
             paths["views_favorites"].read_text(encoding="utf-8"),
             paths["views_reviews"].read_text(encoding="utf-8"),
+            paths["views_orders"].read_text(encoding="utf-8"),
         )
     )
     findings.extend(

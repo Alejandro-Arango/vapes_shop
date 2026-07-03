@@ -5702,6 +5702,39 @@ class StoreApiTests(APITestCase):
             EventLog.objects.filter(event_type="order_cancel_failed").exists()
         )
 
+    def test_cancel_order_is_rate_limited(self):
+        cache.clear()
+        user = self.create_user()
+        customer = Customer.objects.create(
+            user=user,
+            first_name="Cliente",
+            last_name="Prueba",
+            email=user.email,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            status="pagado",
+            completed=True,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=1,
+        )
+        self.client.login(username=user.username, password="ClaveSegura123")
+
+        try:
+            with patch.object(CheckoutUserRateThrottle, "rate", "1/min", create=True):
+                response = self.client.post(reverse("cancel_order", args=[order.id]))
+
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+                response = self.client.post(reverse("cancel_order", args=[order.id]))
+
+                self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        finally:
+            cache.clear()
+
     def test_cancel_delivered_order_is_rejected(self):
         user = self.create_user()
         customer = Customer.objects.create(

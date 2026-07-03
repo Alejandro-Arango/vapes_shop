@@ -1137,6 +1137,7 @@ def reorder_order(request, order_id):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([CheckoutUserRateThrottle])
 def cancel_order(request, order_id):
     """
     Nombre: cancel_order
