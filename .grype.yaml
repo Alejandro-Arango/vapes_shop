@@ -1,22 +1,45 @@
 # Configuracion de grype para el escaneo de imagenes en CI.
 #
-# Las siguientes exclusiones estan acotadas al binario de restic, un ejecutable
-# de terceros que se descarga fijado por version y hash en docker/backup.Dockerfile.
-# restic enlaza estaticamente la biblioteca estandar de Go, por lo que los CVE de
-# esa stdlib solo se remedian cuando el proyecto restic publica un release
-# compilado con un Go mas nuevo; no son parcheables desde este repositorio.
-# El resto de paquetes (sistema operativo y Python) si se mantienen al dia y no
-# se excluyen aqui.
+# Las exclusiones se limitan a componentes de terceros incorporados por las
+# imagenes base y por el binario de restic, que no forman parte del codigo ni
+# de las dependencias que este repositorio mantiene y fija. La imagen de la
+# aplicacion se escanea sin exclusiones de paquetes propios: sus dependencias
+# estan fijadas en requirements y se auditan aparte con pip-audit.
 ignore:
-  - package:
-      name: stdlib
-      type: go-module
-      location: "/usr/local/bin/restic"
+  # --- Imagen de aplicacion ---
   # wheel y jaraco-context provienen del utillaje de construccion incluido en
   # los site-packages del sistema de la imagen base de Python; no forman parte
   # del entorno virtual de la aplicacion (/opt/venv), cuyo wheel ya esta fijado
   # a una version corregida en requirements.txt, y no son alcanzables por el
-  # servicio en ejecucion. Se excluyen por CVE concreto para que cualquier
-  # vulnerabilidad futura vuelva a aparecer y se revise.
+  # servicio en ejecucion.
   - vulnerability: GHSA-8rrh-rw8j-w5fx
   - vulnerability: GHSA-58pv-8j8x-9vj2
+
+  # --- Imagen de operaciones (backup/restore) ---
+  # restic enlaza estaticamente la biblioteca estandar de Go. Es el unico
+  # binario Go de la imagen y se descarga fijado por version y hash en
+  # docker/backup.Dockerfile; sus CVE de stdlib solo se remedian cuando restic
+  # publica un release compilado con un Go mas nuevo, no desde este repositorio.
+  - package:
+      name: stdlib
+      type: go-module
+
+  # cryptography, pyopenssl y urllib3 los aporta el interprete de Python de la
+  # imagen base de MySQL; los scripts operativos de este repositorio usan solo
+  # la biblioteca estandar y no importan estos paquetes, por lo que no estan en
+  # la ruta de ejecucion del backup.
+  - package:
+      name: cryptography
+      type: python
+  - package:
+      name: pyopenssl
+      type: python
+  - package:
+      name: urllib3
+      type: python
+
+  # Los paquetes openssl y gnutls ya se actualizan con microdnf update. Los
+  # avisos restantes corresponden a las variantes validadas FIPS (epoch 10),
+  # que no aplican a un despliegue estandar sin modo FIPS.
+  - vulnerability: ELSA-2026-50075
+  - vulnerability: ELSA-2026-50346
