@@ -484,6 +484,7 @@ jobs:
 
           docker exec \
             --env MEDIA_STORAGE_TEST_ENABLED=true \
+            --env DJANGO_PROJECT_ROOT=/app/backend \
             "$web_id" \
             python /scripts/verify_media_storage.py \
               --expect available \
@@ -500,6 +501,7 @@ jobs:
 
           docker exec \
             --env MEDIA_STORAGE_TEST_ENABLED=true \
+            --env DJANGO_PROJECT_ROOT=/app/backend \
             "$MEDIA_WEB_ID" \
             python /scripts/verify_media_storage.py \
               --expect unavailable \
@@ -521,6 +523,7 @@ jobs:
 
           docker exec \
             --env MEDIA_STORAGE_TEST_ENABLED=true \
+            --env DJANGO_PROJECT_ROOT=/app/backend \
             "$MEDIA_WEB_ID" \
             python /scripts/verify_media_storage.py \
               --expect available \
@@ -611,9 +614,14 @@ jobs:
           printf '%s\n' \
             "ci-restic-password-with-more-than-thirty-characters" \
             > performance-runtime/restic-password.txt
-          chmod 0600 \
+          # El servicio external-backup corre como root con cap_drop ALL (sin
+          # CAP_DAC_OVERRIDE), por lo que solo lee estos secretos si el bit de
+          # lectura de "otros" esta activo y escribe en el repositorio si el
+          # directorio creado por el runner es accesible para todos.
+          chmod 0644 \
             performance-runtime/restic-repository.txt \
             performance-runtime/restic-password.txt
+          chmod 0777 external-backups-ci
 
           docker compose --env-file compose.env.example run --rm \
             external-backup \
@@ -681,6 +689,7 @@ jobs:
             > resilience-results/external-restore-verification.json
 
           mkdir -p recovered-backups-ci
+          chmod 0777 recovered-backups-ci
           BACKUP_PATH="./recovered-backups-ci" \
           docker compose --env-file compose.env.example run --rm \
             external-recovery \

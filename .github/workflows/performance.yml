@@ -371,7 +371,11 @@ jobs:
               "$RESILIENCE_WEB_ID"
           )"
 
-          docker exec "$RESILIENCE_WEB_ID" sh -c "kill -KILL 1" || true
+          # El init de un namespace PID (PID 1) ignora SIGKILL enviado desde su
+          # propio namespace, por lo que "docker exec kill -KILL 1" no derriba el
+          # contenedor. Se envia la senal desde el host para forzar la caida real
+          # y que la politica restart:always reinicie el proceso.
+          docker kill --signal=KILL "$RESILIENCE_WEB_ID" || true
 
           python scripts/verify_recovery.py \
             --url http://127.0.0.1:8080/healthz \
