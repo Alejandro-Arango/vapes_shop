@@ -371,11 +371,12 @@ jobs:
               "$RESILIENCE_WEB_ID"
           )"
 
-          # El init de un namespace PID (PID 1) ignora SIGKILL enviado desde su
-          # propio namespace, por lo que "docker exec kill -KILL 1" no derriba el
-          # contenedor. Se envia la senal desde el host para forzar la caida real
-          # y que la politica restart:always reinicie el proceso.
-          docker kill --signal=KILL "$RESILIENCE_WEB_ID" || true
+          # El init de un namespace PID ignora las senales que no maneja cuando
+          # provienen de su propio namespace: SIGKILL (no capturable) se descarta
+          # y el contenedor no cae. gunicorn si instala manejador de SIGTERM, por
+          # lo que la senal se entrega, el maestro sale y esa muerte interna del
+          # proceso activa la politica restart:always.
+          docker exec "$RESILIENCE_WEB_ID" sh -c "kill -TERM 1" || true
 
           python scripts/verify_recovery.py \
             --url http://127.0.0.1:8080/healthz \

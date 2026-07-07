@@ -2843,7 +2843,7 @@ def validate_workflow(workflow_text):
         "run /scripts/recovery.js",
         "post-pressure-recovery.json",
         "post-crash-recovery.json",
-        "docker exec \"$RESILIENCE_WEB_ID\" sh -c \"kill -KILL 1\"",
+        "docker exec \"$RESILIENCE_WEB_ID\" sh -c \"kill -TERM 1\"",
         "container-restart.json",
         "rm -f performance-runtime/checkout-fixture.json",
         "rm -f performance-runtime/coupon-fixture.json",

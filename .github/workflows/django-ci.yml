@@ -543,6 +543,11 @@ jobs:
         run: |
           mkdir -p resilience-results
 
+          # verify_media_storage.py corre como root dentro del contenedor y deja
+          # los informes con propiedad root; se habilita lectura para otros de
+          # modo que la subida de artefactos del runner pueda leerlos.
+          sudo chmod -R a+rX resilience-results || true
+
           if [[ -n "${MEDIA_WEB_ID:-}" ]]; then
             docker logs "$MEDIA_WEB_ID" \
               > resilience-results/media-outage-web.log 2>&1 || true
@@ -660,6 +665,11 @@ jobs:
           mkdir -p resilience-results
           docker compose --env-file compose.env.example run --rm backup
 
+          # El servicio backup escribe como root con cap_drop ALL; se habilita
+          # lectura para otros de modo que las herramientas del runner puedan
+          # inspeccionar los respaldos sin cambiar la propiedad.
+          sudo chmod -R a+rX backups-ci
+
           python scripts/monitor_backups.py \
             --root backups-ci \
             --max-age-hours 1 \
@@ -672,6 +682,8 @@ jobs:
             external-backup \
             backup \
             > resilience-results/external-backup.json
+
+          sudo chmod -R a+rX external-backups-ci
 
           if grep --recursive --binary-files=text --quiet \
             --extended-regexp \
@@ -696,6 +708,8 @@ jobs:
             recover-latest \
             --confirm RECOVER-LATEST-EXTERNAL-BACKUP \
             > resilience-results/external-recovery-materialized.json
+
+          sudo chmod -R a+rX recovered-backups-ci
 
           recovered_backup_id="$(cat recovered-backups-ci/latest.txt)"
           local_backup_id="$(cat backups-ci/latest.txt)"
@@ -817,7 +831,7 @@ jobs:
         if: always()
         run: |
           docker compose --env-file compose.env.example down --volumes --remove-orphans
-          rm -rf \
+          sudo rm -rf \
             backups-ci \
             recovered-backups-ci \
             external-backups-ci \
