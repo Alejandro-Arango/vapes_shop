@@ -1073,6 +1073,40 @@ def validate_production_monitor(monitor_text):
     ]
 
 
+def validate_public_site_smoke(smoke_text):
+    required_fragments = (
+        "MAX_RESPONSE_BYTES",
+        "NoRedirectHandler",
+        "validate_base_url",
+        "PUBLIC_SITE_URL",
+        "/livez",
+        "/healthz",
+        "Vape Shop",
+        "contact-form",
+        "product-list",
+        "Content-Security-Policy",
+        "Permissions-Policy",
+        "Strict-Transport-Security",
+        "X-Content-Type-Options",
+        "Cross-Origin-Opener-Policy",
+        "Cross-Origin-Resource-Policy",
+        "Referrer-Policy",
+        "status\": \"configuration_error\"",
+        "PUBLIC_SMOKE_REPORT_PATH",
+        "report_error",
+        "output_path.is_symlink()",
+        "temporary_path.exists()",
+        "os.chmod(temporary_path, 0o600)",
+        "os.replace(temporary_path, output_path)",
+    )
+
+    return [
+        f"scripts/smoke_public_site.py no contiene {fragment}"
+        for fragment in required_fragments
+        if fragment not in smoke_text
+    ]
+
+
 def validate_production_monitor_schedule(
     monitor_service_text,
     monitor_timer_text,
@@ -1270,6 +1304,7 @@ def validate_codeowners(codeowners_text):
         "/scripts/fetch_release_manifest.py @Alejandro-Arango",
         "/scripts/check_host_readiness.py @Alejandro-Arango",
         "/scripts/monitor_production.py @Alejandro-Arango",
+        "/scripts/smoke_public_site.py @Alejandro-Arango",
         "/scripts/check_capacity_config.py @Alejandro-Arango",
         "/scripts/check_secret_files.py @Alejandro-Arango",
         "/scripts/check_zap_rules.py @Alejandro-Arango",
@@ -2957,6 +2992,9 @@ def find_capacity_findings(project_root):
         "production_monitor": (
             project_root / "scripts" / "monitor_production.py"
         ),
+        "public_site_smoke": (
+            project_root / "scripts" / "smoke_public_site.py"
+        ),
         "production_recovery": (
             project_root / "scripts" / "recover_production.py"
         ),
@@ -3165,6 +3203,11 @@ def find_capacity_findings(project_root):
     findings.extend(
         validate_production_monitor(
             paths["production_monitor"].read_text(encoding="utf-8")
+        )
+    )
+    findings.extend(
+        validate_public_site_smoke(
+            paths["public_site_smoke"].read_text(encoding="utf-8")
         )
     )
     findings.extend(

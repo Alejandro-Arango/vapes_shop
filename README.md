@@ -847,6 +847,30 @@ python .\scripts\monitor_production.py
 Remove-Item Env:PRODUCTION_HEALTH_URL
 ```
 
+Antes de publicar una release o al cerrar un despliegue, ejecuta el smoke
+externo de sitio publico. Este smoke valida la home, `/livez`, `/healthz`,
+marcadores funcionales basicos, `X-Request-ID`, cache de endpoints operativos
+y cabeceras de navegador como CSP, Permissions-Policy, CORP, COOP,
+X-Frame-Options, X-Content-Type-Options, Referrer-Policy y HSTS cuando la URL
+usa HTTPS.
+
+En local, contra el proxy de Compose:
+
+```powershell
+python .\scripts\smoke_public_site.py `
+  --url http://127.0.0.1:8080 `
+  --allow-http `
+  --output .\public-smoke-local.json
+```
+
+En produccion debe ejecutarse contra el dominio HTTPS real:
+
+```powershell
+python .\scripts\smoke_public_site.py `
+  --url https://DOMINIO_REAL `
+  --output .\public-smoke-production.json
+```
+
 El procedimiento de clasificación, diagnóstico, mitigación y cierre está en
 [docs/INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md).
 

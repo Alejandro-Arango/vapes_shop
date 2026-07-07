@@ -2385,6 +2385,56 @@ class CapacityConfigTests(unittest.TestCase):
             findings,
         )
 
+    def test_public_site_smoke_without_hsts_guard_is_rejected(self):
+        smoke_text = (
+            PROJECT_ROOT / "scripts" / "smoke_public_site.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = smoke_text.replace(
+            "Strict-Transport-Security",
+            "Unsafe-Transport-Header",
+            1,
+        )
+
+        findings = capacity.validate_public_site_smoke(invalid_text)
+
+        self.assertIn(
+            (
+                "scripts/smoke_public_site.py no contiene "
+                "Strict-Transport-Security"
+            ),
+            findings,
+        )
+
+    def test_public_site_smoke_without_public_markers_is_rejected(self):
+        smoke_text = (
+            PROJECT_ROOT / "scripts" / "smoke_public_site.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = smoke_text.replace("product-list", "catalog-list", 1)
+
+        findings = capacity.validate_public_site_smoke(invalid_text)
+
+        self.assertIn(
+            "scripts/smoke_public_site.py no contiene product-list",
+            findings,
+        )
+
+    def test_public_site_smoke_without_safe_report_write_is_rejected(self):
+        smoke_text = (
+            PROJECT_ROOT / "scripts" / "smoke_public_site.py"
+        ).read_text(encoding="utf-8")
+        invalid_text = smoke_text.replace(
+            "temporary_path.exists()",
+            "False",
+            1,
+        )
+
+        findings = capacity.validate_public_site_smoke(invalid_text)
+
+        self.assertIn(
+            "scripts/smoke_public_site.py no contiene temporary_path.exists()",
+            findings,
+        )
+
     def test_codeowners_without_operations_owner_is_rejected(self):
         codeowners_text = (
             PROJECT_ROOT / ".github" / "CODEOWNERS"
@@ -2418,6 +2468,26 @@ class CapacityConfigTests(unittest.TestCase):
             (
                 "CODEOWNERS no contiene "
                 "/scripts/monitor_production.py @Alejandro-Arango"
+            ),
+            findings,
+        )
+
+    def test_codeowners_without_public_smoke_owner_is_rejected(self):
+        codeowners_text = (
+            PROJECT_ROOT / ".github" / "CODEOWNERS"
+        ).read_text(encoding="utf-8")
+        invalid_text = codeowners_text.replace(
+            "/scripts/smoke_public_site.py @Alejandro-Arango\n",
+            "",
+            1,
+        )
+
+        findings = capacity.validate_codeowners(invalid_text)
+
+        self.assertIn(
+            (
+                "CODEOWNERS no contiene "
+                "/scripts/smoke_public_site.py @Alejandro-Arango"
             ),
             findings,
         )
