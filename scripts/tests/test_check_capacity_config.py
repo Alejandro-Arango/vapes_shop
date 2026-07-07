@@ -2392,7 +2392,6 @@ class CapacityConfigTests(unittest.TestCase):
         invalid_text = smoke_text.replace(
             "Strict-Transport-Security",
             "Unsafe-Transport-Header",
-            1,
         )
 
         findings = capacity.validate_public_site_smoke(invalid_text)
