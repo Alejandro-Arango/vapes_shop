@@ -1228,13 +1228,35 @@ class StoreApiTests(APITestCase):
             "whitenoise.storage.CompressedManifestStaticFilesStorage",
         )
         self.assertEqual(
-            settings.MIDDLEWARE[0:3],
+            settings.MIDDLEWARE[0:2],
             [
                 "store.middleware.RequestObservabilityMiddleware",
                 "django.middleware.security.SecurityMiddleware",
-                "whitenoise.middleware.WhiteNoiseMiddleware",
             ],
         )
+
+        middleware = settings.MIDDLEWARE
+        whitenoise_index = middleware.index(
+            "whitenoise.middleware.WhiteNoiseMiddleware"
+        )
+        session_index = middleware.index(
+            "django.contrib.sessions.middleware.SessionMiddleware"
+        )
+
+        # WhiteNoise sirve estaticos sin recorrer el resto de la cadena, por lo
+        # que las cabeceras de seguridad deben quedar por encima para cubrir
+        # tambien esas respuestas; WhiteNoise sigue por encima de la sesion.
+        for header_middleware in (
+            "store.middleware.PermissionsPolicyMiddleware",
+            "store.middleware.ContentSecurityPolicyMiddleware",
+            "store.middleware.CrossOriginResourcePolicyMiddleware",
+        ):
+            self.assertLess(
+                middleware.index(header_middleware),
+                whitenoise_index,
+            )
+
+        self.assertLess(whitenoise_index, session_index)
 
     def test_json_log_formatter_includes_request_context(self):
         token = set_request_id("trace-logging-123")

@@ -80,6 +80,8 @@ jobs:
           upload-release-assets: false
 
       - name: Escanear aplicacion
+        env:
+          GRYPE_CONFIG: ${{ github.workspace }}/.grype.yaml
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           sbom: app-sbom.spdx.json
@@ -103,6 +105,8 @@ jobs:
 
       - name: Escanear operaciones
         if: always()
+        env:
+          GRYPE_CONFIG: ${{ github.workspace }}/.grype.yaml
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           sbom: backup-sbom.spdx.json

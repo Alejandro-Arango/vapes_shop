@@ -1,6 +1,7 @@
 * @Alejandro-Arango
 
 /.github/ @Alejandro-Arango
+/.grype.yaml @Alejandro-Arango
 /SECURITY.md @Alejandro-Arango
 /compose*.yaml @Alejandro-Arango
 /compose*.env.example @Alejandro-Arango

@@ -393,11 +393,14 @@ DATA_UPLOAD_MAX_NUMBER_FILES = env_int(
 MIDDLEWARE = [
     "store.middleware.RequestObservabilityMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
-    "store.middleware.AdminAccessMiddleware",
+    # Las cabeceras de seguridad se colocan por encima de WhiteNoise para que
+    # tambien cubran las respuestas de archivos estaticos, que WhiteNoise sirve
+    # sin recorrer el resto de la cadena de middleware.
     "store.middleware.PermissionsPolicyMiddleware",
     "store.middleware.ContentSecurityPolicyMiddleware",
     "store.middleware.CrossOriginResourcePolicyMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "store.middleware.AdminAccessMiddleware",
     "store.middleware.ApiCacheControlMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

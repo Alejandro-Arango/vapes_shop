@@ -10,8 +10,10 @@ ARG RESTIC_SHA256_ARM64=e522ce6bf748d753fee8093e8ec59359972cf5b6bc65fc7c7cf38ae9
 USER root
 
 # coreutils lo provee coreutils-single en la imagen base; instalarlo aparte
-# rompe el depsolve por conflicto de version con el repo ol9.
-RUN microdnf install --assumeyes bzip2 ca-certificates python3 tar \
+# rompe el depsolve por conflicto de version con el repo ol9. Se actualizan los
+# paquetes de la base para incorporar los parches de seguridad publicados.
+RUN microdnf update --assumeyes \
+    && microdnf install --assumeyes bzip2 ca-certificates python3 tar \
     && microdnf clean all
 
 COPY --chmod=0555 docker/backup.sh docker/restore.sh /usr/local/bin/
