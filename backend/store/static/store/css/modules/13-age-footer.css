@@ -51,6 +51,29 @@ body.age-verification-locked {
     line-height: 1.5;
 }
 
+.age-modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+    margin: 4px auto 0;
+    max-width: 260px;
+}
+
+.age-modal-field label {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.age-modal-field input[type="date"] {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.06);
+    color: inherit;
+    font-size: 15px;
+}
+
 .age-feedback {
     min-height: 20px;
     color: #fca5a5;

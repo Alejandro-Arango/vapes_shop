@@ -8,7 +8,10 @@ import re
 from decimal import Decimal
 from uuid import UUID
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -85,15 +88,19 @@ def build_checkout_success_response(order, notifications=None, replay=False):
     return Response(
         {
             "message": (
-                "Compra recuperada correctamente"
+                "Pedido recuperado correctamente"
                 if replay
-                else "Compra realizada con exito"
+                else "Pedido registrado. Coordina el pago para completarlo."
             ),
             "order_id": order.id,
+            "status": order.status,
+            "payment_pending": order.status == "pendiente",
             "subtotal": float(order.subtotal_amount),
             "discount": float(order.discount_amount),
+            "tax_rate": float(order.tax_rate),
+            "tax": float(order.tax_amount),
             "coupon_code": order.coupon_code,
-            "total_pagado": float(order.total_amount),
+            "total": float(order.total_amount),
             "notifications": notifications or {
                 "customer_email_sent": False,
                 "admin_email_sent": False,
@@ -169,6 +176,60 @@ def parse_bool(value):
         return value.strip().lower() in ("1", "true", "yes", "on", "si")
 
     return value == 1
+
+
+def calculate_age(birth_date, today):
+    """
+    Nombre: calculate_age
+    Descripcion: Calcula la edad cumplida en anos a partir de la fecha de nacimiento.
+    """
+    return (
+        today.year
+        - birth_date.year
+        - ((today.month, today.day) < (birth_date.month, birth_date.day))
+    )
+
+
+def get_verified_birth_date(request):
+    """
+    Nombre: get_verified_birth_date
+    Descripcion: Valida la fecha de nacimiento del comprador y exige la edad
+    minima legal (Ley 2354 de 2024) en el servidor, sin confiar en el cliente.
+    Retorna: (date, error) con la fecha valida o un mensaje de rechazo.
+    """
+    raw_value = (
+        request.data.get("birthDate")
+        or request.data.get("birth_date")
+        or ""
+    )
+    raw_value = str(raw_value).strip()
+
+    if not raw_value:
+        return None, "Debes confirmar tu fecha de nacimiento para comprar."
+
+    birth_date = parse_date(raw_value)
+
+    if birth_date is None:
+        return None, "La fecha de nacimiento no es valida."
+
+    today = timezone.localdate()
+
+    if birth_date > today:
+        return None, "La fecha de nacimiento no es valida."
+
+    age = calculate_age(birth_date, today)
+
+    if age > 120:
+        return None, "La fecha de nacimiento no es valida."
+
+    min_age = getattr(settings, "STORE_MIN_PURCHASE_AGE", 18)
+
+    if age < min_age:
+        return None, (
+            f"Debes ser mayor de {min_age} anos para comprar en esta tienda."
+        )
+
+    return birth_date, ""
 
 
 def build_cart_audit_metadata(cart):
@@ -278,6 +339,8 @@ def serialize_order(order):
         "age_verified": order.age_verified,
         "subtotal": subtotal,
         "discount": discount,
+        "tax_rate": float(order.tax_rate or 0),
+        "tax": float(order.tax_amount or 0),
         "coupon_code": order.coupon_code,
         "total": order_total,
         "shipping": {
@@ -460,6 +523,21 @@ def checkout(request):
 
     cart = synced_cart
 
+    birth_date, age_error = get_verified_birth_date(request)
+
+    if age_error:
+        log_event(
+            "checkout_failed",
+            "Checkout rechazado por verificacion de edad.",
+            request=request,
+            severity="warning",
+        )
+
+        return Response(
+            {"error": age_error, "age_verification_failed": True},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     shipping_name = str(
         request.data.get("shippingName")
         or request.data.get("shipping_name")
@@ -566,25 +644,6 @@ def checkout(request):
 
         return Response(
             {"error": shipping_error},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    age_confirmed = parse_bool(
-        request.data.get("ageConfirmed")
-        or request.data.get("age_confirmed")
-    )
-
-    if not age_confirmed:
-        log_event(
-            "checkout_failed",
-            "Checkout rechazado por falta de confirmacion de edad.",
-            request=request,
-            severity="warning",
-            metadata={"cart_items": len(cart)},
-        )
-
-        return Response(
-            {"error": "Debes confirmar que cumples con la edad legal requerida"},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -787,19 +846,23 @@ def checkout(request):
                 order = Order.objects.create(
                     customer=customer,
                     checkout_token=idempotency_key,
-                    completed=True,
-                    status="pagado",
+                    completed=False,
+                    status="pendiente",
                     shipping_name=shipping_name,
                     shipping_phone=shipping_phone,
                     shipping_address=shipping_address,
                     shipping_city=shipping_city,
                     shipping_notes=shipping_notes,
                     age_verified=True,
+                    birth_date=birth_date,
+                    stock_committed=True,
                     coupon_code=(
                         pricing["coupon"]["code"] if pricing["coupon"] else ""
                     ),
                     subtotal_amount=pricing["subtotal"],
                     discount_amount=pricing["discount"],
+                    tax_rate=pricing["tax_rate"],
+                    tax_amount=pricing["tax"],
                     total_amount=pricing["total"],
                 )
         except IntegrityError:
@@ -817,9 +880,9 @@ def checkout(request):
             raise
         record_order_status(
             order,
-            status="pagado",
+            status="pendiente",
             changed_by=request.user,
-            note="Pedido creado desde checkout.",
+            note="Pedido creado desde checkout. Pago pendiente de confirmacion.",
         )
 
         for product, qty in order_lines:

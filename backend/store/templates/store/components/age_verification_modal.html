@@ -16,12 +16,24 @@ Descripcion: Componente modal para solicitar confirmacion de mayoria de edad ant
             <h2 id="age-verification-title">Verificacion de edad</h2>
 
             <p class="muted">
-                Este sitio contiene productos dirigidos exclusivamente a personas mayores de edad.
-                Confirma que cumples con la edad legal requerida para continuar.
+                Este sitio contiene productos de nicotina dirigidos exclusivamente
+                a personas mayores de 18 años (Ley 2354 de 2024). Ingresa tu fecha
+                de nacimiento para verificar tu edad y continuar.
             </p>
 
             <div class="age-warning">
-                El acceso y la compra están restringidos a usuarios mayores de edad según la normativa aplicable.
+                El acceso y la compra están restringidos a mayores de 18 años. Tu
+                fecha de nacimiento se usa solo para verificar la edad legal.
+            </div>
+
+            <div class="age-modal-field">
+                <label for="age-birthdate">Fecha de nacimiento</label>
+                <input
+                    id="age-birthdate"
+                    type="date"
+                    autocomplete="bday"
+                    required
+                />
             </div>
 
             <p
@@ -32,11 +44,11 @@ Descripcion: Componente modal para solicitar confirmacion de mayoria de edad ant
 
             <div class="age-modal-actions">
                 <button id="age-confirm-btn" class="btn" type="button">
-                    Soy mayor de edad
+                    Verificar y continuar
                 </button>
 
                 <button id="age-deny-btn" class="btn btn-outline" type="button">
-                    No soy mayor de edad
+                    Soy menor de edad
                 </button>
             </div>
         </div>

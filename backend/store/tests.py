@@ -8,7 +8,7 @@ import json
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import date, timedelta
 from io import BytesIO, StringIO
 from decimal import Decimal
 from unittest.mock import patch
@@ -3261,7 +3261,7 @@ class StoreApiTests(APITestCase):
             reverse("checkout"),
             {
                 "shippingAddressId": address.id,
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -3283,7 +3283,7 @@ class StoreApiTests(APITestCase):
             reverse("checkout"),
             {
                 "shippingAddressId": "9" * 5000,
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -4589,7 +4589,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -4614,7 +4614,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -4642,7 +4642,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -4668,7 +4668,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -4678,9 +4678,16 @@ class StoreApiTests(APITestCase):
         self.assertEqual(self.product.stock, 3)
 
         order = Order.objects.get(id=response.data["order_id"])
-        self.assertEqual(order.status, "pagado")
+        self.assertEqual(order.status, "pendiente")
+        self.assertFalse(order.completed)
+        self.assertTrue(order.stock_committed)
         self.assertEqual(order.shipping_city, "Medellin")
         self.assertTrue(order.age_verified)
+        self.assertEqual(order.birth_date, date(2000, 1, 1))
+        self.assertEqual(order.tax_rate, Decimal("0.1900"))
+        self.assertEqual(order.tax_amount, Decimal("3.19"))
+        self.assertEqual(order.total_amount, Decimal("20.00"))
+        self.assertTrue(response.data["payment_pending"])
         self.assertEqual(self.client.session.get("cart"), {})
         item = order.orderitem_set.get()
         self.assertEqual(item.product_name, "Producto prueba")
@@ -4695,7 +4702,7 @@ class StoreApiTests(APITestCase):
         self.assertEqual(movement.stock_after, 3)
         self.assertEqual(movement.user, user)
         history = order.status_history.get()
-        self.assertEqual(history.status, "pagado")
+        self.assertEqual(history.status, "pendiente")
         self.assertEqual(history.previous_status, "")
         self.assertEqual(history.changed_by, user)
         self.assertTrue(
@@ -4712,16 +4719,19 @@ class StoreApiTests(APITestCase):
         orders_response = self.client.get(reverse("my_orders"))
 
         self.assertEqual(orders_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(orders_response.data["orders"][0]["status"], "pagado")
-        self.assertEqual(orders_response.data["orders"][0]["status_label"], "Pagado")
+        self.assertEqual(orders_response.data["orders"][0]["status"], "pendiente")
+        self.assertEqual(
+            orders_response.data["orders"][0]["status_label"], "Pendiente"
+        )
         self.assertEqual(orders_response.data["orders"][0]["total"], 20.0)
+        self.assertEqual(orders_response.data["orders"][0]["tax"], 3.19)
         self.assertEqual(
             orders_response.data["orders"][0]["status_history"][0]["status"],
-            "pagado",
+            "pendiente",
         )
         self.assertEqual(
             orders_response.data["orders"][0]["status_history"][0]["note"],
-            "Pedido creado desde checkout.",
+            "Pedido creado desde checkout. Pago pendiente de confirmacion.",
         )
         self.assertEqual(
             orders_response.data["orders"][0]["items"][0]["product"]["name"],
@@ -4743,6 +4753,61 @@ class StoreApiTests(APITestCase):
         with self.assertRaises(ProtectedError):
             self.product.delete()
 
+    def _post_checkout_with_birth_date(self, birth_date_value):
+        user = self.create_user()
+        self.client.login(username=user.username, password="ClaveSegura123")
+        self.set_session_cart({str(self.product.id): 1})
+
+        payload = {
+            "shippingName": "Cliente Prueba",
+            "shippingPhone": "3000000000",
+            "shippingAddress": "Calle 1",
+            "shippingCity": "Medellin",
+            "shippingNotes": "",
+        }
+
+        if birth_date_value is not None:
+            payload["birthDate"] = birth_date_value
+
+        return self.client.post(reverse("checkout"), payload, format="json")
+
+    def test_checkout_rejects_underage_buyer(self):
+        today = timezone.localdate()
+        underage = date(today.year - 15, 1, 1).isoformat()
+
+        response = self._post_checkout_with_birth_date(underage)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(response.data.get("age_verification_failed"))
+        self.assertEqual(Order.objects.count(), 0)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 5)
+
+    def test_checkout_rejects_missing_birth_date(self):
+        response = self._post_checkout_with_birth_date(None)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(response.data.get("age_verification_failed"))
+        self.assertEqual(Order.objects.count(), 0)
+
+    def test_checkout_rejects_invalid_birth_date(self):
+        response = self._post_checkout_with_birth_date("no-es-fecha")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(response.data.get("age_verification_failed"))
+        self.assertEqual(Order.objects.count(), 0)
+
+    def test_checkout_accepts_buyer_exactly_of_legal_age(self):
+        today = timezone.localdate()
+        legal_age = date(today.year - 18, 1, 1).isoformat()
+
+        response = self._post_checkout_with_birth_date(legal_age)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        order = Order.objects.get(id=response.data["order_id"])
+        self.assertTrue(order.age_verified)
+        self.assertEqual(order.status, "pendiente")
+
     def test_checkout_reuses_order_with_same_idempotency_key(self):
         user = self.create_user()
         self.client.login(username=user.username, password="ClaveSegura123")
@@ -4754,7 +4819,7 @@ class StoreApiTests(APITestCase):
             "shippingAddress": "Calle 1",
             "shippingCity": "Medellin",
             "shippingNotes": "",
-            "ageConfirmed": True,
+            "birthDate": "2000-01-01",
         }
 
         first_response = self.client.post(
@@ -4822,7 +4887,7 @@ class StoreApiTests(APITestCase):
             "shippingAddress": "Calle 1",
             "shippingCity": "Medellin",
             "shippingNotes": "",
-            "ageConfirmed": True,
+            "birthDate": "2000-01-01",
         }
         calls = {"count": 0}
         real_get_existing = views_orders_module.get_existing_checkout_response
@@ -4880,7 +4945,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
             HTTP_IDEMPOTENCY_KEY="clave-no-valida",
@@ -4903,7 +4968,7 @@ class StoreApiTests(APITestCase):
             "shippingAddress": "Calle 1",
             "shippingCity": "Medellin",
             "shippingNotes": "",
-            "ageConfirmed": True,
+            "birthDate": "2000-01-01",
         }
 
         first_response = self.client.post(
@@ -4958,7 +5023,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "Porteria",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -5005,7 +5070,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -5053,7 +5118,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -5065,7 +5130,8 @@ class StoreApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["subtotal"], 20.0)
         self.assertEqual(response.data["discount"], 5.0)
-        self.assertEqual(response.data["total_pagado"], 15.0)
+        self.assertEqual(response.data["total"], 15.0)
+        self.assertEqual(response.data["tax"], 2.39)
         self.assertEqual(response.data["coupon_code"], "AHORRO5")
         self.assertEqual(order.coupon_code, "AHORRO5")
         self.assertEqual(order.subtotal_amount, Decimal("20.00"))
@@ -5104,7 +5170,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -5141,7 +5207,7 @@ class StoreApiTests(APITestCase):
             "shippingAddress": "Calle 1",
             "shippingCity": "Medellin",
             "shippingNotes": "",
-            "ageConfirmed": True,
+            "birthDate": "2000-01-01",
         }
 
         self.client.login(
@@ -5205,7 +5271,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -5624,7 +5690,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "",
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )
@@ -5648,7 +5714,7 @@ class StoreApiTests(APITestCase):
                 "shippingAddress": "Calle 1",
                 "shippingCity": "Medellin",
                 "shippingNotes": "x" * 501,
-                "ageConfirmed": True,
+                "birthDate": "2000-01-01",
             },
             format="json",
         )

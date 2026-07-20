@@ -14,11 +14,13 @@ Descripcion: Componente modal que muestra el resumen visual de una compra realiz
                 ✓
             </div>
 
-            <h2>Compra realizada con éxito</h2>
+            <h2>Pedido registrado</h2>
 
             <p class="muted">
-                Tu pedido fue creado correctamente. Puedes revisar el historial o seguir explorando productos.
+                Tu pedido fue registrado correctamente. Puedes revisar el historial o seguir explorando productos.
             </p>
+
+            <p id="checkout-success-note" class="muted" aria-live="polite"></p>
 
             <div class="checkout-success-summary">
                 <div>
@@ -27,7 +29,7 @@ Descripcion: Componente modal que muestra el resumen visual de una compra realiz
                 </div>
 
                 <div>
-                    <span>Total pagado</span>
+                    <span>Total (IVA incluido)</span>
                     <strong id="checkout-success-total">$0.00</strong>
                 </div>
             </div>

@@ -297,22 +297,62 @@ function formatOrderStatus(order) {
 // =============================================================================
 
 const AGE_VERIFICATION_KEY = "vapeShopAgeVerified";
+const AGE_BIRTHDATE_KEY = "vapeShopBirthDate";
+const MIN_PURCHASE_AGE = 18;
 let ageVerifiedInSession = false;
+let verifiedBirthDate = "";
 let currentUser = null;
 
 /*
+ * Nombre: calculateAgeFromISO
+ * Descripcion: Calcula la edad cumplida a partir de una fecha ISO (YYYY-MM-DD).
+ * Retorna: edad en anos o null si la fecha no es valida.
+ */
+function calculateAgeFromISO(isoValue) {
+    if (!isoValue || !/^\d{4}-\d{2}-\d{2}$/.test(isoValue)) return null;
+
+    const birth = new Date(`${isoValue}T00:00:00`);
+
+    if (Number.isNaN(birth.getTime())) return null;
+
+    const today = new Date();
+
+    if (birth > today) return null;
+
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDelta = today.getMonth() - birth.getMonth();
+
+    if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < birth.getDate())) {
+        age -= 1;
+    }
+
+    return age;
+}
+
+/*
+ * Nombre: getStoredBirthDate
+ * Descripcion: Recupera la fecha de nacimiento verificada guardada localmente.
+ * Retorna: cadena ISO o cadena vacia si no hay una valida.
+ */
+function getStoredBirthDate() {
+    try {
+        return localStorage.getItem(AGE_BIRTHDATE_KEY) || verifiedBirthDate;
+    } catch {
+        return verifiedBirthDate;
+    }
+}
+
+/*
  * Nombre: hasAgeVerification
- * Descripcion: Comprueba si el usuario ya confirmo que cumple con la edad legal requerida.
- * Retorna: true si la confirmacion esta guardada, false en caso contrario.
+ * Descripcion: Comprueba si el usuario verifico una fecha de nacimiento con la edad minima legal.
+ * Retorna: true si la verificacion es valida, false en caso contrario.
  */
 function hasAgeVerification() {
-    if (ageVerifiedInSession) return true;
+    const age = calculateAgeFromISO(getStoredBirthDate());
 
-    try {
-        return localStorage.getItem(AGE_VERIFICATION_KEY) === "true";
-    } catch {
-        return false;
-    }
+    if (age !== null && age >= MIN_PURCHASE_AGE) return true;
+
+    return ageVerifiedInSession;
 }
 
 /*
@@ -321,16 +361,22 @@ function hasAgeVerification() {
  */
 function showAgeVerification() {
     const modal = document.getElementById("age-verification-modal");
-    const confirmBtn = document.getElementById("age-confirm-btn");
+    const birthInput = document.getElementById("age-birthdate");
 
     if (!modal) return;
+
+    if (birthInput) {
+        const stored = getStoredBirthDate();
+
+        if (stored) birthInput.value = stored;
+    }
 
     modal.setAttribute("aria-hidden", "false");
     modal.classList.add("open");
     document.body.classList.add("age-verification-locked");
 
     requestAnimationFrame(() => {
-        confirmBtn?.focus();
+        birthInput?.focus();
     });
 }
 
@@ -358,16 +404,40 @@ function hideAgeVerification() {
  * Descripcion: Guarda la confirmacion de mayoria de edad y permite usar la tienda.
  */
 function confirmAgeVerification() {
+    const birthInput = document.getElementById("age-birthdate");
+    const feedback = document.getElementById("age-verification-feedback");
+    const birthValue = birthInput?.value || "";
+    const age = calculateAgeFromISO(birthValue);
+
+    if (age === null) {
+        if (feedback) {
+            feedback.textContent = "Ingresa una fecha de nacimiento valida.";
+        }
+
+        return;
+    }
+
+    if (age < MIN_PURCHASE_AGE) {
+        if (feedback) {
+            feedback.textContent =
+                `Debes ser mayor de ${MIN_PURCHASE_AGE} anos para usar esta tienda.`;
+        }
+
+        return;
+    }
+
     ageVerifiedInSession = true;
+    verifiedBirthDate = birthValue;
 
     try {
         localStorage.setItem(AGE_VERIFICATION_KEY, "true");
+        localStorage.setItem(AGE_BIRTHDATE_KEY, birthValue);
     } catch {
-        // Si localStorage no esta disponible, la confirmacion se conserva solo en la sesion actual.
+        // Si localStorage no esta disponible, la verificacion se conserva solo en la sesion actual.
     }
 
     hideAgeVerification();
-    showToast("Verificacion de edad confirmada.", "success");
+    showToast("Edad verificada correctamente.", "success");
 }
 
 /*
@@ -378,15 +448,17 @@ function denyAgeVerification() {
     const feedback = document.getElementById("age-verification-feedback");
 
     ageVerifiedInSession = false;
+    verifiedBirthDate = "";
 
     try {
         localStorage.removeItem(AGE_VERIFICATION_KEY);
+        localStorage.removeItem(AGE_BIRTHDATE_KEY);
     } catch {
         // Se conserva el bloqueo visual aunque no se pueda modificar localStorage.
     }
 
     if (feedback) {
-        feedback.textContent = "No puedes continuar sin confirmar que cumples con la edad legal requerida.";
+        feedback.textContent = "No puedes continuar sin ser mayor de edad segun la normativa aplicable.";
     }
 }
 
@@ -569,11 +641,12 @@ function showCheckoutSuccess(data) {
     const modal = document.getElementById("checkout-success-modal");
     const orderEl = document.getElementById("checkout-success-order");
     const totalEl = document.getElementById("checkout-success-total");
+    const noteEl = document.getElementById("checkout-success-note");
 
     if (!modal) return;
 
     const orderId = data?.order_id || "---";
-    const total = Number(data?.total_pagado || 0);
+    const total = Number(data?.total ?? data?.total_pagado ?? 0);
 
     if (orderEl) {
         orderEl.textContent = `#${orderId}`;
@@ -581,6 +654,12 @@ function showCheckoutSuccess(data) {
 
     if (totalEl) {
         totalEl.textContent = `$${total.toFixed(2)}`;
+    }
+
+    if (noteEl) {
+        noteEl.textContent = data?.payment_pending
+            ? "Tu pedido quedo registrado con pago pendiente. Te contactaremos para coordinar el pago y el envio."
+            : "";
     }
 
     modal.setAttribute("aria-hidden", "false");
@@ -3398,6 +3477,19 @@ async function updateCartUI() {
 
     countEl.textContent = String(count);
     totalEl.textContent = `$${finalTotal.toFixed(2)}`;
+
+    const taxNoteEl = document.getElementById("cart-tax-note");
+
+    if (taxNoteEl) {
+        const taxValue = cartData ? Number(cartData.tax || 0) : 0;
+        const taxRate = cartData ? Number(cartData.tax_rate || 0) : 0;
+
+        taxNoteEl.textContent =
+            taxValue > 0
+                ? `IVA incluido (${Math.round(taxRate * 100)}%): $${taxValue.toFixed(2)}`
+                : "";
+    }
+
     renderCouponState(cartData || {
         subtotal: calculatedTotal,
         discount: 0,
@@ -4344,7 +4436,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 credentials: "include",
                 body: JSON.stringify({
                     ...shippingData,
-                    ageConfirmed: hasAgeVerification(),
+                    birthDate: getStoredBirthDate(),
                 }),
             });
 

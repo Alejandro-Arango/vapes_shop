@@ -4,8 +4,9 @@ Descripcion: Utilidades para validar cupones y calcular totales de carrito y che
 Dependencias: Decimal, timezone de Django y modelo DiscountCode
 """
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from django.conf import settings
 from django.utils import timezone
 
 from .models import DiscountCode
@@ -13,6 +14,37 @@ from .models import DiscountCode
 
 COUPON_SESSION_KEY = "coupon_code"
 MONEY_QUANT = Decimal("0.01")
+
+
+def get_iva_rate():
+    """
+    Nombre: get_iva_rate
+    Descripcion: Obtiene la tarifa de IVA configurada como Decimal no negativo.
+    """
+    raw_rate = getattr(settings, "STORE_IVA_RATE", "0.19")
+
+    try:
+        rate = Decimal(str(raw_rate))
+    except (InvalidOperation, TypeError, ValueError):
+        rate = Decimal("0.19")
+
+    return rate if rate >= 0 else Decimal("0.19")
+
+
+def calculate_included_tax(total, rate):
+    """
+    Nombre: calculate_included_tax
+    Descripcion: Calcula la porcion de IVA ya contenida en un total con impuesto
+    incluido (convencion B2C en Colombia), sin sumarlo aparte al total.
+    """
+    total = quantize_money(total)
+
+    if rate <= 0 or total <= 0:
+        return Decimal("0.00")
+
+    tax = total * rate / (Decimal("1") + rate)
+
+    return quantize_money(tax)
 
 
 def normalize_coupon_code(value):
@@ -108,6 +140,8 @@ def build_pricing(subtotal, coupon_code="", lock=False):
     discount, coupon_error = get_discount_code(coupon_code, subtotal, lock=lock)
     discount_amount = calculate_discount_amount(discount, subtotal)
     total = quantize_money(subtotal - discount_amount)
+    tax_rate = get_iva_rate()
+    tax_amount = calculate_included_tax(total, tax_rate)
     coupon_payload = None
 
     if discount:
@@ -121,6 +155,8 @@ def build_pricing(subtotal, coupon_code="", lock=False):
     return {
         "subtotal": subtotal,
         "discount": discount_amount,
+        "tax_rate": tax_rate,
+        "tax": tax_amount,
         "total": total,
         "coupon": coupon_payload,
         "coupon_error": coupon_error,
@@ -136,6 +172,8 @@ def pricing_response_payload(pricing):
     return {
         "subtotal": float(pricing["subtotal"]),
         "discount": float(pricing["discount"]),
+        "tax_rate": float(pricing["tax_rate"]),
+        "tax": float(pricing["tax"]),
         "total": float(pricing["total"]),
         "coupon": pricing["coupon"],
         "coupon_error": pricing["coupon_error"],

@@ -140,6 +140,16 @@
     font-size: 16px;
 }
 
+.cart-tax-note {
+    font-size: 13px;
+    margin-bottom: 10px;
+    min-height: 16px;
+}
+
+.cart-tax-note:empty {
+    display: none;
+}
+
 .coupon-form {
     display: flex;
     flex-direction: column;

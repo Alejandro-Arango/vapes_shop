@@ -714,6 +714,8 @@ class Order(models.Model):
     shipped_at = models.DateTimeField(blank=True, null=True)
     delivered_at = models.DateTimeField(blank=True, null=True)
     age_verified = models.BooleanField(default=False)
+    birth_date = models.DateField(null=True, blank=True)
+    stock_committed = models.BooleanField(default=False)
     coupon_code = models.CharField(max_length=40, blank=True)
     subtotal_amount = models.DecimalField(
         max_digits=10,
@@ -721,6 +723,16 @@ class Order(models.Model):
         default=0,
     )
     discount_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+    tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=0,
+    )
+    tax_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
@@ -773,6 +785,10 @@ class Order(models.Model):
             models.CheckConstraint(
                 condition=models.Q(total_amount__gte=0),
                 name="order_total_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(tax_amount__gte=0),
+                name="order_tax_non_negative",
             ),
             models.CheckConstraint(
                 condition=models.Q(discount_amount__lte=models.F("subtotal_amount")),
@@ -836,7 +852,11 @@ class Order(models.Model):
         Descripcion: Indica si al cancelar se debe devolver inventario descontado.
         Retorna: True si la orden ya afecto inventario, false en caso contrario.
         """
-        return self.completed or self.status == "pagado"
+        return (
+            self.stock_committed
+            or self.completed
+            or self.status == "pagado"
+        )
 
     def restore_items_stock(self, user=None):
         """

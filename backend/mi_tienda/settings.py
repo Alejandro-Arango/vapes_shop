@@ -712,6 +712,15 @@ CONTACT_WHATSAPP_NUMBER = env_digits(
     max_digits=15,
 )
 
+# Tarifa de IVA aplicada al checkout. En Colombia la tarifa general es 19% y el
+# precio mostrado al consumidor final ya incluye el impuesto (IVA incluido); el
+# checkout desglosa la porcion de IVA contenida en el total, sin sumarla aparte.
+# Confirmar el tratamiento fiscal con el contador antes de facturar.
+STORE_IVA_RATE = os.environ.get("DJANGO_STORE_IVA_RATE", "0.19")
+
+# Edad minima legal para comprar vapeadores/nicotina (Ley 2354 de 2024).
+STORE_MIN_PURCHASE_AGE = env_int("DJANGO_STORE_MIN_PURCHASE_AGE", 18, minimum=0)
+
 DEFAULT_FROM_EMAIL = os.environ.get(
     "DEFAULT_FROM_EMAIL",
     "Vape Shop <no-reply@vape-shop.local>",
