@@ -41,7 +41,7 @@ def build_whatsapp_contact(contact_data):
         f"Telefono: {phone}\n"
         f"Mensaje: {lead_message}"
     )
-    phone_number = getattr(settings, "CONTACT_WHATSAPP_NUMBER", "573016604375")
+    phone_number = getattr(settings, "CONTACT_WHATSAPP_NUMBER", "573042914452")
     whatsapp_url = f"https://wa.me/{phone_number}?text={quote(message)}"
 
     return whatsapp_url, message

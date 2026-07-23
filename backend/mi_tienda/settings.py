@@ -474,6 +474,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "store.context_processors.store_settings",
             ],
         },
     },
@@ -707,7 +708,7 @@ TRUST_X_FORWARDED_FOR = env_bool("DJANGO_TRUST_X_FORWARDED_FOR", False)
 
 CONTACT_WHATSAPP_NUMBER = env_digits(
     "CONTACT_WHATSAPP_NUMBER",
-    "573016604375",
+    "573042914452",
     min_digits=7,
     max_digits=15,
 )
