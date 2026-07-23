@@ -30,6 +30,19 @@ services:
   web:
     image: ${APP_IMAGE:?Define APP_IMAGE con una referencia por digest}
     environment: *production-environment
+    # El healthcheck de la imagen consulta 127.0.0.1 con ese mismo Host, que en
+    # produccion no puede figurar en ALLOWED_HOSTS. Se sobrescribe para enviar el
+    # primer dominio productivo como cabecera Host y asi pasar la verificacion.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os; from urllib.request import Request, urlopen; host=os.environ.get('DJANGO_ALLOWED_HOSTS','localhost').split(',')[0].strip(); response=urlopen(Request('http://127.0.0.1:8000/api/health/', headers={'Host': host, 'X-Forwarded-Proto': 'https'}), timeout=3); raise SystemExit(0 if response.status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   backup:
     image: ${BACKUP_IMAGE:?Define BACKUP_IMAGE con una referencia por digest}
