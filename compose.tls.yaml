@@ -1,0 +1,40 @@
+# Capa TLS publica para produccion. Se combina sobre compose.yaml y
+# compose.production.yaml:
+#
+#   docker compose \
+#     -f compose.yaml -f compose.production.yaml -f compose.tls.yaml ...
+#
+# Caddy expone 80/443, obtiene certificados Let's Encrypt automaticamente y
+# reenvia al proxy nginx interno. El proxy nginx solo se publica en la interfaz
+# de loopback del host (APP_BIND_ADDRESS=127.0.0.1), de modo que 8080 no queda
+# expuesto a internet; el trafico publico entra unicamente por Caddy.
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      proxy:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: ${CADDY_MEMORY_LIMIT:-128m}
+    cpus: ${CADDY_CPU_LIMIT:-0.25}
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    stop_grace_period: 30s
+
+volumes:
+  caddy_data:
+  caddy_config:

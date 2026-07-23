@@ -1,0 +1,13 @@
+# Proxy TLS publico. Caddy termina HTTPS con certificados Let's Encrypt
+# automaticos (y renovacion) para el dominio y reenvia al proxy nginx interno.
+# Caddy agrega X-Forwarded-For y X-Forwarded-Proto=https; nginx recupera la IP
+# real del cliente via realip (ver docker/nginx.conf).
+
+vapeshopcol.com, www.vapeshopcol.com {
+	encode zstd gzip
+
+	reverse_proxy proxy:8080 {
+		header_up Host {host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
