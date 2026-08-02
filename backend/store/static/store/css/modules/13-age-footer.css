@@ -101,6 +101,19 @@ body.age-verification-locked {
     align-items: start;
 }
 
+/*
+ * Colapso responsive del footer. Debe vivir en este modulo (el ultimo que se
+ * importa) para ganarle en orden a la regla de 3 columnas; un @media en un
+ * modulo anterior no la sobreescribe porque los media queries no suman
+ * especificidad y esta regla base viene despues en el orden de carga.
+ */
+@media (max-width: 900px) {
+    .footer-inner {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+}
+
 .footer-brand p {
     max-width: 420px;
     margin-top: 14px;
