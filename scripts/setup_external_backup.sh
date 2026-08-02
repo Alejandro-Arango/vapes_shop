@@ -76,6 +76,16 @@ set_kv BACKUP_REQUIRE_EXTERNAL true
 set_kv EXTERNAL_BACKUP_HOST vapeshopcol
 set_kv EXTERNAL_BACKUP_CHECK_SUBSET 100%
 
+# Los contenedores de backup corren como root con cap_drop ALL, por lo que solo
+# pueden escribir en directorios cuyo propietario sea root. La provision los creo
+# como vapes-shop; se ajusta la propiedad a root con el grupo de servicio (bit
+# setgid) para que el contenedor escriba y el usuario de systemd pueda inspeccionar.
+for dir in "$APP_ROOT/backups" "$APP_ROOT/external-backups"; do
+  [[ -d "$dir" ]] || install -d "$dir"
+  chown root:"$APP_GROUP" "$dir"
+  chmod 2770 "$dir"
+done
+
 echo "OK: secretos escritos y entorno actualizado."
 echo "Repositorio: s3:https://${ENDPOINT}/${BUCKET}"
 echo "Siguiente: inicializar el repositorio y hacer el primer backup."
