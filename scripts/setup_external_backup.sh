@@ -76,14 +76,15 @@ set_kv BACKUP_REQUIRE_EXTERNAL true
 set_kv EXTERNAL_BACKUP_HOST vapeshopcol
 set_kv EXTERNAL_BACKUP_CHECK_SUBSET 100%
 
-# Los contenedores de backup corren como root con cap_drop ALL, por lo que solo
-# pueden escribir en directorios cuyo propietario sea root. La provision los creo
-# como vapes-shop; se ajusta la propiedad a root con el grupo de servicio (bit
-# setgid) para que el contenedor escriba y el usuario de systemd pueda inspeccionar.
+# Los contenedores de backup corren como root con cap_drop ALL. Los archivos
+# deben pertenecer a root:root para que la verificacion de Restic pueda
+# reasignar propiedad a 0:0 durante el restore sin CAP_CHOWN (un grupo distinto
+# fallaria). El directorio queda 0755 para que el usuario de systemd (vapes-shop)
+# pueda inspeccionar los respaldos por stat sin leer su contenido.
 for dir in "$APP_ROOT/backups" "$APP_ROOT/external-backups"; do
   [[ -d "$dir" ]] || install -d "$dir"
-  chown root:"$APP_GROUP" "$dir"
-  chmod 2770 "$dir"
+  chown -R root:root "$dir"
+  chmod 0755 "$dir"
 done
 
 echo "OK: secretos escritos y entorno actualizado."
