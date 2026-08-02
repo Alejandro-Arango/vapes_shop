@@ -26,7 +26,12 @@ body.light-mode .header p {
 }
 
 body.light-mode .hero-text h1 span {
-    color: var(--accent);
+    background-image: var(--neon-gradient-light);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(124, 58, 237, 0.22));
 }
 
 body.light-mode .product-card {

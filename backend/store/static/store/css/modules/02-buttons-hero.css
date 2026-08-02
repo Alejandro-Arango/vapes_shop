@@ -124,6 +124,16 @@
     letter-spacing: 0;
 }
 
+/* Palabra destacada con degradado neon y glow (blanco -> naranja -> purpura). */
+.hero-text h1 span {
+    background-image: var(--neon-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: var(--neon-glow);
+}
+
 .hero-text p {
     max-width: 55ch;
     margin-bottom: 1.5rem;

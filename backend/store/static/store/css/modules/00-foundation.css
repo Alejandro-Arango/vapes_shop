@@ -9,19 +9,26 @@
  * Descripcion: Centraliza colores, sombras y medidas reutilizables del sitio.
  */
 :root {
-    --accent: #123f35;
-    --accent-strong: #0d2f28;
-    --accent-soft: #e8f2ef;
+    /* Paleta inspirada en el logo neon: azul noche, blanco, naranja y purpura. */
+    --accent: #7c3aed;
+    --accent-strong: #6d28d9;
+    --accent-soft: #f3e8ff;
+    --accent-bright: #a855f7;
     --warning-accent: #ff6a2a;
-    --bg-dark: #111c1a;
-    --card-dark: #182826;
-    --muted-dark: #e0e0e0;
-    --bg-light: #f7f8f6;
+    --bg-dark: #0e1230;
+    --card-dark: #191d47;
+    --muted-dark: #c7cbe6;
+    --bg-light: #f6f7fb;
     --card-light: #ffffff;
-    --muted-light: #666f6b;
+    --muted-light: #5a6072;
     --success: #25d366;
     --glass: rgba(255, 255, 255, 0.06);
-    --shadow: 0 16px 40px rgba(18, 63, 53, 0.14);
+    --shadow: 0 16px 40px rgba(124, 58, 237, 0.20);
+    /* Detalle neon para titulos destacados (estilo Aura Sound). */
+    --neon-gradient: linear-gradient(90deg, #ffffff 0%, #ff8a3d 46%, #b06bff 100%);
+    --neon-gradient-light: linear-gradient(90deg, #ff6a2a 0%, #7c3aed 100%);
+    --neon-glow: drop-shadow(0 0 16px rgba(176, 107, 255, 0.45))
+        drop-shadow(0 0 30px rgba(255, 138, 61, 0.22));
     --max-width: 1200px;
 }
 
