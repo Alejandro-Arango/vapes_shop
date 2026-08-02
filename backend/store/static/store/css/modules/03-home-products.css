@@ -295,3 +295,119 @@ body.light-mode .price p {
     color: #f87171;
     font-weight: 700;
 }
+
+/*
+ * Nombre: Confianza y preguntas frecuentes
+ * Descripcion: Secciones de beneficios (tarjetas) y FAQ (acordeon nativo)
+ * para reforzar la confianza. Estilo alineado al tema neon del sitio.
+ */
+.trust {
+    padding: 40px 20px 10px;
+}
+
+.trust h2,
+.faq h2 {
+    font-size: clamp(28px, 4vw, 40px);
+    margin: 8px 0 28px;
+    line-height: 1.15;
+}
+
+.trust-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+}
+
+.trust-card {
+    background: var(--card-dark);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 26px 24px;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.trust-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow: 0 18px 40px rgba(124, 58, 237, 0.22);
+}
+
+.trust-icon {
+    font-size: 26px;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.trust-card h3 {
+    font-size: 19px;
+    margin-bottom: 8px;
+}
+
+.trust-card p {
+    color: var(--muted-dark);
+    line-height: 1.6;
+}
+
+.faq {
+    padding: 30px 20px 40px;
+}
+
+.faq-list {
+    display: grid;
+    gap: 14px;
+}
+
+.faq-item {
+    background: var(--card-dark);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 2px 20px;
+}
+
+.faq-item summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 16px 0;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.faq-item summary::-webkit-details-marker {
+    display: none;
+}
+
+.faq-item summary::before {
+    content: "\25B8";
+    color: var(--accent);
+    transition: transform 0.2s ease;
+}
+
+.faq-item[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.faq-item p {
+    padding: 0 0 18px 22px;
+    color: var(--muted-dark);
+    line-height: 1.6;
+}
+
+body.light-mode .trust-card,
+body.light-mode .faq-item {
+    background: var(--card-light);
+    border-color: #e5e7f0;
+    box-shadow: var(--shadow);
+}
+
+body.light-mode .trust-card p,
+body.light-mode .faq-item p {
+    color: var(--muted-light);
+}
+
+@media (max-width: 900px) {
+    .trust-grid {
+        grid-template-columns: 1fr;
+    }
+}
