@@ -211,8 +211,8 @@ body.light-mode #continue-shopping-btn {
 }
 
 body.dark-mode .menu {
-    background: rgba(18, 31, 28, 0.94);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(13, 13, 19, 0.94);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 body.dark-mode .header {

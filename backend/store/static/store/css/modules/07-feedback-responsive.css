@@ -285,7 +285,7 @@ input:focus {
     }
 
     body.dark-mode .navbar {
-        background: rgba(12, 20, 18, 0.96);
+        background: rgba(15, 15, 21, 0.96);
     }
 
     #menu:checked ~ .navbar {
@@ -330,6 +330,16 @@ input:focus {
         width: 32px;
         height: 32px;
         font-size: 12px;
+    }
+
+    .header-controls {
+        gap: 8px;
+    }
+
+    /* En movil el disparador de cuenta se vuelve solo icono para ahorrar espacio. */
+    .account-trigger span,
+    .account-caret {
+        display: none;
     }
 
     .contact {

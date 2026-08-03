@@ -613,7 +613,7 @@ function clearFavoritesFeedback() {
     feedback.style.display = "none";
 }
 
-function showContactFeedback(message, type = "success") {
+function showContactFeedback(message, type = "success", whatsappUrl = "") {
     const feedback = document.getElementById("contact-feedback");
 
     if (!feedback) return;
@@ -621,6 +621,20 @@ function showContactFeedback(message, type = "success") {
     feedback.textContent = message;
     feedback.className = `contact-feedback ${type}`;
     feedback.style.display = "block";
+
+    // Ofrecemos WhatsApp como accion opcional que el usuario decide tocar, en
+    // lugar de abrir una pestaña automaticamente (eso dejaba la pantalla en
+    // negro en moviles). Un clic real del usuario abre wa.me de forma fiable.
+    if (whatsappUrl) {
+        const link = document.createElement("a");
+        link.href = whatsappUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.className = "btn contact-whatsapp-cta";
+        link.textContent = "Continuar por WhatsApp";
+        feedback.appendChild(document.createElement("br"));
+        feedback.appendChild(link);
+    }
 }
 
 function clearContactFeedback() {
@@ -713,17 +727,19 @@ function hideOrderCancelConfirm() {
  */
 function setAuthUI(isLoggedIn, user = null) {
     const btnLogin = document.getElementById("open-auth");
-    const btnLogout = document.getElementById("logout-btn");
+    const accountMenu = document.getElementById("account-menu");
     const labelUser = document.getElementById("user-label");
-    const btnProfile = document.getElementById("profile-btn");
-    const btnMyOrders = document.getElementById("my-orders-btn");
-    const btnFavorites = document.getElementById("favorites-btn");
 
     if (btnLogin) btnLogin.style.display = isLoggedIn ? "none" : "inline-flex";
-    if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
-    if (btnProfile) btnProfile.style.display = isLoggedIn ? "inline-flex" : "none";
-    if (btnMyOrders) btnMyOrders.style.display = isLoggedIn ? "inline-flex" : "none";
-    if (btnFavorites) btnFavorites.style.display = isLoggedIn ? "inline-flex" : "none";
+    if (accountMenu) {
+        accountMenu.style.display = isLoggedIn ? "inline-flex" : "none";
+        if (!isLoggedIn) {
+            accountMenu.classList.remove("open");
+            document
+                .getElementById("account-trigger")
+                ?.setAttribute("aria-expanded", "false");
+        }
+    }
 
     currentUser = isLoggedIn ? user : null;
     renderShippingAddressBook();
@@ -3867,6 +3883,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     const favoritesModal = document.getElementById("favorites-modal");
     const favoritesClose = document.getElementById("favorites-close");
 
+    const accountMenu = document.getElementById("account-menu");
+    const accountTrigger = document.getElementById("account-trigger");
+    const accountDropdown = document.getElementById("account-dropdown");
+
+    function closeAccountMenu() {
+        accountMenu?.classList.remove("open");
+        accountTrigger?.setAttribute("aria-expanded", "false");
+    }
+
+    accountTrigger?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const isOpen = accountMenu?.classList.toggle("open");
+        accountTrigger.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+
+    // Cerrar el menu al elegir una opcion, al hacer clic fuera o con Escape.
+    accountDropdown?.addEventListener("click", (event) => {
+        if (event.target.closest(".account-item")) closeAccountMenu();
+    });
+
+    document.addEventListener("click", (event) => {
+        if (accountMenu && !accountMenu.contains(event.target)) closeAccountMenu();
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeAccountMenu();
+    });
+
     const checkoutSuccessModal = document.getElementById("checkout-success-modal");
     const checkoutSuccessClose = document.getElementById("checkout-success-close");
     const checkoutSuccessOrders = document.getElementById("checkout-success-orders");
@@ -4919,16 +4963,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        const whatsappWindow = window.open(
-            "about:blank",
-            "_blank",
-            "noopener,noreferrer"
-        );
-
-        if (whatsappWindow) {
-            whatsappWindow.opener = null;
-        }
-
         if (contactSubmit) {
             contactSubmit.disabled = true;
             contactSubmit.value = "Enviando...";
@@ -4941,22 +4975,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             showContactFeedback(
                 data?.message || "Gracias. Registramos tu correo correctamente.",
-                "success"
+                "success",
+                data?.whatsapp_url || ""
             );
             showToast("Contacto registrado correctamente.", "success");
-
-            if (data?.whatsapp_url) {
-                if (whatsappWindow) {
-                    whatsappWindow.location.href = data.whatsapp_url;
-                } else {
-                    window.open(data.whatsapp_url, "_blank", "noopener,noreferrer");
-                }
-            }
         } catch (err) {
-            if (whatsappWindow && !whatsappWindow.closed) {
-                whatsappWindow.close();
-            }
-
             showContactFeedback(
                 err.message || "No se pudo registrar el contacto.",
                 "error"

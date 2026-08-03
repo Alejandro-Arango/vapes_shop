@@ -143,5 +143,125 @@
 .header-controls {
     display: flex;
     align-items: center;
+    gap: 12px;
+}
+
+/*
+ * Nombre: Menu de cuenta
+ * Descripcion: Agrupa las acciones posteriores al login (pedidos, perfil,
+ * favoritos, cerrar sesion) en un desplegable "Mi cuenta" para ordenar el
+ * encabezado. Los iconos de carrito y tema quedan separados en .header-tools.
+ */
+.account-menu {
+    position: relative;
+    display: inline-flex;
+}
+
+.account-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.account-caret {
+    width: 0.85em;
+    height: 0.85em;
+    transition: transform 0.2s ease;
+}
+
+.account-menu.open .account-caret {
+    transform: rotate(180deg);
+}
+
+.account-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 208px;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #17171f 0%, #101015 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 20px 46px rgba(0, 0, 0, 0.5);
+    z-index: 60;
+}
+
+.account-menu.open .account-dropdown {
+    display: flex;
+}
+
+.account-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    padding: 11px 13px;
+    border: none;
+    border-radius: 11px;
+    background: transparent;
+    color: #f4f5fa;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease;
+}
+
+.account-item .icon {
+    color: var(--accent-bright);
+}
+
+.account-item:hover {
+    background: rgba(124, 58, 237, 0.2);
+    color: #fff;
+}
+
+.account-item-danger {
+    margin-top: 4px;
+    color: #fca5a5;
+}
+
+.account-item-danger:hover {
+    background: rgba(239, 68, 68, 0.16);
+    color: #fecaca;
+}
+
+.header-tools {
+    display: inline-flex;
+    align-items: center;
     gap: 10px;
+    padding-left: 12px;
+    border-left: 1px solid rgba(124, 58, 237, 0.18);
+}
+
+body.light-mode .account-dropdown {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 46px rgba(0, 0, 0, 0.18);
+}
+
+body.light-mode .account-item {
+    color: #222;
+}
+
+body.light-mode .account-item:hover {
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--accent);
+}
+
+body.light-mode .account-item-danger {
+    color: #dc2626;
+}
+
+body.light-mode .account-item-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #b91c1c;
+}
+
+body.light-mode .header-tools {
+    border-left-color: rgba(0, 0, 0, 0.1);
 }

@@ -230,4 +230,25 @@ textarea:focus {
 
 .whatsapp-float:hover {
     transform: scale(1.08);
+    box-shadow: 0 10px 26px rgba(37, 211, 102, 0.5);
+}
+
+/*
+ * CTA opcional de WhatsApp que aparece tras registrar un contacto. Sustituye a
+ * la antigua apertura automatica de pestaña (que dejaba la pantalla en negro).
+ */
+.contact-whatsapp-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+}
+
+.contact-whatsapp-cta:hover {
+    background: #1fb855;
+    border-color: #1fb855;
+    color: #fff;
 }
