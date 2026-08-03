@@ -411,3 +411,115 @@ body.light-mode .faq-item p {
         grid-template-columns: 1fr;
     }
 }
+
+/*
+ * Nombre: Conecta en Instagram
+ * Descripcion: Seccion social con titulo neon, boton y tarjeta con QR sobre
+ * degradado naranja-purpura, alineada al tema del sitio.
+ */
+.social {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 40px;
+    align-items: center;
+    padding: 30px 20px 54px;
+}
+
+.social-copy h2 {
+    font-size: clamp(30px, 4.6vw, 48px);
+    line-height: 1.1;
+    margin: 8px 0 14px;
+    background-image: var(--neon-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: var(--neon-glow);
+}
+
+.social-copy p {
+    color: var(--muted-dark);
+    line-height: 1.7;
+    max-width: 46ch;
+    margin-bottom: 22px;
+}
+
+.social-btn {
+    background: linear-gradient(90deg, #ff6a2a 0%, #a855f7 100%);
+    border: none;
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.35);
+    padding: 12px 26px;
+}
+
+.social-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+}
+
+.social-card {
+    justify-self: end;
+    width: 100%;
+    max-width: 340px;
+    background: linear-gradient(160deg, #ffb347 0%, #ff6a2a 40%, #a855f7 100%);
+    border-radius: 28px;
+    padding: 26px;
+    text-align: center;
+    box-shadow: 0 22px 55px rgba(124, 58, 237, 0.32);
+}
+
+.social-qr {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.social-qr img {
+    width: 100%;
+    max-width: 240px;
+    height: auto;
+    display: block;
+}
+
+.social-handle {
+    color: #7c3aed;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    font-size: 15px;
+}
+
+.social-note {
+    color: #ffffff;
+    font-weight: 700;
+    margin-top: 16px;
+    line-height: 1.5;
+}
+
+body.light-mode .social-copy h2 {
+    background-image: var(--neon-gradient-light);
+    filter: drop-shadow(0 0 10px rgba(124, 58, 237, 0.22));
+}
+
+body.light-mode .social-copy p {
+    color: var(--muted-light);
+}
+
+@media (max-width: 900px) {
+    .social {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+    }
+
+    .social-copy p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .social-card {
+        justify-self: center;
+    }
+}
