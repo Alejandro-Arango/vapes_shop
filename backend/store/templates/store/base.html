@@ -14,7 +14,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
 
     <title>{% block title %}Vape Shop{% endblock %}</title>
 
-    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=38">
+    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=39">
 
     {% block extra_head %}{% endblock %}
 </head>
@@ -41,7 +41,7 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
     {% include 'store/components/age_verification_modal.html' %}
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="{% static 'store/js/app.js' %}?v=csp-3"></script>
+    <script src="{% static 'store/js/app.js' %}?v=csp-4"></script>
 
     {% block extra_scripts %}{% endblock %}
 </body>

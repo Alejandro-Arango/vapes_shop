@@ -424,3 +424,113 @@ input:focus {
         font-size: 13px;
     }
 }
+
+/*
+ * Nombre: Refinamientos moviles
+ * Descripcion: Ajustes exclusivos de movil (el escritorio queda igual):
+ * separacion del boton de sesion respecto al hamburguesa, insignias del hero
+ * mas dimensionales y footer de navegacion centrado.
+ */
+@media (max-width: 700px) {
+    /* 1. Aire entre el hamburguesa y el boton "Iniciar sesion". */
+    .logo {
+        font-size: 18px;
+    }
+
+    .logo-mark {
+        width: 30px;
+        height: 30px;
+        font-size: 11px;
+    }
+
+    .menu-label {
+        margin-left: 8px;
+    }
+
+    .header-controls {
+        gap: 8px;
+        margin-left: 14px;
+    }
+
+    .header-tools {
+        gap: 6px;
+        padding-left: 0;
+        border-left: none;
+    }
+
+    .cart-btn,
+    .theme-toggle {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* 2. Insignias del hero como tarjetas elevadas (menos planas). */
+    .hero-badges {
+        gap: 10px;
+    }
+
+    .hero-badges .badge {
+        padding: 11px 18px;
+        border-radius: 14px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        background: #ffffff;
+        border: 1px solid rgba(124, 58, 237, 0.16);
+        box-shadow: 0 8px 20px rgba(124, 58, 237, 0.12);
+    }
+
+    .hero-badges .badge .icon {
+        width: 1.35em;
+        height: 1.35em;
+    }
+
+    body.dark-mode .hero-badges .badge {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.14);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 3. Footer centrado con navegacion horizontal. */
+    .footer-inner {
+        text-align: center;
+        justify-items: center;
+        gap: 26px;
+    }
+
+    .footer-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .footer-brand .logo {
+        justify-content: center;
+    }
+
+    .footer-brand p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .footer-nav,
+    .footer-support {
+        width: 100%;
+    }
+
+    .footer-nav ul {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px 24px;
+    }
+
+    .footer-support {
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+    }
+
+    .footer-support a {
+        justify-content: center;
+    }
+}

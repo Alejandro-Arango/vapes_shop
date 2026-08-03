@@ -39,6 +39,9 @@
 }
 
 .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: var(--accent-soft);
     border: 1px solid rgba(124, 58, 237, 0.12);
     font-size: 18px;
@@ -47,6 +50,21 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
+}
+
+/* Sol/luna: se muestra el icono acorde al tema (hereda currentColor). */
+.theme-icon-sun,
+.theme-icon-moon {
+    width: 1.25em;
+    height: 1.25em;
+}
+
+body.light-mode .theme-icon-moon {
+    display: none;
+}
+
+body.dark-mode .theme-icon-sun {
+    display: none;
 }
 
 .cart-btn {

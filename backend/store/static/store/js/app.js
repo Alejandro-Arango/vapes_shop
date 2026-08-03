@@ -3793,17 +3793,12 @@ function initializeCarousel() {
 
 function initializeThemeToggle() {
     const themeToggle = document.getElementById("theme-toggle");
-    const themeIcon = themeToggle?.querySelector(".theme-icon");
 
+    // El icono correcto (sol/luna) se muestra por CSS segun la clase del body,
+    // asi que aqui solo alternamos el tema.
     themeToggle?.addEventListener("click", () => {
         document.body.classList.toggle("light-mode");
         document.body.classList.toggle("dark-mode");
-
-        if (themeIcon) {
-            themeIcon.textContent = document.body.classList.contains("light-mode")
-                ? "☀"
-                : "☾";
-        }
     });
 }
 
