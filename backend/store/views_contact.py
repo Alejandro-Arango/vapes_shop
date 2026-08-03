@@ -132,7 +132,7 @@ def contact(request):
 
     return Response(
         {
-            "message": "Gracias. Registramos tu correo y abriremos WhatsApp para continuar.",
+            "message": "Gracias. Registramos tu correo. Si quieres, continúa por WhatsApp con el boton de abajo.",
             "whatsapp_url": whatsapp_url,
         },
         status=status.HTTP_201_CREATED,

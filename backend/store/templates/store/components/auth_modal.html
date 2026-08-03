@@ -4,138 +4,189 @@ Descripcion: Componente modal que permite iniciar sesion, registrar usuarios y m
 -->
 
 <div id="auth-modal" class="modal" aria-hidden="true">
-    <div class="modal-content">
+    <div class="modal-content auth-content">
         <button id="auth-close" class="modal-close" aria-label="Cerrar">
             &times;
         </button>
+
+        <div class="auth-brand">
+            <span class="auth-brand-mark">VS</span>
+
+            <div class="auth-brand-copy">
+                <span class="auth-brand-title">Vape Shop</span>
+                <span class="auth-brand-sub">
+                    Tu cuenta, pedidos y favoritos en un solo lugar.
+                </span>
+            </div>
+        </div>
 
         <div id="auth-feedback" class="auth-feedback" style="display: none;"></div>
 
         <div id="auth-forms">
             <form id="login-form" class="auth-form">
-                <h3>Iniciar sesión</h3>
+                <div class="auth-form-head">
+                    <h3>Iniciar sesión</h3>
+                    <p class="auth-help">Ingresa tus datos para continuar.</p>
+                </div>
 
-                <input
-                    id="login-email"
-                    type="text"
-                    placeholder="Correo o usuario"
-                    autocomplete="username"
-                    required
-                />
+                <label class="auth-field">
+                    <span>Correo o usuario</span>
+                    <input
+                        id="login-email"
+                        type="text"
+                        placeholder="tucorreo@ejemplo.com"
+                        autocomplete="username"
+                        required
+                    />
+                </label>
 
-                <input
-                    id="login-password"
-                    type="password"
-                    placeholder="Contraseña"
-                    required
-                />
+                <label class="auth-field">
+                    <span>Contraseña</span>
+                    <input
+                        id="login-password"
+                        type="password"
+                        placeholder="Tu contraseña"
+                        required
+                    />
+                </label>
 
-                <button class="btn" type="submit">
+                <button class="btn auth-submit" type="submit">
                     Entrar
                 </button>
 
-                <p>
-                    ¿No tienes cuenta?
-                    <a href="#" id="show-register">Regístrate</a>
-                </p>
+                <div class="auth-links">
+                    <p>
+                        ¿No tienes cuenta?
+                        <a href="#" id="show-register">Regístrate</a>
+                    </p>
 
-                <p>
-                    <a href="#" id="show-password-reset-request">
-                        Olvidé mi contraseña
-                    </a>
-                </p>
+                    <p>
+                        <a href="#" id="show-password-reset-request">
+                            Olvidé mi contraseña
+                        </a>
+                    </p>
+                </div>
             </form>
 
             <form id="register-form" class="auth-form" style="display: none;">
-                <h3>Crear cuenta</h3>
+                <div class="auth-form-head">
+                    <h3>Crear cuenta</h3>
+                    <p class="auth-help">Regístrate en menos de un minuto.</p>
+                </div>
 
-                <input
-                    id="reg-name"
-                    type="text"
-                    placeholder="Nombre"
-                />
+                <label class="auth-field">
+                    <span>Nombre</span>
+                    <input
+                        id="reg-name"
+                        type="text"
+                        placeholder="Tu nombre"
+                    />
+                </label>
 
-                <input
-                    id="reg-email"
-                    type="email"
-                    placeholder="Correo"
-                    required
-                />
+                <label class="auth-field">
+                    <span>Correo</span>
+                    <input
+                        id="reg-email"
+                        type="email"
+                        placeholder="tucorreo@ejemplo.com"
+                        required
+                    />
+                </label>
 
-                <input
-                    id="reg-password"
-                    type="password"
-                    placeholder="Contraseña"
-                    required
-                />
+                <label class="auth-field">
+                    <span>Contraseña</span>
+                    <input
+                        id="reg-password"
+                        type="password"
+                        placeholder="Crea una contraseña segura"
+                        required
+                    />
+                </label>
 
-                <button class="btn" type="submit">
-                    Crear
+                <button class="btn auth-submit" type="submit">
+                    Crear cuenta
                 </button>
 
-                <p>
-                    ¿Ya tienes cuenta?
-                    <a href="#" id="show-login">Inicia sesión</a>
-                </p>
+                <div class="auth-links">
+                    <p>
+                        ¿Ya tienes cuenta?
+                        <a href="#" id="show-login">Inicia sesión</a>
+                    </p>
+                </div>
             </form>
 
             <form id="password-reset-request-form" class="auth-form" style="display: none;">
-                <h3>Recuperar contraseña</h3>
+                <div class="auth-form-head">
+                    <h3>Recuperar contraseña</h3>
+                    <p class="auth-help">
+                        Ingresa tu correo y te enviaremos un enlace para crear una contraseña nueva.
+                    </p>
+                </div>
 
-                <p class="auth-help">
-                    Ingresa tu correo y te enviaremos un enlace para crear una contraseña nueva.
-                </p>
+                <label class="auth-field">
+                    <span>Correo</span>
+                    <input
+                        id="password-reset-email"
+                        type="email"
+                        placeholder="tucorreo@ejemplo.com"
+                        autocomplete="email"
+                        required
+                    />
+                </label>
 
-                <input
-                    id="password-reset-email"
-                    type="email"
-                    placeholder="Correo"
-                    autocomplete="email"
-                    required
-                />
-
-                <button class="btn" type="submit">
+                <button class="btn auth-submit" type="submit">
                     Enviar enlace
                 </button>
 
-                <p>
-                    <a href="#" class="show-login-link">Volver a iniciar sesión</a>
-                </p>
+                <div class="auth-links">
+                    <p>
+                        <a href="#" class="show-login-link">Volver a iniciar sesión</a>
+                    </p>
+                </div>
             </form>
 
             <form id="password-reset-confirm-form" class="auth-form" style="display: none;">
-                <h3>Nueva contraseña</h3>
-
-                <p class="auth-help">
-                    Escribe una contraseña segura para recuperar el acceso a tu cuenta.
-                </p>
+                <div class="auth-form-head">
+                    <h3>Nueva contraseña</h3>
+                    <p class="auth-help">
+                        Escribe una contraseña segura para recuperar el acceso a tu cuenta.
+                    </p>
+                </div>
 
                 <input id="password-reset-uid" type="hidden" />
                 <input id="password-reset-token" type="hidden" />
 
-                <input
-                    id="password-reset-new"
-                    type="password"
-                    placeholder="Nueva contraseña"
-                    autocomplete="new-password"
-                    required
-                />
+                <label class="auth-field">
+                    <span>Nueva contraseña</span>
+                    <input
+                        id="password-reset-new"
+                        type="password"
+                        placeholder="Nueva contraseña"
+                        autocomplete="new-password"
+                        required
+                    />
+                </label>
 
-                <input
-                    id="password-reset-confirm"
-                    type="password"
-                    placeholder="Confirmar contraseña"
-                    autocomplete="new-password"
-                    required
-                />
+                <label class="auth-field">
+                    <span>Confirmar contraseña</span>
+                    <input
+                        id="password-reset-confirm"
+                        type="password"
+                        placeholder="Confirmar contraseña"
+                        autocomplete="new-password"
+                        required
+                    />
+                </label>
 
-                <button class="btn" type="submit">
+                <button class="btn auth-submit" type="submit">
                     Guardar contraseña
                 </button>
 
-                <p>
-                    <a href="#" class="show-login-link">Volver a iniciar sesión</a>
-                </p>
+                <div class="auth-links">
+                    <p>
+                        <a href="#" class="show-login-link">Volver a iniciar sesión</a>
+                    </p>
+                </div>
             </form>
         </div>
     </div>
