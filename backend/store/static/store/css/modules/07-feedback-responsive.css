@@ -281,7 +281,7 @@ input:focus {
         flex-direction: column;
         padding: 12px 20px;
         display: none;
-        border-bottom: 1px solid rgba(18, 63, 53, 0.08);
+        border-bottom: 1px solid rgba(124, 58, 237, 0.08);
     }
 
     body.dark-mode .navbar {

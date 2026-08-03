@@ -12,8 +12,8 @@
     background: #ffffff;
     padding: 34px;
     border-radius: 22px;
-    border: 1px solid rgba(18, 63, 53, 0.08);
-    box-shadow: 0 22px 56px rgba(18, 63, 53, 0.12);
+    border: 1px solid rgba(124, 58, 237, 0.08);
+    box-shadow: 0 22px 56px rgba(124, 58, 237, 0.12);
 }
 
 .contact-content h3 {
@@ -28,8 +28,8 @@
     padding: 88px 20px;
     background:
         linear-gradient(135deg, rgba(232, 242, 239, 0.9), rgba(255, 255, 255, 0.94));
-    border-top: 1px solid rgba(18, 63, 53, 0.08);
-    border-bottom: 1px solid rgba(18, 63, 53, 0.08);
+    border-top: 1px solid rgba(124, 58, 237, 0.08);
+    border-bottom: 1px solid rgba(124, 58, 237, 0.08);
 }
 
 .contact-shell {
@@ -45,7 +45,7 @@
     margin-bottom: 14px;
     padding: 7px 12px;
     border-radius: 999px;
-    background: rgba(18, 63, 53, 0.08);
+    background: rgba(124, 58, 237, 0.08);
     color: var(--accent);
     font-size: 13px;
     font-weight: 800;
@@ -79,14 +79,14 @@
     border-radius: 999px;
     background: #fff;
     color: var(--accent);
-    border: 1px solid rgba(18, 63, 53, 0.08);
+    border: 1px solid rgba(124, 58, 237, 0.08);
     font-size: 13px;
     font-weight: 700;
 }
 
 body.light-mode .contact-content {
     background: var(--card-light);
-    box-shadow: 0 22px 56px rgba(18, 63, 53, 0.12);
+    box-shadow: 0 22px 56px rgba(124, 58, 237, 0.12);
 }
 
 form {
@@ -143,7 +143,7 @@ input[type="email"] {
 .contact-form-row > input[type="email"] {
     width: 100%;
     min-height: 48px;
-    border: 1px solid rgba(18, 63, 53, 0.12);
+    border: 1px solid rgba(124, 58, 237, 0.12);
     background: #f8fbfa;
     color: #22312d;
 }

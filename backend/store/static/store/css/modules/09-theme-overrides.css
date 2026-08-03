@@ -82,12 +82,12 @@ body.light-mode .btn:hover {
 body.light-mode .btn.btn-outline {
     color: var(--accent);
     background: transparent;
-    border-color: rgba(18, 63, 53, 0.28);
+    border-color: rgba(124, 58, 237, 0.28);
 }
 
 body.light-mode .header .btn.btn-outline {
     color: var(--accent);
-    border-color: rgba(18, 63, 53, 0.28);
+    border-color: rgba(124, 58, 237, 0.28);
 }
 
 body.light-mode .btn:disabled {
@@ -217,15 +217,15 @@ body.dark-mode .menu {
 
 body.dark-mode .header {
     background:
-        linear-gradient(180deg, #1f332e 0%, #2a463f 100%);
+        linear-gradient(180deg, #0d0d13 0%, #08080b 100%);
 }
 
 body.dark-mode .logo {
-    color: #5ee0bc;
+    color: #c4b5fd;
 }
 
 body.dark-mode .logo-mark {
-    background: #5ee0bc;
+    background: #c4b5fd;
     color: #12231f;
 }
 
@@ -257,8 +257,8 @@ body.dark-mode .cart-btn {
 
 body.dark-mode .product-card,
 body.dark-mode .catalog-controls {
-    background: #213832;
-    border-color: rgba(156, 205, 190, 0.18);
+    background: #17171f;
+    border-color: rgba(255, 255, 255, 0.18);
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
 }
 
@@ -293,18 +293,18 @@ body.dark-mode .stock-label {
 }
 
 body.dark-mode .price p {
-    color: #5ee0bc;
+    color: #c4b5fd;
 }
 
 body.dark-mode .btn {
-    background: #16725f;
-    border-color: #16725f;
+    background: #7c3aed;
+    border-color: #7c3aed;
     color: #fff;
 }
 
 body.dark-mode .btn:hover {
-    background: #1b8a73;
-    border-color: #1b8a73;
+    background: #8b5cf6;
+    border-color: #8b5cf6;
 }
 
 body.dark-mode .carousel h2,
@@ -333,26 +333,26 @@ body.dark-mode .catalog-search input::placeholder {
 }
 
 body.dark-mode .quick-filter.active {
-    background: #17836c;
-    border-color: #17836c;
+    background: #7c3aed;
+    border-color: #7c3aed;
     color: #fff;
 }
 
 body.dark-mode .quick-filter:hover {
     color: #fff;
-    border-color: #5ee0bc;
+    border-color: #c4b5fd;
 }
 
 body.dark-mode .contact {
     background:
-        linear-gradient(135deg, rgba(29, 52, 46, 0.95), rgba(20, 34, 31, 0.98));
-    border-color: rgba(156, 205, 190, 0.14);
+        linear-gradient(135deg, rgba(23, 23, 31, 0.95), rgba(13, 13, 18, 0.98));
+    border-color: rgba(255, 255, 255, 0.14);
 }
 
 body.dark-mode .section-eyebrow,
 body.dark-mode .contact-highlights span {
     background: rgba(255, 255, 255, 0.08);
-    color: #5ee0bc;
+    color: #c4b5fd;
     border-color: rgba(255, 255, 255, 0.14);
 }
 
@@ -365,8 +365,8 @@ body.dark-mode .contact-copy p {
 }
 
 body.dark-mode .contact-content {
-    background: #213832;
-    border-color: rgba(156, 205, 190, 0.18);
+    background: #17171f;
+    border-color: rgba(255, 255, 255, 0.18);
     box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
 }
 
@@ -391,7 +391,7 @@ body.dark-mode .contact-form-row > input[type="email"]::placeholder {
 
 body.dark-mode .whatsapp-contact,
 body.dark-mode .whatsapp-contact a {
-    color: #5ee0bc;
+    color: #c4b5fd;
 }
 
 body.dark-mode .contact-feedback.success {
@@ -407,8 +407,8 @@ body.dark-mode .contact-feedback.error {
 }
 
 body.dark-mode .footer {
-    background: #162723;
-    color: #eef8f4;
+    background: #0d0d12;
+    color: #f4f5fa;
 }
 
 body.dark-mode .footer h4 {
@@ -423,7 +423,7 @@ body.dark-mode .footer-legal {
 
 body.dark-mode .footer-nav a,
 body.dark-mode .footer-support a {
-    color: #5ee0bc;
+    color: #c4b5fd;
 }
 
 body.dark-mode .footer-legal {

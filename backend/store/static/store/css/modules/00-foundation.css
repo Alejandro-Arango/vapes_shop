@@ -15,8 +15,8 @@
     --accent-soft: #f3e8ff;
     --accent-bright: #a855f7;
     --warning-accent: #ff6a2a;
-    --bg-dark: #0e1230;
-    --card-dark: #191d47;
+    --bg-dark: #0a0a0c;
+    --card-dark: #17171f;
     --muted-dark: #c7cbe6;
     --bg-light: #f6f7fb;
     --card-light: #ffffff;
@@ -89,8 +89,8 @@ body {
  */
 body.dark-mode {
     background:
-        linear-gradient(180deg, #1f332e 0%, #263f39 48%, #1f332e 100%);
-    color: #f4faf7;
+        linear-gradient(180deg, #08080b 0%, #121218 52%, #08080b 100%);
+    color: #f4f5fa;
 }
 
 body.dark-mode .card {

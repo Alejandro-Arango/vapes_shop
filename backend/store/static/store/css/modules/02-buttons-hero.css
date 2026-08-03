@@ -34,13 +34,13 @@
 
 .btn.btn-outline {
     background: transparent;
-    border: 1px solid rgba(18, 63, 53, 0.28);
+    border: 1px solid rgba(124, 58, 237, 0.28);
     color: var(--accent);
 }
 
 .theme-toggle {
     background: var(--accent-soft);
-    border: 1px solid rgba(18, 63, 53, 0.12);
+    border: 1px solid rgba(124, 58, 237, 0.12);
     font-size: 18px;
     color: var(--accent);
     cursor: pointer;
@@ -52,7 +52,7 @@
 .cart-btn {
     position: relative;
     background: var(--accent-soft);
-    border: 1px solid rgba(18, 63, 53, 0.12);
+    border: 1px solid rgba(124, 58, 237, 0.12);
     color: var(--accent);
     width: 42px;
     height: 42px;
@@ -164,8 +164,8 @@
     font-size: 0.9rem;
     opacity: 0.95;
     color: var(--accent);
-    border: 1px solid rgba(18, 63, 53, 0.12);
-    background: rgba(18, 63, 53, 0.06);
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    background: rgba(124, 58, 237, 0.06);
 }
 
 .hero-media {

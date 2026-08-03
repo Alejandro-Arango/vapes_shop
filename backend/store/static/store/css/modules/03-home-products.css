@@ -78,7 +78,7 @@ body.light-mode .about {
     padding: 24px;
     border-radius: 18px;
     background: #fff;
-    box-shadow: 0 18px 38px rgba(18, 63, 53, 0.16);
+    box-shadow: 0 18px 38px rgba(124, 58, 237, 0.16);
     margin: 0 auto;
 }
 
@@ -156,14 +156,14 @@ body.light-mode .about {
     display: flex;
     flex-direction: column;
     min-height: 100%;
-    border: 1px solid rgba(18, 63, 53, 0.08);
-    box-shadow: 0 10px 28px rgba(18, 63, 53, 0.08);
+    border: 1px solid rgba(124, 58, 237, 0.08);
+    box-shadow: 0 10px 28px rgba(124, 58, 237, 0.08);
 }
 
 .product-card:hover {
     transform: translateY(-6px);
-    border-color: rgba(18, 63, 53, 0.16);
-    box-shadow: 0 20px 44px rgba(18, 63, 53, 0.14);
+    border-color: rgba(124, 58, 237, 0.16);
+    box-shadow: 0 20px 44px rgba(124, 58, 237, 0.14);
 }
 
 .product-card img {
@@ -183,12 +183,12 @@ body.light-mode .about {
     place-items: center;
     width: 42px;
     height: 42px;
-    border: 1px solid rgba(18, 63, 53, 0.12);
+    border: 1px solid rgba(124, 58, 237, 0.12);
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.92);
     color: var(--muted-light);
     cursor: pointer;
-    box-shadow: 0 10px 22px rgba(18, 63, 53, 0.12);
+    box-shadow: 0 10px 22px rgba(124, 58, 237, 0.12);
     transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease;
     z-index: 2;
 }
@@ -225,7 +225,7 @@ body.light-mode .about {
     width: fit-content;
     padding: 5px 10px;
     border-radius: 999px;
-    background: rgba(18, 63, 53, 0.08);
+    background: rgba(124, 58, 237, 0.08);
     color: var(--accent);
     font-size: 12px;
     font-weight: 700;
