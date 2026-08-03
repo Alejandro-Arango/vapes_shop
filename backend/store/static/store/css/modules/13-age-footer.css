@@ -203,3 +203,54 @@ body.light-mode .footer-legal {
         width: 100%;
     }
 }
+
+/*
+ * Nombre: Footer movil centrado
+ * Descripcion: Distribucion del footer en movil (centrado, con la navegacion
+ * en fila). Vive en este modulo (el ultimo importado) para ganarle en orden
+ * de cascada a la regla base .footer-nav ul { display: grid }.
+ */
+@media (max-width: 700px) {
+    .footer-inner {
+        text-align: center;
+        justify-items: center;
+        gap: 28px;
+    }
+
+    .footer-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .footer-brand .logo {
+        justify-content: center;
+    }
+
+    .footer-brand p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .footer-nav,
+    .footer-support {
+        width: 100%;
+    }
+
+    .footer-nav ul {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px 26px;
+    }
+
+    .footer-support {
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+    }
+
+    .footer-support a {
+        justify-content: center;
+    }
+}

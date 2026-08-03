@@ -489,48 +489,6 @@ input:focus {
         border-color: rgba(255, 255, 255, 0.14);
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
     }
-
-    /* 3. Footer centrado con navegacion horizontal. */
-    .footer-inner {
-        text-align: center;
-        justify-items: center;
-        gap: 26px;
-    }
-
-    .footer-brand {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .footer-brand .logo {
-        justify-content: center;
-    }
-
-    .footer-brand p {
-        margin-left: auto;
-        margin-right: auto;
-    }
-
-    .footer-nav,
-    .footer-support {
-        width: 100%;
-    }
-
-    .footer-nav ul {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 10px 24px;
-    }
-
-    .footer-support {
-        display: grid;
-        justify-items: center;
-        gap: 10px;
-    }
-
-    .footer-support a {
-        justify-content: center;
-    }
+    /* El footer movil se define en 13-age-footer.css (ultimo modulo) para
+     * ganarle en orden de cascada a las reglas base de .footer-nav ul. */
 }
