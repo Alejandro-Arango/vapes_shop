@@ -99,6 +99,17 @@
     margin-bottom: 14px;
 }
 
+.empty-cart-icon .icon {
+    width: 1em;
+    height: 1em;
+    color: var(--accent-bright);
+    opacity: 0.9;
+}
+
+body.light-mode .empty-cart-icon .icon {
+    color: var(--accent);
+}
+
 .empty-products-icon {
     font-size: 52px;
     margin-bottom: 16px;

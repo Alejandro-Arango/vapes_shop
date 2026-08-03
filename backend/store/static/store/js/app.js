@@ -3309,7 +3309,9 @@ async function updateCartUI() {
     if (!items.length) {
         itemsEl.innerHTML = `
             <div class="empty-cart">
-                <div class="empty-cart-icon">Carrito</div>
+                <div class="empty-cart-icon">
+                    <svg class="icon" aria-hidden="true"><use href="#icon-cart"></use></svg>
+                </div>
 
                 <h3>Tu carrito está vacío</h3>
 

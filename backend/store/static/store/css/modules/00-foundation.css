@@ -48,6 +48,7 @@ html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
 }
 
 body {
@@ -57,6 +58,13 @@ body {
     transition: background-color 0.4s ease, color 0.4s ease;
     background: var(--bg-dark);
     color: #fff;
+    /*
+     * Evita el desplazamiento horizontal en movil: el drawer del carrito vive
+     * fuera de pantalla (translateX(110%)) y sin esto genera scroll lateral,
+     * haciendo que la pagina cargue "descentrada".
+     */
+    overflow-x: hidden;
+    max-width: 100%;
 }
 
 .ui-icon,

@@ -63,18 +63,37 @@ body.light-mode .modal-content {
     font-size: 22px;
 }
 
-.auth-form input {
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: #ffffff;
-    color: #1a1a22;
+/*
+ * Nombre: Campos de formularios en modales
+ * Descripcion: Estilo unificado y elegante para inputs, selects y textareas
+ * dentro de cualquier modal (login, registro, perfil). Traslucido en modo
+ * oscuro, blanco limpio en modo claro, con foco resaltado en purpura.
+ */
+.modal-content input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.modal-content select,
+.modal-content textarea {
+    width: 100%;
+    padding: 13px 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.07);
+    color: #f4f5fa;
     font-family: inherit;
     font-size: 15px;
+    line-height: 1.4;
 }
 
-.auth-form input::placeholder {
-    color: #8a8f9c;
+.modal-content input::placeholder,
+.modal-content textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.modal-content input:focus,
+.modal-content select:focus,
+.modal-content textarea:focus {
+    outline: none;
+    border-color: var(--accent-bright);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.24);
 }
 
 .auth-form p {
@@ -92,8 +111,17 @@ body.light-mode .modal-content {
     color: #c4b5fd;
 }
 
-body.light-mode .auth-form input {
-    border-color: rgba(0, 0, 0, 0.12);
+body.light-mode .modal-content input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+body.light-mode .modal-content select,
+body.light-mode .modal-content textarea {
+    background: #ffffff;
+    color: #1a1a22;
+    border-color: rgba(0, 0, 0, 0.14);
+}
+
+body.light-mode .modal-content input::placeholder,
+body.light-mode .modal-content textarea::placeholder {
+    color: #8a8f9c;
 }
 
 body.light-mode .auth-form p {
