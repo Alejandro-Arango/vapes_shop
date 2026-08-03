@@ -70,6 +70,20 @@ body {
     font-style: normal;
 }
 
+/*
+ * Nombre: Iconos SVG
+ * Descripcion: Utilidad para los iconos del sprite (components/icons_sprite.html).
+ * Heredan el color del texto via currentColor, por lo que se adaptan a modo
+ * claro/oscuro automaticamente.
+ */
+.icon {
+    width: 1.15em;
+    height: 1.15em;
+    display: inline-block;
+    vertical-align: -0.18em;
+    flex: none;
+}
+
 .container {
     max-width: var(--max-width);
     margin: 0 auto;

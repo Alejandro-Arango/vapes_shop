@@ -14,12 +14,14 @@ Descripcion: Plantilla base que carga estilos, componentes globales, scripts pri
 
     <title>{% block title %}Vape Shop{% endblock %}</title>
 
-    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=34">
+    <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=35">
 
     {% block extra_head %}{% endblock %}
 </head>
 
 <body class="light-mode">
+
+    {% include 'store/components/icons_sprite.html' %}
 
     {% include 'store/components/header.html' %}
 

@@ -333,9 +333,23 @@ body.light-mode .price p {
 }
 
 .trust-icon {
-    font-size: 26px;
-    display: inline-block;
-    margin-bottom: 10px;
+    font-size: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+    color: var(--accent-bright);
+    background: rgba(124, 58, 237, 0.14);
+    border: 1px solid rgba(124, 58, 237, 0.28);
+}
+
+body.light-mode .trust-icon {
+    color: var(--accent);
+    background: rgba(124, 58, 237, 0.08);
+    border-color: rgba(124, 58, 237, 0.18);
 }
 
 .trust-card h3 {
