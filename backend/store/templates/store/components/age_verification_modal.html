@@ -27,13 +27,24 @@ Descripcion: Componente modal para solicitar confirmacion de mayoria de edad ant
             </div>
 
             <div class="age-modal-field">
-                <label for="age-birthdate">Fecha de nacimiento</label>
-                <input
-                    id="age-birthdate"
-                    type="date"
-                    autocomplete="bday"
-                    required
-                />
+                <label id="age-birthdate-label">Fecha de nacimiento</label>
+                <div
+                    class="age-date-selects"
+                    role="group"
+                    aria-labelledby="age-birthdate-label"
+                >
+                    <select id="age-day" aria-label="Día">
+                        <option value="">Día</option>
+                    </select>
+
+                    <select id="age-month" aria-label="Mes">
+                        <option value="">Mes</option>
+                    </select>
+
+                    <select id="age-year" aria-label="Año">
+                        <option value="">Año</option>
+                    </select>
+                </div>
             </div>
 
             <p

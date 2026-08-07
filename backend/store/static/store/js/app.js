@@ -355,20 +355,88 @@ function hasAgeVerification() {
     return ageVerifiedInSession;
 }
 
+const AGE_MONTHS = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+/*
+ * Nombre: populateAgeSelects
+ * Descripcion: Rellena los selects de dia, mes y año de la verificacion de edad.
+ * El rango de años arranca en el mas reciente que puede cumplir la edad minima,
+ * asi el usuario elige rapido sin recorrer un calendario nativo.
+ */
+function populateAgeSelects() {
+    const daySel = document.getElementById("age-day");
+    const monthSel = document.getElementById("age-month");
+    const yearSel = document.getElementById("age-year");
+
+    if (!daySel || !monthSel || !yearSel || daySel.dataset.filled === "1") return;
+
+    for (let d = 1; d <= 31; d++) {
+        const option = document.createElement("option");
+        option.value = String(d).padStart(2, "0");
+        option.textContent = String(d);
+        daySel.appendChild(option);
+    }
+
+    AGE_MONTHS.forEach((name, index) => {
+        const option = document.createElement("option");
+        option.value = String(index + 1).padStart(2, "0");
+        option.textContent = name;
+        monthSel.appendChild(option);
+    });
+
+    const currentYear = new Date().getFullYear();
+    const maxYear = currentYear - MIN_PURCHASE_AGE;
+
+    for (let y = maxYear; y >= currentYear - 100; y--) {
+        const option = document.createElement("option");
+        option.value = String(y);
+        option.textContent = String(y);
+        yearSel.appendChild(option);
+    }
+
+    daySel.dataset.filled = "1";
+}
+
+/*
+ * Nombre: getSelectedBirthDate
+ * Descripcion: Arma la fecha ISO (YYYY-MM-DD) a partir de los tres selects.
+ * Retorna: cadena ISO o vacia si falta algun campo.
+ */
+function getSelectedBirthDate() {
+    const d = document.getElementById("age-day")?.value;
+    const m = document.getElementById("age-month")?.value;
+    const y = document.getElementById("age-year")?.value;
+
+    if (!d || !m || !y) return "";
+
+    return `${y}-${m}-${d}`;
+}
+
 /*
  * Nombre: showAgeVerification
  * Descripcion: Muestra el modal obligatorio de verificacion de edad.
  */
 function showAgeVerification() {
     const modal = document.getElementById("age-verification-modal");
-    const birthInput = document.getElementById("age-birthdate");
 
     if (!modal) return;
 
-    if (birthInput) {
-        const stored = getStoredBirthDate();
+    populateAgeSelects();
 
-        if (stored) birthInput.value = stored;
+    const stored = getStoredBirthDate();
+
+    if (stored && /^\d{4}-\d{2}-\d{2}$/.test(stored)) {
+        const [y, m, d] = stored.split("-");
+        const daySel = document.getElementById("age-day");
+        const monthSel = document.getElementById("age-month");
+        const yearSel = document.getElementById("age-year");
+
+        if (daySel) daySel.value = d;
+        if (monthSel) monthSel.value = m;
+        if (yearSel) yearSel.value = y;
     }
 
     modal.setAttribute("aria-hidden", "false");
@@ -376,7 +444,7 @@ function showAgeVerification() {
     document.body.classList.add("age-verification-locked");
 
     requestAnimationFrame(() => {
-        birthInput?.focus();
+        document.getElementById("age-day")?.focus();
     });
 }
 
@@ -404,10 +472,26 @@ function hideAgeVerification() {
  * Descripcion: Guarda la confirmacion de mayoria de edad y permite usar la tienda.
  */
 function confirmAgeVerification() {
-    const birthInput = document.getElementById("age-birthdate");
     const feedback = document.getElementById("age-verification-feedback");
-    const birthValue = birthInput?.value || "";
-    const age = calculateAgeFromISO(birthValue);
+    const birthValue = getSelectedBirthDate();
+
+    if (!birthValue) {
+        if (feedback) {
+            feedback.textContent = "Selecciona el día, mes y año de nacimiento.";
+        }
+
+        return;
+    }
+
+    // Verifica que la combinacion exista de verdad (p. ej. 31 de febrero no).
+    const [y, m, d] = birthValue.split("-").map(Number);
+    const realDate = new Date(y, m - 1, d);
+    const isRealDate =
+        realDate.getFullYear() === y &&
+        realDate.getMonth() === m - 1 &&
+        realDate.getDate() === d;
+
+    const age = isRealDate ? calculateAgeFromISO(birthValue) : null;
 
     if (age === null) {
         if (feedback) {

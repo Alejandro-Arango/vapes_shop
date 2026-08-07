@@ -65,13 +65,25 @@ body.age-verification-locked {
     font-weight: 600;
 }
 
-.age-modal-field input[type="date"] {
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background: rgba(255, 255, 255, 0.06);
-    color: inherit;
-    font-size: 15px;
+.age-modal-field {
+    max-width: 320px;
+}
+
+.age-date-selects {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1.2fr;
+    gap: 8px;
+}
+
+.age-date-selects select {
+    text-align: center;
+    text-align-last: center;
+    cursor: pointer;
+}
+
+/* Las opciones desplegadas las pinta el sistema: texto oscuro legible. */
+.age-date-selects option {
+    color: #1a1a22;
 }
 
 .age-feedback {
